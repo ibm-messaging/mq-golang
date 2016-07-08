@@ -1,0 +1,243 @@
+/*
+  This is a short sample to show how to call IBM MQ from
+  a Go program.
+
+  The flow is to connect to a queue manager,
+  open the queue named on the command line,
+  put a message and then get it back.
+  The queue is closed.
+
+  The program then subscribes to the topic corresponding
+  to collecting activity trace for itself - this requires MQ V9.
+
+  Finally, it closes the subscription and target queue, and
+  disconnects.
+
+  If an error occurs at any stage, the error is reported and
+  subsequent steps skipped.
+*/
+package main
+
+/*
+  Copyright (c) IBM Corporation 2016
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific
+
+   Contributors:
+     Mark Taylor - Initial Contribution
+*/
+
+/*
+#cgo CFLAGS: -I/opt/mqm/inc
+#cgo LDFLAGS: -L/opt/mqm/lib64 -lmqm -m64
+
+#include <cmqc.h>
+*/
+import "C"
+
+import (
+	"fmt"
+	"ibmmq"
+	"os"
+	"strings"
+)
+
+func main() {
+
+	var openOptions int
+
+	var qObject ibmmq.MQObject
+	var managedQObject ibmmq.MQObject
+	var subObject ibmmq.MQObject
+
+	var qMgrName string
+
+	if len(os.Args) != 3 {
+		fmt.Println("mqitest <qname> <qmgrname>")
+		fmt.Println("  Both parms required")
+		os.Exit(1)
+	}
+
+	qMgrName = os.Args[2]
+	connected := false
+	qMgr, mqreturn, err := ibmmq.Conn(qMgrName)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		connected = true
+		fmt.Println("Connected to queue manager ", qMgrName)
+	}
+
+	// MQOPEN of the queue named on command line
+	if err == nil {
+		mqod := ibmmq.NewMQOD()
+
+		openOptions = C.MQOO_OUTPUT + C.MQOO_FAIL_IF_QUIESCING
+		openOptions |= C.MQOO_INPUT_AS_Q_DEF
+
+		mqod.ObjectType = C.MQOT_Q
+		mqod.ObjectName = os.Args[1]
+
+		qObject, mqreturn, err = qMgr.Open(mqod, openOptions)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Opened queue", qObject.Name)
+		}
+	}
+
+	// MQPUT a message
+	//   Create the standard MQI structures MQMD, MQPMO and
+	//   set the values.
+	// The message is always sent as bytes, so has to be converted
+	// before the MQPUT.
+	if err == nil {
+		putmqmd := ibmmq.NewMQMD()
+		pmo := ibmmq.NewMQPMO()
+
+		pmo.Options = C.MQPMO_SYNCPOINT | C.MQPMO_NEW_MSG_ID | C.MQPMO_NEW_CORREL_ID
+
+		putmqmd.Format = "MQSTR"
+		msgData := "Hello from Go"
+		buffer := []byte(msgData)
+		l := len(buffer)
+
+		mqreturn, err = qObject.Put(putmqmd, pmo, l, buffer)
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Put message to", qObject.Name)
+		}
+	}
+
+	// The message was put in syncpoint so it needs
+	// to be committed.
+	if err == nil {
+		mqreturn, err = qMgr.Cmit()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	// MQGET all messages on the queue. Wait 3 seconds for any more
+	// to arrive.
+	if err == nil {
+		msgAvail := true
+
+		for msgAvail == true {
+			var datalen int
+
+			getmqmd := ibmmq.NewMQMD()
+			gmo := ibmmq.NewMQGMO()
+			gmo.Options = C.MQGMO_NO_SYNCPOINT | C.MQGMO_FAIL_IF_QUIESCING
+			gmo.Options |= C.MQGMO_WAIT
+			gmo.WaitInterval = 3000
+			buffer := make([]byte, 32768)
+			l := len(buffer)
+
+			datalen, mqreturn, err = qObject.Get(getmqmd, gmo, l, buffer)
+
+			if err != nil {
+				msgAvail = false
+				fmt.Println(err)
+				if mqreturn.MQRC == C.MQRC_NO_MSG_AVAILABLE {
+					// not a real error so reset err
+					err = nil
+				}
+			} else {
+				fmt.Printf("Got message of length %d: ", datalen)
+				fmt.Println(strings.TrimSpace(string(buffer[:datalen])))
+			}
+		}
+	}
+
+	// MQCLOSE the queue
+	if err == nil {
+		mqreturn, err = qObject.Close(0)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Closed queue")
+		}
+	}
+
+	// This section demonstrates subscribing to a topic
+	// where the topic string is set to collect activity trace
+	// from this program - it needs MQ V9 for publications to
+	// automatically be generated on this topic.
+	if err == nil {
+		mqsd := ibmmq.NewMQSD()
+		mqsd.Options = C.MQSO_CREATE
+		mqsd.Options |= C.MQSO_NON_DURABLE
+		mqsd.Options |= C.MQSO_FAIL_IF_QUIESCING
+		mqsd.Options |= C.MQSO_MANAGED
+		mqsd.ObjectString = "$SYS/MQ/INFO/QMGR/" + qMgrName + "/ActivityTrace/ApplName/mqitest"
+
+		subObject, mqreturn, err = qMgr.Sub(mqsd, &managedQObject)
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Subscribed to topic ", mqsd.ObjectString)
+		}
+	}
+
+	// Loop on the managed queue created by the MQSUB call until there
+	// are no more messages. Because these are going to be PCF-format
+	// events, they cannot be simply printed so here I'm just
+	// printing the format of the message to show that something has
+	// been retrieved.
+	if err == nil {
+		msgAvail := true
+
+		for msgAvail == true {
+			var datalen int
+
+			getmqmd := ibmmq.NewMQMD()
+			gmo := ibmmq.NewMQGMO()
+			gmo.Options = C.MQGMO_NO_SYNCPOINT | C.MQGMO_FAIL_IF_QUIESCING
+			gmo.Options |= C.MQGMO_WAIT
+			gmo.WaitInterval = 3000
+			buffer := make([]byte, 32768)
+			l := len(buffer)
+
+			datalen, mqreturn, err = managedQObject.Get(getmqmd, gmo, l, buffer)
+
+			if err != nil {
+				msgAvail = false
+				fmt.Println(err)
+				if mqreturn.MQRC == C.MQRC_NO_MSG_AVAILABLE {
+					// not a real error so reset err, but
+					// end retrieval loop
+					err = nil
+				}
+			} else {
+				fmt.Printf("Got message of length %d. Format = %s\n", datalen, getmqmd.Format)
+			}
+		}
+	}
+
+	// MQCLOSE the subscription, ignoring errors.
+	if err == nil {
+		subObject.Close(0)
+	}
+
+	// MQDISC regardless of other errors
+	if connected {
+		mqreturn, err = qMgr.Disc()
+		fmt.Println("Disconnected from queue manager ", qMgrName)
+	}
+
+	os.Exit((int)(mqreturn.MQCC))
+
+}
