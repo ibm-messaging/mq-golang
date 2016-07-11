@@ -1,4 +1,4 @@
-# mq-go
+# mq-golang
 This package demonstrates how you can call IBM MQ from applications written in the Go language.
 
 ## Description
@@ -47,7 +47,7 @@ with any future versions of the package; the API is subject to change based on a
 
 ##Issues and Contributions
 
-For feedback and issues relating specifically to this package, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-go/issues). 
+For feedback and issues relating specifically to this package, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-golang/issues). 
 
 Contributions to this package can be accepted under the terms of the IBM Contributor License Agreement, 
 found in the file CLA.md of this repository. When submitting a pull request, you must include a statement stating 
