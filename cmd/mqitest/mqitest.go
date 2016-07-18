@@ -36,14 +36,6 @@ package main
      Mark Taylor - Initial Contribution
 */
 
-/*
-#cgo CFLAGS: -I/opt/mqm/inc
-#cgo LDFLAGS: -L/opt/mqm/lib64 -lmqm -m64
-
-#include <cmqc.h>
-*/
-import "C"
-
 import (
 	"fmt"
 	"ibmmq"
@@ -55,6 +47,7 @@ func main() {
 
 	var openOptions int
 
+	var qMgrObject ibmmq.MQObject
 	var qObject ibmmq.MQObject
 	var managedQObject ibmmq.MQObject
 	var subObject ibmmq.MQObject
@@ -81,10 +74,10 @@ func main() {
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
 
-		openOptions = C.MQOO_OUTPUT + C.MQOO_FAIL_IF_QUIESCING
-		openOptions |= C.MQOO_INPUT_AS_Q_DEF
+		openOptions = ibmmq.MQOO_OUTPUT + ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions |= ibmmq.MQOO_INPUT_AS_Q_DEF
 
-		mqod.ObjectType = C.MQOT_Q
+		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = os.Args[1]
 
 		qObject, mqreturn, err = qMgr.Open(mqod, openOptions)
@@ -104,14 +97,13 @@ func main() {
 		putmqmd := ibmmq.NewMQMD()
 		pmo := ibmmq.NewMQPMO()
 
-		pmo.Options = C.MQPMO_SYNCPOINT | C.MQPMO_NEW_MSG_ID | C.MQPMO_NEW_CORREL_ID
+		pmo.Options = ibmmq.MQPMO_SYNCPOINT | ibmmq.MQPMO_NEW_MSG_ID | ibmmq.MQPMO_NEW_CORREL_ID
 
 		putmqmd.Format = "MQSTR"
 		msgData := "Hello from Go"
 		buffer := []byte(msgData)
-		l := len(buffer)
 
-		mqreturn, err = qObject.Put(putmqmd, pmo, l, buffer)
+		mqreturn, err = qObject.Put(putmqmd, pmo, buffer)
 
 		if err != nil {
 			fmt.Println(err)
@@ -139,8 +131,8 @@ func main() {
 
 			getmqmd := ibmmq.NewMQMD()
 			gmo := ibmmq.NewMQGMO()
-			gmo.Options = C.MQGMO_NO_SYNCPOINT | C.MQGMO_FAIL_IF_QUIESCING
-			gmo.Options |= C.MQGMO_WAIT
+			gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT | ibmmq.MQGMO_FAIL_IF_QUIESCING
+			gmo.Options |= ibmmq.MQGMO_WAIT
 			gmo.WaitInterval = 3000
 			buffer := make([]byte, 32768)
 			l := len(buffer)
@@ -150,7 +142,7 @@ func main() {
 			if err != nil {
 				msgAvail = false
 				fmt.Println(err)
-				if mqreturn.MQRC == C.MQRC_NO_MSG_AVAILABLE {
+				if mqreturn.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
 					// not a real error so reset err
 					err = nil
 				}
@@ -177,10 +169,10 @@ func main() {
 	// automatically be generated on this topic.
 	if err == nil {
 		mqsd := ibmmq.NewMQSD()
-		mqsd.Options = C.MQSO_CREATE
-		mqsd.Options |= C.MQSO_NON_DURABLE
-		mqsd.Options |= C.MQSO_FAIL_IF_QUIESCING
-		mqsd.Options |= C.MQSO_MANAGED
+		mqsd.Options = ibmmq.MQSO_CREATE
+		mqsd.Options |= ibmmq.MQSO_NON_DURABLE
+		mqsd.Options |= ibmmq.MQSO_FAIL_IF_QUIESCING
+		mqsd.Options |= ibmmq.MQSO_MANAGED
 		mqsd.ObjectString = "$SYS/MQ/INFO/QMGR/" + qMgrName + "/ActivityTrace/ApplName/mqitest"
 
 		subObject, mqreturn, err = qMgr.Sub(mqsd, &managedQObject)
@@ -205,8 +197,8 @@ func main() {
 
 			getmqmd := ibmmq.NewMQMD()
 			gmo := ibmmq.NewMQGMO()
-			gmo.Options = C.MQGMO_NO_SYNCPOINT | C.MQGMO_FAIL_IF_QUIESCING
-			gmo.Options |= C.MQGMO_WAIT
+			gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT | ibmmq.MQGMO_FAIL_IF_QUIESCING
+			gmo.Options |= ibmmq.MQGMO_WAIT
 			gmo.WaitInterval = 3000
 			buffer := make([]byte, 32768)
 			l := len(buffer)
@@ -216,7 +208,7 @@ func main() {
 			if err != nil {
 				msgAvail = false
 				fmt.Println(err)
-				if mqreturn.MQRC == C.MQRC_NO_MSG_AVAILABLE {
+				if mqreturn.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
 					// not a real error so reset err, but
 					// end retrieval loop
 					err = nil
@@ -230,6 +222,40 @@ func main() {
 	// MQCLOSE the subscription, ignoring errors.
 	if err == nil {
 		subObject.Close(0)
+	}
+
+	if err == nil {
+		mqod := ibmmq.NewMQOD()
+		openOptions = ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
+
+		mqod.ObjectType = ibmmq.MQOT_Q_MGR
+		mqod.ObjectName = ""
+
+		qMgrObject, mqreturn, err = qMgr.Open(mqod, openOptions)
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Printf("Opened QMgr for MQINQ\n")
+		}
+	}
+
+	if err == nil {
+		selectors := []int{ibmmq.MQCA_Q_MGR_NAME,
+			ibmmq.MQCA_DEAD_LETTER_Q_NAME,
+			ibmmq.MQIA_MSG_MARK_BROWSE_INTERVAL}
+
+		intAttrs, charAttrs, _, err := qMgrObject.Inq(selectors, 2, 160)
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			returnedName := string(charAttrs[0:48])
+			fmt.Printf("MQINQ returned +%v %s \n",
+				intAttrs, string(charAttrs))
+			fmt.Printf("               '%s'\n", returnedName)
+		}
+
 	}
 
 	// MQDISC regardless of other errors

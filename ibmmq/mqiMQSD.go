@@ -35,52 +35,53 @@ import (
 )
 
 /*
- * This file contains operations on the MQ Subscription Descriptor (MQSD)
- *
- */
-
+MQSD is a structure containing the MQ Subscription Descriptor (MQSD)
+*/
 type MQSD struct {
 	StrucId string
-	Version C.MQLONG
-	Options C.MQLONG
+	Version int
+	Options int
 
 	ObjectName          string
 	AlternateUserId     string
 	AlternateSecurityId []byte
-	SubExpiry           C.MQLONG
+	SubExpiry           int
 	ObjectString        string
 	SubName             string
 	SubUserData         string
 	SubCorrelId         []byte
 
-	PubPriority        C.MQLONG
+	PubPriority        int
 	PubAccountingToken []byte
 
 	PubApplIdentityData string
 
 	SelectionString string
-	SubLevel        C.MQLONG
+	SubLevel        int
 	ResObjectString string
 }
 
+/*
+NewMQSD fills in default values for the MQSD structure
+*/
 func NewMQSD() *MQSD {
 
 	sd := new(MQSD)
 
 	sd.StrucId = "SD  "
-	sd.Version = C.MQSD_VERSION_1
+	sd.Version = int(C.MQSD_VERSION_1)
 	sd.Options = 0
 
 	sd.ObjectName = ""
 	sd.AlternateUserId = ""
 	sd.AlternateSecurityId = bytes.Repeat([]byte{0}, C.MQ_SECURITY_ID_LENGTH)
-	sd.SubExpiry = C.MQEI_UNLIMITED
+	sd.SubExpiry = int(C.MQEI_UNLIMITED)
 	sd.ObjectString = ""
 	sd.SubName = ""
 	sd.SubUserData = ""
 	sd.SubCorrelId = bytes.Repeat([]byte{0}, C.MQ_CORREL_ID_LENGTH)
 
-	sd.PubPriority = C.MQPRI_PRIORITY_AS_PUBLISHED
+	sd.PubPriority = int(C.MQPRI_PRIORITY_AS_PUBLISHED)
 	sd.PubAccountingToken = bytes.Repeat([]byte{0}, C.MQ_ACCOUNTING_TOKEN_LENGTH)
 
 	sd.PubApplIdentityData = ""
@@ -93,30 +94,30 @@ func NewMQSD() *MQSD {
 }
 
 /*
- * It is expected that copyXXtoC and copyXXfromC will be called as
- * matching pairs. That means that we can handle the MQCHARV type
- * by allocating storage in the toC function and freeing it in fromC.
- * If the input string for an MQCHARV type is empty, then we allocate
- * a fixed length buffer for any potential output.
- *
- * In the fromC function, that buffer is freed. Conveniently, we can
- * free it always, because if we didn't explicitly call malloc(), it was
- * allocated by C.CString and still needs to be freed.
- */
+It is expected that copyXXtoC and copyXXfromC will be called as
+matching pairs. That means that we can handle the MQCHARV type
+by allocating storage in the toC function and freeing it in fromC.
+If the input string for an MQCHARV type is empty, then we allocate
+a fixed length buffer for any potential output.
+
+In the fromC function, that buffer is freed. Conveniently, we can
+free it always, because if we didn't explicitly call malloc(), it was
+allocated by C.CString and still needs to be freed.
+*/
 func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 	var i int
 	const vsbufsize = 10240
 
 	setMQIString((*C.char)(&mqsd.StrucId[0]), gosd.StrucId, 4)
-	mqsd.Version = gosd.Version
-	mqsd.Options = gosd.Options
+	mqsd.Version = C.MQLONG(gosd.Version)
+	mqsd.Options = C.MQLONG(gosd.Options)
 
 	setMQIString((*C.char)(&mqsd.ObjectName[0]), gosd.ObjectName, C.MQ_OBJECT_NAME_LENGTH)
 	setMQIString((*C.char)(&mqsd.AlternateUserId[0]), gosd.AlternateUserId, C.MQ_USER_ID_LENGTH)
 	for i = 0; i < C.MQ_SECURITY_ID_LENGTH; i++ {
 		mqsd.AlternateSecurityId[i] = C.MQBYTE(gosd.AlternateSecurityId[i])
 	}
-	mqsd.SubExpiry = gosd.SubExpiry
+	mqsd.SubExpiry = C.MQLONG(gosd.SubExpiry)
 
 	mqsd.ObjectString.VSLength = (C.MQLONG)(len(gosd.ObjectString))
 	mqsd.ObjectString.VSCCSID = C.MQCCSI_APPL
@@ -149,7 +150,7 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 		mqsd.SubCorrelId[i] = C.MQBYTE(gosd.SubCorrelId[i])
 	}
 
-	mqsd.PubPriority = gosd.PubPriority
+	mqsd.PubPriority = C.MQLONG(gosd.PubPriority)
 	for i = 0; i < C.MQ_ACCOUNTING_TOKEN_LENGTH; i++ {
 		mqsd.PubAccountingToken[i] = C.MQBYTE(gosd.PubAccountingToken[i])
 	}
@@ -165,7 +166,7 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 		mqsd.SelectionString.VSPtr = (C.MQPTR)(C.CString(gosd.SelectionString))
 	}
 
-	mqsd.SubLevel = gosd.SubLevel
+	mqsd.SubLevel = C.MQLONG(gosd.SubLevel)
 
 	mqsd.ResObjectString.VSLength = (C.MQLONG)(len(gosd.ResObjectString))
 	mqsd.ResObjectString.VSCCSID = C.MQCCSI_APPL
@@ -181,15 +182,15 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 	var i int
 	gosd.StrucId = C.GoStringN((*C.char)(&mqsd.StrucId[0]), 4)
-	gosd.Version = mqsd.Version
-	gosd.Options = mqsd.Options
+	gosd.Version = int(mqsd.Version)
+	gosd.Options = int(mqsd.Options)
 
 	gosd.ObjectName = C.GoStringN((*C.char)(&mqsd.ObjectName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	gosd.AlternateUserId = C.GoStringN((*C.char)(&mqsd.AlternateUserId[0]), C.MQ_USER_ID_LENGTH)
 	for i := 0; i < C.MQ_SECURITY_ID_LENGTH; i++ {
 		gosd.AlternateSecurityId[i] = (byte)(mqsd.AlternateSecurityId[i])
 	}
-	gosd.SubExpiry = mqsd.SubExpiry
+	gosd.SubExpiry = int(mqsd.SubExpiry)
 
 	gosd.ObjectString = C.GoStringN((*C.char)(mqsd.ObjectString.VSPtr), (C.int)(mqsd.ObjectString.VSLength))
 	C.free(unsafe.Pointer(mqsd.ObjectString.VSPtr))
@@ -202,7 +203,7 @@ func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 		gosd.SubCorrelId[i] = (byte)(mqsd.SubCorrelId[i])
 	}
 
-	gosd.PubPriority = mqsd.PubPriority
+	gosd.PubPriority = int(mqsd.PubPriority)
 	for i = 0; i < C.MQ_ACCOUNTING_TOKEN_LENGTH; i++ {
 		gosd.PubAccountingToken[i] = (byte)(mqsd.PubAccountingToken[i])
 	}
@@ -212,7 +213,7 @@ func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 	gosd.SelectionString = C.GoStringN((*C.char)(mqsd.SelectionString.VSPtr), (C.int)(mqsd.SelectionString.VSLength))
 	C.free(unsafe.Pointer(mqsd.SelectionString.VSPtr))
 
-	gosd.SubLevel = mqsd.SubLevel
+	gosd.SubLevel = int(mqsd.SubLevel)
 
 	gosd.ResObjectString = C.GoStringN((*C.char)(mqsd.ResObjectString.VSPtr), (C.int)(mqsd.ResObjectString.VSLength))
 	C.free(unsafe.Pointer(mqsd.ResObjectString.VSPtr))
