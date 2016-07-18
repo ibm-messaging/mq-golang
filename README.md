@@ -41,8 +41,10 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 * Initial release
 
 18 Jul 2016
-* Changed structures so that applications (mostly) will not need to use cgo to imbed the MQ C headers
-* Package ibmmq now includes a version of the numeric #defines as a Go file
+* Changed structures so that most applications will not need to use cgo to imbed the MQ C headers
+** Go programs will now use int32 where C programs use MQLONG 
+** Use of message handles, distribution lists require cgo for now
+* Package ibmmq now includes the numeric #defines as a Go file, cmqc.go, for easier use
 * Removed "src/" prefix from tree in github repo
 * Removed need for buffer length parm on Put/Put1
 * Updated comments

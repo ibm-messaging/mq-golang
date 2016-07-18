@@ -45,7 +45,7 @@ import (
 
 func main() {
 
-	var openOptions int
+	var openOptions int32
 
 	var qMgrObject ibmmq.MQObject
 	var qObject ibmmq.MQObject
@@ -241,7 +241,7 @@ func main() {
 	}
 
 	if err == nil {
-		selectors := []int{ibmmq.MQCA_Q_MGR_NAME,
+		selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
 			ibmmq.MQCA_DEAD_LETTER_Q_NAME,
 			ibmmq.MQIA_MSG_MARK_BROWSE_INTERVAL}
 

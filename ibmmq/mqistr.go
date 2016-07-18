@@ -45,40 +45,54 @@ func mqstrerror(verb string, mqcc C.MQLONG, mqrc C.MQLONG) error {
 
 /*
 MQItoString returns a string representation of the MQI #define. Only a few of the
-sets of constants are decoded here; see cmqstrc.h for a full set.
+sets of constants are decoded here; see cmqstrc.h for a full set. Some of the
+sets are aggregated, so that "RC" will return something from either the MQRC
+or MQRCCF sets. These sets are related and do not overlap values.
 */
-func MQItoString(class string, value int32) string {
+func MQItoString(class string, value int) string {
 	s := ""
 	v := C.MQLONG(value)
 	switch class {
 	case "BACF":
 		s = C.GoString(C.MQBACF_STR(v))
-	case "CACF":
-		s = C.GoString(C.MQCACF_STR(v))
-	case "CACH":
-		s = C.GoString(C.MQCACH_STR(v))
-	case "CAMO":
-		s = C.GoString(C.MQCAMO_STR(v))
+
 	case "CA":
 		s = C.GoString(C.MQCA_STR(v))
+		if s == "" {
+			s = C.GoString(C.MQCACF_STR(v))
+		}
+		if s == "" {
+			s = C.GoString(C.MQCACH_STR(v))
+		}
+		if s == "" {
+			s = C.GoString(C.MQCAMO_STR(v))
+		}
+
 	case "CC":
 		s = C.GoString(C.MQCC_STR(v))
 	case "CMD":
 		s = C.GoString(C.MQCMD_STR(v))
-	case "IACF":
-		s = C.GoString(C.MQIACF_STR(v))
-	case "IACH":
-		s = C.GoString(C.MQIACH_STR(v))
-	case "IAMO":
-		s = C.GoString(C.MQIAMO_STR(v))
-	case "IAMO64":
-		s = C.GoString(C.MQIAMO64_STR(v))
+
 	case "IA":
 		s = C.GoString(C.MQIA_STR(v))
-	case "RCCF":
-		s = C.GoString(C.MQRCCF_STR(v))
+		if s == "" {
+			s = C.GoString(C.MQIACF_STR(v))
+		}
+		if s == "" {
+			s = C.GoString(C.MQIACH_STR(v))
+		}
+		if s == "" {
+			s = C.GoString(C.MQIAMO_STR(v))
+		}
+		if s == "" {
+			s = C.GoString(C.MQIAMO64_STR(v))
+		}
+
 	case "RC":
 		s = C.GoString(C.MQRC_STR(v))
+		if s == "" {
+			s = C.GoString(C.MQRCCF_STR(v))
+		}
 	}
 	return s
 }

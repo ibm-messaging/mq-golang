@@ -35,20 +35,20 @@ MQGMO is a structure containing the MQ Get Message Options (MQGMO)
 */
 type MQGMO struct {
 	StrucId        string
-	Version        int
-	Options        int
-	WaitInterval   int
-	Signal1        int
-	Signal2        int
+	Version        int32
+	Options        int32
+	WaitInterval   int32
+	Signal1        int32
+	Signal2        int32
 	ResolvedQName  string
-	MatchOptions   int
+	MatchOptions   int32
 	GroupStatus    rune
 	SegmentStatus  rune
 	Segmentation   rune
 	Reserved1      rune
 	MsgToken       []byte
-	ReturnedLength int
-	Reserved2      int
+	ReturnedLength int32
+	Reserved2      int32
 	MsgHandle      C.MQHMSG
 }
 
@@ -59,19 +59,19 @@ func NewMQGMO() *MQGMO {
 
 	gmo := new(MQGMO)
 	gmo.StrucId = "GMO "
-	gmo.Version = int(C.MQGMO_VERSION_1)
-	gmo.Options = int(C.MQGMO_NO_WAIT + C.MQGMO_PROPERTIES_AS_Q_DEF)
-	gmo.WaitInterval = int(C.MQWI_UNLIMITED)
+	gmo.Version = int32(C.MQGMO_VERSION_1)
+	gmo.Options = int32(C.MQGMO_NO_WAIT + C.MQGMO_PROPERTIES_AS_Q_DEF)
+	gmo.WaitInterval = int32(C.MQWI_UNLIMITED)
 	gmo.Signal1 = 0
 	gmo.Signal2 = 0
 	gmo.ResolvedQName = ""
-	gmo.MatchOptions = int(C.MQMO_MATCH_MSG_ID + C.MQMO_MATCH_CORREL_ID)
+	gmo.MatchOptions = int32(C.MQMO_MATCH_MSG_ID + C.MQMO_MATCH_CORREL_ID)
 	gmo.GroupStatus = rune(C.MQGS_NOT_IN_GROUP)
 	gmo.SegmentStatus = rune(C.MQSS_NOT_A_SEGMENT)
 	gmo.Segmentation = rune(C.MQSEG_INHIBITED)
 	gmo.Reserved1 = ' '
 	gmo.MsgToken = bytes.Repeat([]byte{0}, C.MQ_MSG_TOKEN_LENGTH)
-	gmo.ReturnedLength = int(C.MQRL_UNDEFINED)
+	gmo.ReturnedLength = int32(C.MQRL_UNDEFINED)
 	gmo.Reserved2 = 0
 	gmo.MsgHandle = C.MQHM_NONE
 
@@ -106,13 +106,13 @@ func copyGMOfromC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	var i int
 
 	gogmo.StrucId = C.GoStringN((*C.char)(&mqgmo.StrucId[0]), 4)
-	gogmo.Version = int(mqgmo.Version)
-	gogmo.Options = int(mqgmo.Options)
-	gogmo.WaitInterval = int(mqgmo.WaitInterval)
-	gogmo.Signal1 = int(mqgmo.Signal1)
-	gogmo.Signal2 = int(mqgmo.Signal2)
+	gogmo.Version = int32(mqgmo.Version)
+	gogmo.Options = int32(mqgmo.Options)
+	gogmo.WaitInterval = int32(mqgmo.WaitInterval)
+	gogmo.Signal1 = int32(mqgmo.Signal1)
+	gogmo.Signal2 = int32(mqgmo.Signal2)
 	gogmo.ResolvedQName = C.GoStringN((*C.char)(&mqgmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	gogmo.MatchOptions = int(mqgmo.MatchOptions)
+	gogmo.MatchOptions = int32(mqgmo.MatchOptions)
 	gogmo.GroupStatus = rune(mqgmo.GroupStatus)
 	gogmo.SegmentStatus = rune(mqgmo.SegmentStatus)
 	gogmo.Segmentation = rune(mqgmo.Segmentation)
@@ -120,8 +120,8 @@ func copyGMOfromC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	for i = 0; i < C.MQ_MSG_TOKEN_LENGTH; i++ {
 		gogmo.MsgToken[i] = (byte)(mqgmo.MsgToken[i])
 	}
-	gogmo.ReturnedLength = int(mqgmo.ReturnedLength)
-	gogmo.Reserved2 = int(mqgmo.Reserved2)
+	gogmo.ReturnedLength = int32(mqgmo.ReturnedLength)
+	gogmo.Reserved2 = int32(mqgmo.Reserved2)
 	gogmo.MsgHandle = mqgmo.MsgHandle
 	return
 }

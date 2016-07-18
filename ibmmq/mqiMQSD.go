@@ -39,25 +39,25 @@ MQSD is a structure containing the MQ Subscription Descriptor (MQSD)
 */
 type MQSD struct {
 	StrucId string
-	Version int
-	Options int
+	Version int32
+	Options int32
 
 	ObjectName          string
 	AlternateUserId     string
 	AlternateSecurityId []byte
-	SubExpiry           int
+	SubExpiry           int32
 	ObjectString        string
 	SubName             string
 	SubUserData         string
 	SubCorrelId         []byte
 
-	PubPriority        int
+	PubPriority        int32
 	PubAccountingToken []byte
 
 	PubApplIdentityData string
 
 	SelectionString string
-	SubLevel        int
+	SubLevel        int32
 	ResObjectString string
 }
 
@@ -69,19 +69,19 @@ func NewMQSD() *MQSD {
 	sd := new(MQSD)
 
 	sd.StrucId = "SD  "
-	sd.Version = int(C.MQSD_VERSION_1)
+	sd.Version = int32(C.MQSD_VERSION_1)
 	sd.Options = 0
 
 	sd.ObjectName = ""
 	sd.AlternateUserId = ""
 	sd.AlternateSecurityId = bytes.Repeat([]byte{0}, C.MQ_SECURITY_ID_LENGTH)
-	sd.SubExpiry = int(C.MQEI_UNLIMITED)
+	sd.SubExpiry = int32(C.MQEI_UNLIMITED)
 	sd.ObjectString = ""
 	sd.SubName = ""
 	sd.SubUserData = ""
 	sd.SubCorrelId = bytes.Repeat([]byte{0}, C.MQ_CORREL_ID_LENGTH)
 
-	sd.PubPriority = int(C.MQPRI_PRIORITY_AS_PUBLISHED)
+	sd.PubPriority = int32(C.MQPRI_PRIORITY_AS_PUBLISHED)
 	sd.PubAccountingToken = bytes.Repeat([]byte{0}, C.MQ_ACCOUNTING_TOKEN_LENGTH)
 
 	sd.PubApplIdentityData = ""
@@ -182,15 +182,15 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 	var i int
 	gosd.StrucId = C.GoStringN((*C.char)(&mqsd.StrucId[0]), 4)
-	gosd.Version = int(mqsd.Version)
-	gosd.Options = int(mqsd.Options)
+	gosd.Version = int32(mqsd.Version)
+	gosd.Options = int32(mqsd.Options)
 
 	gosd.ObjectName = C.GoStringN((*C.char)(&mqsd.ObjectName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	gosd.AlternateUserId = C.GoStringN((*C.char)(&mqsd.AlternateUserId[0]), C.MQ_USER_ID_LENGTH)
 	for i := 0; i < C.MQ_SECURITY_ID_LENGTH; i++ {
 		gosd.AlternateSecurityId[i] = (byte)(mqsd.AlternateSecurityId[i])
 	}
-	gosd.SubExpiry = int(mqsd.SubExpiry)
+	gosd.SubExpiry = int32(mqsd.SubExpiry)
 
 	gosd.ObjectString = C.GoStringN((*C.char)(mqsd.ObjectString.VSPtr), (C.int)(mqsd.ObjectString.VSLength))
 	C.free(unsafe.Pointer(mqsd.ObjectString.VSPtr))
@@ -203,7 +203,7 @@ func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 		gosd.SubCorrelId[i] = (byte)(mqsd.SubCorrelId[i])
 	}
 
-	gosd.PubPriority = int(mqsd.PubPriority)
+	gosd.PubPriority = int32(mqsd.PubPriority)
 	for i = 0; i < C.MQ_ACCOUNTING_TOKEN_LENGTH; i++ {
 		gosd.PubAccountingToken[i] = (byte)(mqsd.PubAccountingToken[i])
 	}
@@ -213,7 +213,7 @@ func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 	gosd.SelectionString = C.GoStringN((*C.char)(mqsd.SelectionString.VSPtr), (C.int)(mqsd.SelectionString.VSLength))
 	C.free(unsafe.Pointer(mqsd.SelectionString.VSPtr))
 
-	gosd.SubLevel = int(mqsd.SubLevel)
+	gosd.SubLevel = int32(mqsd.SubLevel)
 
 	gosd.ResObjectString = C.GoStringN((*C.char)(mqsd.ResObjectString.VSPtr), (C.int)(mqsd.ResObjectString.VSLength))
 	C.free(unsafe.Pointer(mqsd.ResObjectString.VSPtr))

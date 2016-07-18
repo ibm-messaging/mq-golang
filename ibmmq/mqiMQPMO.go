@@ -34,26 +34,26 @@ MQPMO is a structure containing the MQ Put MessageOptions (MQPMO)
 */
 type MQPMO struct {
 	StrucId           string
-	Version           int
-	Options           int
-	Timeout           int
+	Version           int32
+	Options           int32
+	Timeout           int32
 	Context           C.MQHOBJ
-	KnownDestCount    int
-	UnknownDestCount  int
-	InvalidDestCount  int
+	KnownDestCount    int32
+	UnknownDestCount  int32
+	InvalidDestCount  int32
 	ResolvedQName     string
 	ResolvedQMgrName  string
-	RecsPresent       int
-	PutMsgRecFields   int
-	PutMsgRecOffset   int
-	ResponseRecOffset int
+	RecsPresent       int32
+	PutMsgRecFields   int32
+	PutMsgRecOffset   int32
+	ResponseRecOffset int32
 	PutMsgRecPtr      C.MQPTR
 	ResponseRecPtr    C.MQPTR
 
 	OriginalMsgHandle C.MQHMSG
 	NewMsgHandle      C.MQHMSG
-	Action            int
-	PubLevel          int
+	Action            int32
+	PubLevel          int32
 }
 
 /*
@@ -64,8 +64,8 @@ func NewMQPMO() *MQPMO {
 	pmo := new(MQPMO)
 	pmo.StrucId = "PMO "
 
-	pmo.Version = int(C.MQPMO_VERSION_1)
-	pmo.Options = int(C.MQPMO_NONE)
+	pmo.Version = int32(C.MQPMO_VERSION_1)
+	pmo.Options = int32(C.MQPMO_NONE)
 	pmo.Timeout = -1
 	pmo.Context = 0
 	pmo.KnownDestCount = 0
@@ -82,7 +82,7 @@ func NewMQPMO() *MQPMO {
 
 	pmo.OriginalMsgHandle = C.MQHM_NONE
 	pmo.NewMsgHandle = C.MQHM_NONE
-	pmo.Action = int(C.MQACTP_NEW)
+	pmo.Action = int32(C.MQACTP_NEW)
 	pmo.PubLevel = 9
 
 	return pmo
@@ -121,28 +121,28 @@ func copyPMOtoC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 func copyPMOfromC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 
 	gopmo.StrucId = C.GoStringN((*C.char)(&mqpmo.StrucId[0]), 4)
-	gopmo.Version = int(mqpmo.Version)
+	gopmo.Version = int32(mqpmo.Version)
 
-	gopmo.Options = int(mqpmo.Options)
-	gopmo.Timeout = int(mqpmo.Timeout)
+	gopmo.Options = int32(mqpmo.Options)
+	gopmo.Timeout = int32(mqpmo.Timeout)
 	gopmo.Context = mqpmo.Context
-	gopmo.KnownDestCount = int(mqpmo.KnownDestCount)
-	gopmo.UnknownDestCount = int(mqpmo.UnknownDestCount)
-	gopmo.InvalidDestCount = int(mqpmo.InvalidDestCount)
+	gopmo.KnownDestCount = int32(mqpmo.KnownDestCount)
+	gopmo.UnknownDestCount = int32(mqpmo.UnknownDestCount)
+	gopmo.InvalidDestCount = int32(mqpmo.InvalidDestCount)
 
 	gopmo.ResolvedQName = C.GoStringN((*C.char)(&mqpmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	gopmo.ResolvedQMgrName = C.GoStringN((*C.char)(&mqpmo.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
 
-	gopmo.RecsPresent = int(mqpmo.RecsPresent)
-	gopmo.PutMsgRecFields = int(mqpmo.PutMsgRecFields)
-	gopmo.PutMsgRecOffset = int(mqpmo.PutMsgRecOffset)
-	gopmo.ResponseRecOffset = int(mqpmo.ResponseRecOffset)
+	gopmo.RecsPresent = int32(mqpmo.RecsPresent)
+	gopmo.PutMsgRecFields = int32(mqpmo.PutMsgRecFields)
+	gopmo.PutMsgRecOffset = int32(mqpmo.PutMsgRecOffset)
+	gopmo.ResponseRecOffset = int32(mqpmo.ResponseRecOffset)
 	gopmo.PutMsgRecPtr = mqpmo.PutMsgRecPtr
 	gopmo.ResponseRecPtr = mqpmo.ResponseRecPtr
 
 	gopmo.OriginalMsgHandle = mqpmo.OriginalMsgHandle
 	gopmo.NewMsgHandle = mqpmo.NewMsgHandle
-	gopmo.Action = int(mqpmo.Action)
-	gopmo.PubLevel = int(mqpmo.PubLevel)
+	gopmo.Action = int32(mqpmo.Action)
+	gopmo.PubLevel = int32(mqpmo.PubLevel)
 	return
 }

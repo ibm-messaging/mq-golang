@@ -38,34 +38,34 @@ MQMD is a structure containing the MQ Message Descriptor (MQMD)
 */
 type MQMD struct {
 	StrucId          string
-	Version          int
-	Report           int
-	MsgType          int
-	Expiry           int
-	Feedback         int
-	Encoding         int
-	CodedCharSetId   int
+	Version          int32
+	Report           int32
+	MsgType          int32
+	Expiry           int32
+	Feedback         int32
+	Encoding         int32
+	CodedCharSetId   int32
 	Format           string
-	Priority         int
-	Persistence      int
+	Priority         int32
+	Persistence      int32
 	MsgId            []byte
 	CorrelId         []byte
-	BackoutCount     int
+	BackoutCount     int32
 	ReplyToQ         string
 	ReplyToQMgr      string
 	UserIdentifier   string
 	AccountingToken  []byte
 	ApplIdentityData string
-	PutApplType      int
+	PutApplType      int32
 	PutApplName      string
 	PutDate          string
 	PutTime          string
 	ApplOriginData   string
 	GroupId          []byte
-	MsgSeqNumber     int
-	Offset           int
-	MsgFlags         int
-	OriginalLength   int
+	MsgSeqNumber     int32
+	Offset           int32
+	MsgFlags         int32
+	OriginalLength   int32
 }
 
 /*
@@ -74,16 +74,16 @@ NewMQMD fills in default values for the MQMD structure
 func NewMQMD() *MQMD {
 	md := new(MQMD)
 	md.StrucId = "MD  "
-	md.Version = int(C.MQMD_VERSION_1)
-	md.Report = int(C.MQRO_NONE)
-	md.MsgType = int(C.MQMT_DATAGRAM)
-	md.Expiry = int(C.MQEI_UNLIMITED)
-	md.Feedback = int(C.MQFB_NONE)
-	md.Encoding = int(C.MQENC_NATIVE)
-	md.CodedCharSetId = int(C.MQCCSI_Q_MGR)
+	md.Version = int32(C.MQMD_VERSION_1)
+	md.Report = int32(C.MQRO_NONE)
+	md.MsgType = int32(C.MQMT_DATAGRAM)
+	md.Expiry = int32(C.MQEI_UNLIMITED)
+	md.Feedback = int32(C.MQFB_NONE)
+	md.Encoding = int32(C.MQENC_NATIVE)
+	md.CodedCharSetId = int32(C.MQCCSI_Q_MGR)
 	md.Format = "        "
-	md.Priority = int(C.MQPRI_PRIORITY_AS_Q_DEF)
-	md.Persistence = int(C.MQPER_PERSISTENCE_AS_Q_DEF)
+	md.Priority = int32(C.MQPRI_PRIORITY_AS_Q_DEF)
+	md.Persistence = int32(C.MQPER_PERSISTENCE_AS_Q_DEF)
 	md.MsgId = bytes.Repeat([]byte{0}, C.MQ_MSG_ID_LENGTH)
 	md.CorrelId = bytes.Repeat([]byte{0}, C.MQ_CORREL_ID_LENGTH)
 	md.BackoutCount = 0
@@ -92,7 +92,7 @@ func NewMQMD() *MQMD {
 	md.UserIdentifier = ""
 	md.AccountingToken = bytes.Repeat([]byte{0}, C.MQ_ACCOUNTING_TOKEN_LENGTH)
 	md.ApplIdentityData = ""
-	md.PutApplType = int(C.MQAT_NO_CONTEXT)
+	md.PutApplType = int32(C.MQAT_NO_CONTEXT)
 	md.PutApplName = ""
 	md.PutDate = ""
 	md.PutTime = ""
@@ -100,8 +100,8 @@ func NewMQMD() *MQMD {
 	md.GroupId = bytes.Repeat([]byte{0}, C.MQ_GROUP_ID_LENGTH)
 	md.MsgSeqNumber = 1
 	md.Offset = 0
-	md.MsgFlags = int(C.MQMF_NONE)
-	md.OriginalLength = int(C.MQOL_UNDEFINED)
+	md.MsgFlags = int32(C.MQMF_NONE)
+	md.OriginalLength = int32(C.MQOL_UNDEFINED)
 
 	return md
 }
@@ -156,16 +156,16 @@ func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 	var i int
 	gomd.StrucId = C.GoStringN((*C.char)(&mqmd.StrucId[0]), 4)
-	gomd.Version = int(mqmd.Version)
-	gomd.Report = int(mqmd.Report)
-	gomd.MsgType = int(mqmd.MsgType)
-	gomd.Expiry = int(mqmd.Expiry)
-	gomd.Feedback = int(mqmd.Feedback)
-	gomd.Encoding = int(mqmd.Encoding)
-	gomd.CodedCharSetId = int(mqmd.CodedCharSetId)
+	gomd.Version = int32(mqmd.Version)
+	gomd.Report = int32(mqmd.Report)
+	gomd.MsgType = int32(mqmd.MsgType)
+	gomd.Expiry = int32(mqmd.Expiry)
+	gomd.Feedback = int32(mqmd.Feedback)
+	gomd.Encoding = int32(mqmd.Encoding)
+	gomd.CodedCharSetId = int32(mqmd.CodedCharSetId)
 	gomd.Format = C.GoStringN((*C.char)(&mqmd.Format[0]), C.MQ_FORMAT_LENGTH)
-	gomd.Priority = int(mqmd.Priority)
-	gomd.Persistence = int(mqmd.Persistence)
+	gomd.Priority = int32(mqmd.Priority)
+	gomd.Persistence = int32(mqmd.Persistence)
 
 	for i = 0; i < C.MQ_MSG_ID_LENGTH; i++ {
 		gomd.MsgId[i] = (byte)(mqmd.MsgId[i])
@@ -173,7 +173,7 @@ func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 	for i = 0; i < C.MQ_CORREL_ID_LENGTH; i++ {
 		gomd.CorrelId[i] = (byte)(mqmd.CorrelId[i])
 	}
-	gomd.BackoutCount = int(mqmd.BackoutCount)
+	gomd.BackoutCount = int32(mqmd.BackoutCount)
 
 	gomd.ReplyToQ = C.GoStringN((*C.char)(&mqmd.ReplyToQ[0]), C.MQ_OBJECT_NAME_LENGTH)
 	gomd.ReplyToQMgr = C.GoStringN((*C.char)(&mqmd.ReplyToQMgr[0]), C.MQ_OBJECT_NAME_LENGTH)
@@ -183,7 +183,7 @@ func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 		gomd.AccountingToken[i] = (byte)(mqmd.AccountingToken[i])
 	}
 	gomd.ApplIdentityData = C.GoStringN((*C.char)(&mqmd.ApplIdentityData[0]), C.MQ_APPL_IDENTITY_DATA_LENGTH)
-	gomd.PutApplType = int(mqmd.PutApplType)
+	gomd.PutApplType = int32(mqmd.PutApplType)
 	gomd.PutApplName = C.GoStringN((*C.char)(&mqmd.PutApplName[0]), C.MQ_PUT_APPL_NAME_LENGTH)
 	gomd.PutDate = C.GoStringN((*C.char)(&mqmd.PutDate[0]), C.MQ_PUT_DATE_LENGTH)
 	gomd.PutTime = C.GoStringN((*C.char)(&mqmd.PutTime[0]), C.MQ_PUT_TIME_LENGTH)
@@ -192,10 +192,10 @@ func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 	for i = 0; i < C.MQ_GROUP_ID_LENGTH; i++ {
 		gomd.GroupId[i] = (byte)(mqmd.GroupId[i])
 	}
-	gomd.MsgSeqNumber = int(mqmd.MsgSeqNumber)
-	gomd.Offset = int(mqmd.Offset)
-	gomd.MsgFlags = int(mqmd.MsgFlags)
-	gomd.OriginalLength = int(mqmd.OriginalLength)
+	gomd.MsgSeqNumber = int32(mqmd.MsgSeqNumber)
+	gomd.Offset = int32(mqmd.Offset)
+	gomd.MsgFlags = int32(mqmd.MsgFlags)
+	gomd.OriginalLength = int32(mqmd.OriginalLength)
 
 	return
 }

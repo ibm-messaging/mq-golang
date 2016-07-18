@@ -39,19 +39,19 @@ MQOD is a structure containing the MQ Object Descriptor (MQOD)
 */
 type MQOD struct {
 	StrucId         string
-	Version         int
-	ObjectType      int
+	Version         int32
+	ObjectType      int32
 	ObjectName      string
 	ObjectQMgrName  string
 	DynamicQName    string
 	AlternateUserId string
 
-	RecsPresent       int
-	KnownDestCount    int
-	UnknownDestCount  int
-	InvalidDestCount  int
-	ObjectRecOffset   int
-	ResponseRecOffset int
+	RecsPresent       int32
+	KnownDestCount    int32
+	UnknownDestCount  int32
+	InvalidDestCount  int32
+	ObjectRecOffset   int32
+	ResponseRecOffset int32
 
 	ObjectRecPtr   C.MQPTR
 	ResponseRecPtr C.MQPTR
@@ -63,7 +63,7 @@ type MQOD struct {
 	ObjectString    string
 	SelectionString string
 	ResObjectString string
-	ResolvedType    int
+	ResolvedType    int32
 }
 
 /*
@@ -176,19 +176,19 @@ func copyODfromC(mqod *C.MQOD, good *MQOD) {
 	var i int
 
 	good.StrucId = C.GoStringN((*C.char)(&mqod.StrucId[0]), 4)
-	good.Version = int(mqod.Version)
-	good.ObjectType = int(mqod.ObjectType)
+	good.Version = int32(mqod.Version)
+	good.ObjectType = int32(mqod.ObjectType)
 	good.ObjectName = C.GoStringN((*C.char)(&mqod.ObjectName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	good.ObjectQMgrName = C.GoStringN((*C.char)(&mqod.ObjectQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	good.DynamicQName = C.GoStringN((*C.char)(&mqod.DynamicQName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	good.AlternateUserId = C.GoStringN((*C.char)(&mqod.AlternateUserId[0]), C.MQ_USER_ID_LENGTH)
 
-	good.RecsPresent = int(mqod.RecsPresent)
-	good.KnownDestCount = int(mqod.KnownDestCount)
-	good.UnknownDestCount = int(mqod.UnknownDestCount)
-	good.InvalidDestCount = int(mqod.InvalidDestCount)
-	good.ObjectRecOffset = int(mqod.ObjectRecOffset)
-	good.ResponseRecOffset = int(mqod.ResponseRecOffset)
+	good.RecsPresent = int32(mqod.RecsPresent)
+	good.KnownDestCount = int32(mqod.KnownDestCount)
+	good.UnknownDestCount = int32(mqod.UnknownDestCount)
+	good.InvalidDestCount = int32(mqod.InvalidDestCount)
+	good.ObjectRecOffset = int32(mqod.ObjectRecOffset)
+	good.ResponseRecOffset = int32(mqod.ResponseRecOffset)
 
 	good.ObjectRecPtr = mqod.ObjectRecPtr
 	good.ResponseRecPtr = mqod.ResponseRecPtr
@@ -206,7 +206,7 @@ func copyODfromC(mqod *C.MQOD, good *MQOD) {
 	C.free(unsafe.Pointer(mqod.SelectionString.VSPtr))
 	good.ResObjectString = C.GoStringN((*C.char)(mqod.ResObjectString.VSPtr), (C.int)(mqod.ResObjectString.VSLength))
 	C.free(unsafe.Pointer(mqod.ResObjectString.VSPtr))
-	good.ResolvedType = int(mqod.ResolvedType)
+	good.ResolvedType = int32(mqod.ResolvedType)
 
 	return
 }

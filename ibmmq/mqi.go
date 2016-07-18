@@ -86,8 +86,8 @@ type MQObject struct {
 MQReturn holds the MQRC and MQCC values returned from an MQI verb
 */
 type MQReturn struct {
-	MQCC int
-	MQRC int
+	MQCC int32
+	MQRC int32
 }
 
 /*
@@ -124,8 +124,8 @@ func Conn(goQMgrName string) (MQQueueManager, MQReturn, error) {
 
 	C.MQCONN((*C.MQCHAR)(mqQMgrName), &qMgr.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -146,8 +146,8 @@ func (x *MQQueueManager) Disc() (MQReturn, error) {
 
 	C.MQDISC(&x.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -160,7 +160,7 @@ func (x *MQQueueManager) Disc() (MQReturn, error) {
 /*
 Open an object such as a queue or topic
 */
-func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int) (MQObject, MQReturn, error) {
+func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, MQReturn, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqod C.MQOD
@@ -183,8 +183,8 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int) (MQObject, MQReturn
 
 	copyODfromC(&mqod, good)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -201,7 +201,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int) (MQObject, MQReturn
 /*
 Close the object
 */
-func (object *MQObject) Close(goCloseOptions int) (MQReturn, error) {
+func (object *MQObject) Close(goCloseOptions int32) (MQReturn, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqCloseOptions C.MQLONG
@@ -210,8 +210,8 @@ func (object *MQObject) Close(goCloseOptions int) (MQReturn, error) {
 
 	C.MQCLOSE(object.qMgr.hConn, &object.hObj, mqCloseOptions, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -246,8 +246,8 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, MQReturn,
 
 	copySDfromC(&mqsd, gosd)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -269,8 +269,8 @@ func (x *MQQueueManager) Cmit() (MQReturn, error) {
 
 	C.MQCMIT(x.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -290,8 +290,8 @@ func (x *MQQueueManager) Back() (MQReturn, error) {
 
 	C.MQBACK(x.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -333,8 +333,8 @@ func (object MQObject) Put(gomd *MQMD,
 	copyMDfromC(&mqmd, gomd)
 	copyPMOfromC(&mqpmo, gopmo)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -381,8 +381,8 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	copyMDfromC(&mqmd, gomd)
 	copyPMOfromC(&mqpmo, gopmo)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -426,8 +426,8 @@ func (object MQObject) Get(gomd *MQMD,
 	copyMDfromC(&mqmd, gomd)
 	copyGMOfromC(&mqgmo, gogmo)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
@@ -448,25 +448,18 @@ how long each field in that buffer will be.
 The caller passes in how many integer selectors are expected to be
 returned, as well as the maximum length of the char buffer to be returned
 */
-func (object MQObject) Inq(goSelectors []int, intAttrCount int, charAttrLen int) ([]int,
+func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen int) ([]int32,
 	[]byte, MQReturn, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqCharAttrs C.PMQCHAR
 	var goCharAttrs []byte
-	var goIntAttrs32 []int32
-	var goIntAttrs []int
+	var goIntAttrs []int32
 	var ptr C.PMQLONG
 
-	goSelectors32 := make([]int32, len(goSelectors))
-	for i := 0; i < len(goSelectors); i++ {
-		goSelectors32[i] = int32(goSelectors[i])
-	}
-
 	if intAttrCount > 0 {
-		goIntAttrs32 = make([]int32, intAttrCount)
-		goIntAttrs = make([]int, intAttrCount)
-		ptr = (C.PMQLONG)(unsafe.Pointer(&goIntAttrs32[0]))
+		goIntAttrs = make([]int32, intAttrCount)
+		ptr = (C.PMQLONG)(unsafe.Pointer(&goIntAttrs[0]))
 	} else {
 		ptr = nil
 	}
@@ -479,26 +472,20 @@ func (object MQObject) Inq(goSelectors []int, intAttrCount int, charAttrLen int)
 
 	// Pass in the selectors directly
 	C.MQINQ(object.qMgr.hConn, object.hObj,
-		C.MQLONG(len(goSelectors32)),
-		C.PMQLONG(unsafe.Pointer(&goSelectors32[0])),
+		C.MQLONG(len(goSelectors)),
+		C.PMQLONG(unsafe.Pointer(&goSelectors[0])),
 		C.MQLONG(intAttrCount),
 		ptr,
 		C.MQLONG(charAttrLen),
 		mqCharAttrs,
 		&mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int(mqcc),
-		MQRC: int(mqrc),
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
 	}
 
 	if mqcc == C.MQCC_FAILED {
 		return nil, nil, mqreturn, mqstrerror("MQINQ", mqcc, mqrc)
-	}
-
-	if intAttrCount > 0 {
-		for i := 0; i < intAttrCount; i++ {
-			goIntAttrs[i] = int(goIntAttrs32[i])
-		}
 	}
 
 	if charAttrLen > 0 {

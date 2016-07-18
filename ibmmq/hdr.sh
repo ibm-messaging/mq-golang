@@ -3,11 +3,11 @@
 d="/opt/mqm/inc"
 f="cmqstrc.h"
 
-
-cat <<EOF 
+(
+cat <<EOF
 
 package ibmmq
- 
+
 /*
 This file was generated from $d/$f using
 the hdr.sh script.
@@ -31,10 +31,11 @@ awk '
                             if (match($0,"byte") == 0)
                             {
                               gsub("\"","",const)
-                              printf("%-32.32s = %s\n",const,val)
+                              printf("%-32.32s int32 = %s\n",const,val)
                             }
                           }
                         }
 
     END { printf(")\n") }
     '
+) > cmqc.go
