@@ -395,9 +395,10 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 
 /*
 Get a message from a queue
+The length of the retrieved message is returned.
 */
 func (object MQObject) Get(gomd *MQMD,
-	gogmo *MQGMO, bufflen int, buffer []byte) (int, MQReturn, error) {
+	gogmo *MQGMO, buffer []byte) (int, MQReturn, error) {
 
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
@@ -405,6 +406,8 @@ func (object MQObject) Get(gomd *MQMD,
 	var mqgmo C.MQGMO
 	var datalen C.MQLONG
 	var ptr C.PMQVOID
+
+	bufflen := len(buffer)
 
 	copyMDtoC(&mqmd, gomd)
 	copyGMOtoC(&mqgmo, gogmo)
@@ -422,7 +425,7 @@ func (object MQObject) Get(gomd *MQMD,
 		&datalen,
 		&mqcc, &mqrc)
 
-	godatalen := (int)(datalen)
+	godatalen := int(datalen)
 	copyMDfromC(&mqmd, gomd)
 	copyGMOfromC(&mqgmo, gogmo)
 

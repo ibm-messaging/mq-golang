@@ -135,9 +135,8 @@ func main() {
 			gmo.Options |= ibmmq.MQGMO_WAIT
 			gmo.WaitInterval = 3000
 			buffer := make([]byte, 32768)
-			l := len(buffer)
 
-			datalen, mqreturn, err = qObject.Get(getmqmd, gmo, l, buffer)
+			datalen, mqreturn, err = qObject.Get(getmqmd, gmo, buffer)
 
 			if err != nil {
 				msgAvail = false
@@ -201,9 +200,8 @@ func main() {
 			gmo.Options |= ibmmq.MQGMO_WAIT
 			gmo.WaitInterval = 3000
 			buffer := make([]byte, 32768)
-			l := len(buffer)
 
-			datalen, mqreturn, err = managedQObject.Get(getmqmd, gmo, l, buffer)
+			datalen, mqreturn, err = managedQObject.Get(getmqmd, gmo, buffer)
 
 			if err != nil {
 				msgAvail = false
