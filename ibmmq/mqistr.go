@@ -88,6 +88,9 @@ func MQItoString(class string, value int) string {
 			s = C.GoString(C.MQIAMO64_STR(v))
 		}
 
+	case "OT":
+		s = C.GoString(C.MQOT_STR(v))
+
 	case "RC":
 		s = C.GoString(C.MQRC_STR(v))
 		if s == "" {
