@@ -1,5 +1,8 @@
 # mq-golang
-This package demonstrates how you can call IBM MQ from applications written in the Go language.
+This repository demonstrates how you can call IBM MQ from applications written in the Go language.
+
+The repository also includes a program to export MQ statistics to a
+Prometheus server.
 
 ## Description
 
@@ -42,14 +45,19 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 
 18 Jul 2016
 * Changed structures so that most applications will not need to use cgo to imbed the MQ C headers
-** Go programs will now use int32 where C programs use MQLONG 
-** Use of message handles, distribution lists require cgo for now
+  * Go programs will now use int32 where C programs use MQLONG
+  * Use of message handles, distribution lists require cgo for now
 * Package ibmmq now includes the numeric #defines as a Go file, cmqc.go, for easier use
 * Removed "src/" prefix from tree in github repo
 * Removed need for buffer length parm on Put/Put1
 * Updated comments
 * Added MQINQ
 * Added MQItoString function for some maps of values to constant names
+
+25 Jul 2016
+* Added functions to handle basic PCF creation and parsing
+* Added a monitor command for exporting MQ V9 queue manager data to Prometheus. See
+the [README](cmd/mq_prometheus/README.md) for more details
 
 ## Health Warning
 
