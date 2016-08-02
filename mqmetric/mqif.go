@@ -1,4 +1,4 @@
-package main
+package mqmetric
 
 /*
   Copyright (c) IBM Corporation 2016
@@ -24,7 +24,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 */
 
 import (
-	"github.com/prometheus/common/log"
+	log "github.com/Sirupsen/logrus"
 	"ibmmq"
 )
 
@@ -39,15 +39,26 @@ var (
 	subsOpened    = false
 )
 
+type ClientConfig struct {
+	ClientMode bool
+}
+
 /*
-initConnection connects to the queuemanager, and then
+InitConnection connects to the queuemanager, and then
 opens both the command queue and a dynamic reply queue
 to be used for all responses including the publications
 */
-func initConnection(qMgrName string) error {
+func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 	var err error
+	gocno := ibmmq.NewMQCNO()
 
-	qMgr, _, err = ibmmq.Conn(qMgrName)
+	if cc.ClientMode {
+		gocno.Options = ibmmq.MQCNO_CLIENT_BINDING
+	} else {
+		gocno.Options = ibmmq.MQCNO_LOCAL_BINDING
+	}
+
+	qMgr, _, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
 	}
@@ -73,7 +84,7 @@ func initConnection(qMgrName string) error {
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
-		mqod.ObjectName = config.replyQ
+		mqod.ObjectName = replyQ
 		replyQObj, _, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			queuesOpened = true
@@ -90,15 +101,15 @@ func initConnection(qMgrName string) error {
 }
 
 /*
-endConnection tidies up by closing the queues and disconnecting.
+EndConnection tidies up by closing the queues and disconnecting.
 */
-func endConnection() {
+func EndConnection() {
 
 	// MQCLOSE all subscriptions
 	if subsOpened {
-		for _, thisClass := range metrics.classes {
-			for _, thisType := range thisClass.types {
-				for _, hObj := range thisType.subHobj {
+		for _, cl := range Metrics.Classes {
+			for _, ty := range cl.Types {
+				for _, hObj := range ty.subHobj {
 					hObj.Close(0)
 				}
 			}

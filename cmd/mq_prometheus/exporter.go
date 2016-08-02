@@ -26,122 +26,74 @@ and update the various Gauges.
 */
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/prometheus/common/log"
-	"ibmmq"
+	"mqmetric"
 	"strings"
 	"sync"
 )
 
 type exporter struct {
 	mutex   sync.RWMutex
-	metrics allMetrics
+	metrics mqmetric.AllMetrics
 }
 
 func newExporter() *exporter {
 	return &exporter{
-		metrics: metrics,
+		metrics: mqmetric.Metrics,
 	}
 }
 
 var (
-	first = true
+	first    = true
+	gaugeMap = make(map[string]*prometheus.GaugeVec)
+)
+
+const (
+	namespace = "ibmmq"
 )
 
 /*
-fetchPublications has to read all of the messages since the last scrape
-and update the values for every relevant gauge.
-
-Because the generation of the messages by the qmgr, and being told to
-read them by Prometheus, may not have identical frequencies, there may be
-cases where multiple pieces of data have to be collated for the same
-gauge. Conversely, there may be times when prometheus calls us but there
-are no metrics to update.
+Describe is called by Prometheus on startup of this monitor. It needs to tell
+the caller about all of the available metrics.
 */
-func (e *exporter) fetchPublications() {
-	var err error
-	var data []byte
+func (e *exporter) Describe(ch chan<- *prometheus.Desc) {
 
-	var qName string
-	var classidx int
-	var typeidx int
-	var elementidx int
-	var value int64
+	log.Infof("IBMMQ Describe started")
 
-	// Keep reading all available messages until queue is empty. Don't
-	// do a GET-WAIT; just immediate removals.
-	for err == nil {
-		data, err = getMessage(false)
-		elemList, _ := parsePCFResponse(data)
-
-		// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
-		// which will end the loop.
-		if err == nil {
-			// A typical publication contains some fixed
-			// headers (qmgrName, objectName, class, type etc)
-			// followed by a list of index/values.
-
-			// This map contains those element indexes and values from each message
-			values := make(map[int]int64)
-
-			qName = ""
-
-			for i := 0; i < len(elemList); i++ {
-				switch elemList[i].Parameter {
-				case ibmmq.MQCA_Q_MGR_NAME:
-					_ = strings.TrimSpace(elemList[i].String[0])
-				case ibmmq.MQCA_Q_NAME:
-					qName = strings.TrimSpace(elemList[i].String[0])
-				case ibmmq.MQIACF_OBJECT_TYPE:
-					// Will need to use this as part of the object key and
-					// labelling if/when MQ starts to produce stats for other types
-					// such as a topic. But for now we can ignore it.
-					_ = ibmmq.MQItoString("OT", int(elemList[i].Int64Value[0]))
-				case ibmmq.MQIAMO_MONITOR_CLASS:
-					classidx = int(elemList[i].Int64Value[0])
-				case ibmmq.MQIAMO_MONITOR_TYPE:
-					typeidx = int(elemList[i].Int64Value[0])
-				case ibmmq.MQIAMO64_MONITOR_INTERVAL:
-					_ = elemList[i].Int64Value[0]
-				case ibmmq.MQIAMO_MONITOR_FLAGS:
-					_ = int(elemList[i].Int64Value[0])
-				default:
-					value = elemList[i].Int64Value[0]
-					elementidx = int(elemList[i].Parameter)
-					values[elementidx] = value
-				}
-			}
-
-			// Now have all the values in this particular message
-			// Have to incorporate them into any that already exist
-			// For some, that's simply a matter of adding them.
-			// For some others, we'll just take the latest.
-			//
-			// Each element contains a map holding all the objects
-			// touched by these messages. The map is referenced by
-			// object name if it's a queue; for qmgr-level stats, the
-			// map only needs to contain a single entry which I've
-			// chosen to reference by "@self" which can never be a
-			// real queue name.
-			//
-			for key, newValue := range values {
-				if element, ok := metrics.classes[classidx].types[typeidx].elements[key]; ok {
-					objectName := qName
-					if objectName == "" {
-						objectName = qMgrMapKey
-					}
-
-					if oldValue, ok := element.values[objectName]; ok {
-						value = updateValue(element, oldValue, newValue)
-					} else {
-						value = newValue
-					}
-					element.values[objectName] = value
-
-				}
+	for _, cl := range e.metrics.Classes {
+		for _, ty := range cl.Types {
+			for _, elem := range ty.Elements {
+				gaugeMap[makeKey(elem)].Describe(ch)
 			}
 		}
 	}
+}
+
+/*
+Collect is called by Prometheus at regular intervals to provide current
+data
+*/
+func (e *exporter) Collect(ch chan<- prometheus.Metric) {
+	e.mutex.Lock() // To protect metrics from concurrent collects.
+	defer e.mutex.Unlock()
+
+	log.Infof("IBMMQ Collect started")
+
+	// Clear out everything we know so far. In particular, replace
+	// the map of values for each object so the collection starts
+	// clean.
+	for _, cl := range e.metrics.Classes {
+		for _, ty := range cl.Types {
+			for _, elem := range ty.Elements {
+				gaugeMap[makeKey(elem)].Reset()
+				elem.Values = make(map[string]int64)
+			}
+		}
+	}
+
+	// Deal with all the publications that have arrived
+	mqmetric.ProcessPublications()
 
 	// Have now processed all of the publications, and all the MQ-owned
 	// value fields and maps have been updated.
@@ -154,38 +106,16 @@ func (e *exporter) fetchPublications() {
 		first = false
 	} else {
 
-		for _, thisClass := range e.metrics.classes {
-			for _, thisType := range thisClass.types {
-				for _, thisElement := range thisType.elements {
-					gaugeVec := thisElement.gaugeVec
-					for key, value := range thisElement.values {
-						// I've  seen negative numbers which are nonsense,
-						// possibly 32-bit overflow or uninitialised values
-						// in the qmgr. So force data to something sensible
-						// just in case those were due to a bug.
-						f := float64(value)
-						if f < 0 {
-							f = 0
-						}
-
-						log.Debugf("Pushing Elem %s [%s] Type %d Value %f", thisElement.metricName, key, thisElement.datatype, f)
-
-						// Convert suitable metrics to base units
-						if thisElement.datatype == ibmmq.MQIAMO_MONITOR_PERCENT ||
-							thisElement.datatype == ibmmq.MQIAMO_MONITOR_HUNDREDTHS {
-							f = f / 100
-						} else if thisElement.datatype == ibmmq.MQIAMO_MONITOR_MB {
-							f = f * 1024 * 1024
-						} else if thisElement.datatype == ibmmq.MQIAMO_MONITOR_GB {
-							f = f * 1024 * 1024 * 1024
-						} else if thisElement.datatype == ibmmq.MQIAMO_MONITOR_MICROSEC {
-							f = f / 1000000
-						}
-
-						if key == qMgrMapKey {
-							gaugeVec.WithLabelValues(config.qMgrName).Set(f)
+		for _, cl := range e.metrics.Classes {
+			for _, ty := range cl.Types {
+				for _, elem := range ty.Elements {
+					for key, value := range elem.Values {
+						f := mqmetric.Normalise(elem, key, value)
+						g := gaugeMap[makeKey(elem)]
+						if key == mqmetric.QMgrMapKey {
+							g.WithLabelValues(config.qMgrName).Set(f)
 						} else {
-							gaugeVec.WithLabelValues(key, config.qMgrName).Set(f)
+							g.WithLabelValues(key, config.qMgrName).Set(f)
 						}
 					}
 				}
@@ -193,55 +123,11 @@ func (e *exporter) fetchPublications() {
 		}
 	}
 
-}
-
-/*
-Describe is called by prometheus on startup of this monitor. It needs to tell
-the caller about all of the available metrics.
-*/
-func (e *exporter) Describe(ch chan<- *prometheus.Desc) {
-
-	log.Infof("IBMMQ Describe started")
-
-	for _, thisClass := range e.metrics.classes {
-		for _, thisType := range thisClass.types {
-			for _, thisElement := range thisType.elements {
-				thisElement.gaugeVec.Describe(ch)
-			}
-		}
-	}
-}
-
-/*
-Collect is called by prometheus at regular intervals to provide current
-data
-*/
-func (e *exporter) Collect(ch chan<- prometheus.Metric) {
-	e.mutex.Lock() // To protect metrics from concurrent collects.
-	defer e.mutex.Unlock()
-
-	log.Infof("IBMMQ Collect started")
-
-	// Clear out everything we know so far. In particular, replace
-	// the map of values for each object so the collection starts
-	// clean
-	for _, thisClass := range e.metrics.classes {
-		for _, thisType := range thisClass.types {
-			for _, thisElement := range thisType.elements {
-				thisElement.gaugeVec.Reset()
-				thisElement.values = make(map[string]int64)
-			}
-		}
-	}
-
-	// Process all the publications that have arrived
-	e.fetchPublications()
-
-	// And now tell prometheus about the data
-	for _, thisClass := range e.metrics.classes {
-		for _, thisType := range thisClass.types {
-			for _, thisElement := range thisType.elements {
-				thisElement.gaugeVec.Collect(ch)
+	// And finally tell Prometheus about the data
+	for _, cl := range e.metrics.Classes {
+		for _, ty := range cl.Types {
+			for _, elem := range ty.Elements {
+				gaugeMap[makeKey(elem)].Collect(ch)
 			}
 		}
 	}
@@ -249,21 +135,63 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 /*
-updateValue calculates whether we need to add the values contained from
-multiple publications that might have arrived in the scrape interval
-for the same resource, or whether we should just overwrite with the latest.
-For example, "RAM total bytes" is useful at its current value, not the
-summation of now and 10 seconds ago.
-
-Although there are several monitor datatypes, all of them apart from
-explicitly labelled "DELTA" are ones we should just return the latest
-value.
+allocateGauges creates a Prometheus gauge for each
+resource that we know about. These are stored in a local map keyed
+from the resource names.
 */
-func updateValue(elem *monElement, oldValue int64, newValue int64) int64 {
+func allocateGauges() {
+	for _, cl := range mqmetric.Metrics.Classes {
+		for _, ty := range cl.Types {
+			for _, elem := range ty.Elements {
+				g := newMqGaugeVec(elem)
+				key := makeKey(elem)
+				gaugeMap[key] = g
+			}
+		}
+	}
+}
 
-	if elem.datatype == ibmmq.MQIAMO_MONITOR_DELTA {
-		return oldValue + newValue
+/*
+makeKey uses the 3 parts of a resource's name to build a unique string.
+The "/" character cannot be part of a name, so is a convenient way
+to build a unique key. If we ever have metrics for other object
+types such as topics, then the object type would be used too.
+This key is not used outside of this module, so the format can change.
+*/
+func makeKey(elem *mqmetric.MonElement) string {
+	key := elem.Parent.Parent.Name + "/" +
+		elem.Parent.Name + "/" +
+		elem.MetricName
+	return key
+}
+
+/*
+newMqGaugeVec returns the structure which will contain the
+values and suitable labels. For queues we tag each entry
+with both the queue and qmgr name; for the qmgr-wide entries, we
+only need the single label.
+*/
+func newMqGaugeVec(elem *mqmetric.MonElement) *prometheus.GaugeVec {
+	queueLabelNames := []string{"object", "qmgr"}
+	qmgrLabelNames := []string{"qmgr"}
+
+	labels := qmgrLabelNames
+	prefix := "qmgr_"
+
+	if strings.Contains(elem.Parent.ObjectTopic, "%s") {
+		labels = queueLabelNames
+		prefix = "object_"
 	}
 
-	return newValue
+	gaugeVec := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      prefix + elem.MetricName,
+			Help:      elem.Description,
+		},
+		labels,
+	)
+
+	log.Infof("Created gauge for %s", elem.MetricName)
+	return gaugeVec
 }

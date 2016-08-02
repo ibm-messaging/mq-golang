@@ -1,18 +1,18 @@
 * Cleanup any existing service
-STOP SERVICE(PROMETHEUS)
-DELETE SERVICE(PROMETHEUS)
+STOP SERVICE(MQOPENTSDB)
+DELETE SERVICE(MQOPENTSDB)
 
 * Reset the definition
-DEFINE SERVICE(PROMETHEUS)         +
+DEFINE SERVICE(MQOPENTSDB)         +
        CONTROL(QMGR)               +
        SERVTYPE(SERVER)            +
-       STARTCMD('/usr/local/bin/mqgo/mq_prometheus.sh') +
+       STARTCMD('/usr/local/bin/mqgo/mq_opentsdb.sh') +
        STARTARG(+QMNAME+)          +
        STOPCMD('/usr/bin/kill ' )  +
        STOPARG(+MQ_SERVER_PID+)    +
-       STDOUT('/var/mqm/errors/prom.out')  +
-       STDERR('/var/mqm/errors/prom.out')  +
-       DESCR('MQ exporter for Prometheus')
+       STDOUT('/var/mqm/errors/opentsdb.out')  +
+       STDERR('/var/mqm/errors/opentsdb.out')  +
+       DESCR('MQ exporter for OpenTSDB')
 
 * Start it manually now; will be automatically started on future qmgr startup
-START SERVICE(PROMETHEUS)
+START SERVICE(MQOPENTSDB)

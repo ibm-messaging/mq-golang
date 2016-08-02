@@ -20,10 +20,9 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/prometheus/client_golang/prometheus"
 	"mqmetric"
-	"net/http"
 	"os"
+	"time"
 )
 
 func initLog() {
@@ -32,6 +31,9 @@ func initLog() {
 		level = log.InfoLevel
 	}
 	log.SetLevel(level)
+	// Since this program prints its data to stdout, need any
+	// log info to go elsewhere.
+	log.SetOutput(os.Stderr)
 }
 
 func main() {
@@ -42,9 +44,14 @@ func main() {
 		log.Errorln("Must provide a queue manager name to connect to.")
 		os.Exit(1)
 	}
+	d, err := time.ParseDuration(config.interval + "s")
+	if err != nil {
+		log.Errorln("Invalid value for interval parameter: ", err)
+		os.Exit(1)
+	}
 
 	initLog()
-	log.Infoln("Starting IBM MQ metrics exporter for Prometheus monitoring")
+	log.Infoln("Starting IBM MQ metrics exporter for collectd")
 
 	// Connect and open standard queues
 	err = mqmetric.InitConnection(config.qMgrName, config.replyQ, &config.cc)
@@ -59,24 +66,14 @@ func main() {
 		err = mqmetric.DiscoverAndSubscribe(config.monitoredQueues)
 	}
 
-	// Once everything has been discovered, and the subscriptions
-	// created, allocate the Prometheus gauges for each resource
+	// Go into main loop for sending data to stdout
+	// This program runs forever, or at least until killed by
+	// collectd
 	if err == nil {
-		allocateGauges()
-	}
-
-	// Go into main loop for handling requests from Prometheus
-	if err == nil {
-		exporter := newExporter()
-		prometheus.MustRegister(exporter)
-
-		http.Handle(config.httpMetricPath, prometheus.Handler())
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write(landingPage())
-		})
-
-		log.Infoln("Listening on", config.httpListenPort)
-		log.Fatal(http.ListenAndServe(":"+config.httpListenPort, nil))
+		for {
+			Collect()
+			time.Sleep(d)
+		}
 
 	}
 
@@ -85,20 +82,4 @@ func main() {
 	}
 
 	os.Exit(0)
-}
-
-/*
-landingPage gives a very basic response if someone just connects to our port.
-The only link on it jumps to the list of available metrics.
-*/
-func landingPage() []byte {
-	return []byte(
-		`<html>
-<head><title>IBM MQ Exporter</title></head>
-<body>
-<h1>IBM MQ Exporter</h1>
-<p><a href='` + config.httpMetricPath + `'>Metrics</a></p>
-</body>
-</html>
-`)
 }

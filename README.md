@@ -1,10 +1,10 @@
 # mq-golang
 This repository demonstrates how you can call IBM MQ from applications written in the Go language.
 
-The repository also includes a program to export MQ statistics to a
-Prometheus server.
+The repository also includes programs to export MQ statistics to some monitoring
+packages including Prometheus, InfluxDB and OpenTSDB.
 
-## Description
+## MQI Description
 
 The ibmmq directory contains a Go package, exposing an MQI-like interface.
 
@@ -21,15 +21,15 @@ welcomed.
 
 ## Using the package
 
-To use the package, you will need to be able to build Go applications, and have a copy of MQ installed to
-build against. It uses cgo to access the MQI C structures and definitions. It assumes that MQ has been
+To use code in this repository, you will need to be able to build Go applications, and
+have a copy of MQ installed to build against. It uses cgo to access the MQI C structures and definitions. It assumes that MQ has been
 installed in the default location on a Linux platform (/opt/mqm) but you can easily change the
 cgo directives in the source files if necessary.
 
 ## Limitations
 
-Not all of the MQI verbs are available through this interface. This initial implementation
-concentrates on the core API calls needed to put and get messages. Currently unavailable
+Not all of the MQI verbs are available through the ibmmq package. This initial
+implementation concentrates on the core API calls needed to put and get messages. Currently unavailable
 verbs include:
 * MQCONNX
 * MQSET
@@ -58,6 +58,22 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 * Added functions to handle basic PCF creation and parsing
 * Added a monitor command for exporting MQ V9 queue manager data to Prometheus. See
 the [README](cmd/mq_prometheus/README.md) for more details
+
+04 Aug 2016
+* Added a monitor command for exporting MQ data to InfluxDB. See the [README]
+(cmd/mq_influx/README.md) for more details
+* Restructured the monitoring code to put common material in the mqmetric
+package, called from the Influx and Prometheus monitors.
+
+12 Aug 2016
+* Added a OpenTSDB monitor. See the [README](cmd/mq_opentsdb/README.md) for
+more details.
+* Added a Collectd monitor. See the [README](cmd/mq_coll/README.md) for
+more details.
+* Added MQI MQCNO/MQCSP structures to support client connections
+* Allow client-mode connections from the monitor programs
+* Added Grafana dashboards for the different monitors to show how to query them
+* Changed database password mechanism so that "exec" maintains the PID for MQ services
 
 ## Health Warning
 

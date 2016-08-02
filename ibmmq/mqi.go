@@ -109,8 +109,16 @@ func setMQIString(a *C.char, v string, l int) {
 Conn is the function to connect to a queue manager
 */
 func Conn(goQMgrName string) (MQQueueManager, MQReturn, error) {
+	return Connx(goQMgrName, nil)
+}
+
+/*
+Connx is the extended function to connect to a queue manager.
+*/
+func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, MQReturn, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
+	var mqcno C.MQCNO
 
 	if (C.MQENC_NATIVE % 2) == 0 { // May be needed for conversion later
 		endian = binary.LittleEndian
@@ -122,7 +130,15 @@ func Conn(goQMgrName string) (MQQueueManager, MQReturn, error) {
 	mqQMgrName := unsafe.Pointer(C.CString(goQMgrName))
 	defer C.free(mqQMgrName)
 
-	C.MQCONN((*C.MQCHAR)(mqQMgrName), &qMgr.hConn, &mqcc, &mqrc)
+	if gocno != nil {
+		copyCNOtoC(&mqcno, gocno)
+	}
+
+	C.MQCONNX((*C.MQCHAR)(mqQMgrName), &mqcno, &qMgr.hConn, &mqcc, &mqrc)
+
+	if gocno != nil {
+		copyCNOfromC(&mqcno, gocno)
+	}
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
 		MQRC: int32(mqrc),

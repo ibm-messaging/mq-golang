@@ -21,34 +21,28 @@ package main
 import (
 	"flag"
 	"mqmetric"
+	"os"
 )
 
-type mqExporterConfig struct {
+type mqTTYConfig struct {
 	qMgrName            string
 	replyQ              string
 	monitoredQueues     string
 	monitoredQueuesFile string
+	hostname            string
+	hostlabel           string // Used in the output string
 
 	cc mqmetric.ClientConfig
 
-	httpListenPort string
-	httpMetricPath string
-	logLevel       string
+	interval string
+
+	logLevel string
 }
 
-const (
-	defaultPort = "9157" // reserved in the prometheus wiki
-)
-
-var config mqExporterConfig
+var config mqTTYConfig
 
 /*
-initConfig parses the command line parameters. Note that the logging
-package requires flag.Parse to be called before we can do things like
-info/error logging
-
-The default IP port for this monitor is registered with prometheus so
-does not have to be provided.
+initConfig parses the command line parameters.
 */
 func initConfig() {
 
@@ -57,10 +51,10 @@ func initConfig() {
 	flag.StringVar(&config.monitoredQueues, "ibmmq.monitoredQueues", "", "Patterns of queues to monitor")
 	flag.StringVar(&config.monitoredQueuesFile, "ibmmq.monitoredQueuesFile", "", "File with patterns of queues to monitor")
 
-	flag.BoolVar(&config.cc.ClientMode, "ibmmq.client", false, "Connect as MQ client")
+	flag.StringVar(&config.interval, "ibmmq.interval", "10", "How many seconds between each collection")
+	flag.StringVar(&config.hostname, "ibmmq.hostname", "localhost", "Host to connect to")
 
-	flag.StringVar(&config.httpListenPort, "ibmmq.httpListenPort", defaultPort, "HTTP Listener")
-	flag.StringVar(&config.httpMetricPath, "ibmmq.httpMetricPath", "/metrics", "Path to exporter metrics")
+	flag.BoolVar(&config.cc.ClientMode, "ibmmq.client", false, "Connect as MQ client")
 
 	flag.StringVar(&config.logLevel, "log.level", "error", "Log level - debug, info, error")
 
@@ -68,5 +62,12 @@ func initConfig() {
 
 	if config.monitoredQueuesFile != "" {
 		config.monitoredQueues = mqmetric.ReadPatterns(config.monitoredQueuesFile)
+	}
+
+	// Don't want to use "localhost" as the tag in the metric printing
+	if config.hostname == "localhost" {
+		config.hostlabel, _ = os.Hostname()
+	} else {
+		config.hostlabel = config.hostname
 	}
 }

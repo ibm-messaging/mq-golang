@@ -1,18 +1,18 @@
 * Cleanup any existing service
-STOP SERVICE(PROMETHEUS)
-DELETE SERVICE(PROMETHEUS)
+STOP SERVICE(MQINFLUX)
+DELETE SERVICE(MQINFLUX)
 
 * Reset the definition
-DEFINE SERVICE(PROMETHEUS)         +
+DEFINE SERVICE(MQINFLUX)         +
        CONTROL(QMGR)               +
        SERVTYPE(SERVER)            +
-       STARTCMD('/usr/local/bin/mqgo/mq_prometheus.sh') +
+       STARTCMD('/usr/local/bin/mqgo/mq_influx.sh') +
        STARTARG(+QMNAME+)          +
        STOPCMD('/usr/bin/kill ' )  +
        STOPARG(+MQ_SERVER_PID+)    +
-       STDOUT('/var/mqm/errors/prom.out')  +
-       STDERR('/var/mqm/errors/prom.out')  +
-       DESCR('MQ exporter for Prometheus')
+       STDOUT('/var/mqm/errors/influx.out')  +
+       STDERR('/var/mqm/errors/influx.out')  +
+       DESCR('MQ exporter for InfluxDB')
 
 * Start it manually now; will be automatically started on future qmgr startup
-START SERVICE(PROMETHEUS)
+START SERVICE(MQINFLUX)
