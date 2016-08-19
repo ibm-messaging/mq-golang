@@ -31,7 +31,6 @@ cgo directives in the source files if necessary.
 Not all of the MQI verbs are available through the ibmmq package. This initial
 implementation concentrates on the core API calls needed to put and get messages. Currently unavailable
 verbs include:
-* MQCONNX
 * MQSET
 * All of the message property manipulators
 * MQCB
@@ -70,10 +69,15 @@ package, called from the Influx and Prometheus monitors.
 more details.
 * Added a Collectd monitor. See the [README](cmd/mq_coll/README.md) for
 more details.
-* Added MQI MQCNO/MQCSP structures to support client connections
+* Added MQI MQCNO/MQCSP structures to support client connections and password authentication
+with MQCONNX.
 * Allow client-mode connections from the monitor programs
 * Added Grafana dashboards for the different monitors to show how to query them
 * Changed database password mechanism so that "exec" maintains the PID for MQ services
+
+23 Aug 2016
+* Added a collector for Amazon AWS CloudWatch monitoring. See the [README](cmd/mq_aws/README.md)
+for more details.
 
 ## Health Warning
 

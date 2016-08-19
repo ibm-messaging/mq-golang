@@ -1,0 +1,18 @@
+* Cleanup any existing service
+STOP SERVICE(MQAWS)
+DELETE SERVICE(MQAWS)
+
+* Reset the definition
+DEFINE SERVICE(MQAWS)         +
+       CONTROL(QMGR)               +
+       SERVTYPE(SERVER)            +
+       STARTCMD('/usr/local/bin/mqgo/mq_aws.sh') +
+       STARTARG(+QMNAME+)          +
+       STOPCMD('/usr/bin/kill ' )  +
+       STOPARG(+MQ_SERVER_PID+)    +
+       STDOUT('/var/mqm/errors/aws.out')  +
+       STDERR('/var/mqm/errors/aws.out')  +
+       DESCR('MQ exporter for AWS')
+
+* Start it manually now; will be automatically started on future qmgr startup
+START SERVICE(MQAWS)

@@ -34,7 +34,7 @@ ARGS="$ARGS -ibmmq.databaseUserID=$userid"
 ARGS="$ARGS -ibmmq.interval=$interval"
 ARGS="$ARGS -ibmmq.monitoredQueues=$queues"
 ARGS="$ARGS -ibmmq.pwFile=$passwordFile"
-ARGS="$ARGS -log.level=info"
+ARGS="$ARGS -log.level=error"
 
 # Start via "exec" so the pid remains the same. The queue manager can
 # then check the existence of the service and use the MQ_SERVER_PID value

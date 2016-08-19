@@ -1,7 +1,7 @@
 /*
 Package mqmetric contains a set of routines common to several
 commands used to export MQ metrics to different backend
-storage mechanisms including Prometheus and Telegraf.
+storage mechanisms including Prometheus and InfluxDB.
 */
 package mqmetric
 
@@ -733,7 +733,7 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 	}
 
 	//log.Debugf("Pushing Elem %s [%s] Type %d Value %f",
-	//	elem.MetricName, key, elem.Datatype, f)
+	//      elem.MetricName, key, elem.Datatype, f)
 
 	// Convert suitable metrics to base units
 	if elem.Datatype == ibmmq.MQIAMO_MONITOR_PERCENT ||

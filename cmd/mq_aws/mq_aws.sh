@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# This is used to start the IBM MQ monitoring service for OpenTSDB
+# This is used to start the IBM MQ monitoring service for AWS
 
 # The queue manager name comes in from the service definition as the
 # only command line parameter
@@ -20,28 +20,17 @@ queues="APP.*,MYQ.*"
 
 # And other parameters that may be needed
 # See config.go for all recognised flags
-userid="admin"
-password="admin" # Probably get from an environment variable in reality
-passwordFile="/tmp/mqopentsdbpw.$$.txt"
-svr="http://klein.hursley.ibm.com:4242"
-interval="5"
+interval="30"
 
 ARGS="-ibmmq.queueManager=$qMgr"
-ARGS="$ARGS -ibmmq.databaseAddress=$svr"
-ARGS="$ARGS -ibmmq.databaseUserID=$userid"
-ARGS="$ARGS -ibmmq.interval=$interval"
 ARGS="$ARGS -ibmmq.monitoredQueues=$queues"
-ARGS="$ARGS -ibmmq.pwFile=$passwordFile"
 ARGS="$ARGS -log.level=error"
+ARGS="$ARGS -ibmmq.maxPoints=20"
+ARGS="$ARGS -ibmmq.awsregion=us-west-2"
 
 # Start via "exec" so the pid remains the same. The queue manager can
 # then check the existence of the service and use the MQ_SERVER_PID value
 # to kill it on shutdown.
-# Using exec makes it harder to use stdin redirect, hence the use of
-# a file to hold a password.  The program will delete the file immediately
-# after reading it.
 
-rm -f $passwordFile
-umask 077
-echo $password > $passwordFile
-exec /usr/local/bin/mqgo/mq_opentsdb $ARGS
+# Credentials are expected to be provided in the $HOME/.aws/credentials file
+exec /usr/local/bin/mqgo/mq_aws  $ARGS

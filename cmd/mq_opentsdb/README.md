@@ -1,7 +1,7 @@
 # MQ Exporter for OpenTSDB monitoring
 
 This directory contains the code for a monitoring solution
-that exports queue manager data to am InfluxDB data collection
+that exports queue manager data to an OpenTSDB data collection
 system. It also contains configuration files to run the monitor program
 
 The monitor collects metrics published by an MQ V9 queue manager
