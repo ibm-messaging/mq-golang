@@ -19,27 +19,27 @@ package main
 */
 
 import (
-        "flag"
-        "mqmetric"
+	"flag"
+	"mqmetric"
 )
 
 type mqCloudWatchConfig struct {
-        qMgrName            string
-        replyQ              string
-        monitoredQueues     string
-        monitoredQueuesFile string
+	qMgrName            string
+	replyQ              string
+	monitoredQueues     string
+	monitoredQueuesFile string
 
-        region string
+	region string
 
-        namespace string
+	namespace string
 
-        cc mqmetric.ClientConfig
+	cc mqmetric.ClientConfig
 
-        interval  string
-        maxErrors int
-        maxPoints int
+	interval  string
+	maxErrors int
+	maxPoints int
 
-        logLevel string
+	logLevel string
 }
 
 var config mqCloudWatchConfig
@@ -49,12 +49,12 @@ initConfig parses the command line parameters.
 */
 func initConfig() {
 
-        flag.StringVar(&config.qMgrName, "ibmmq.queueManager", "", "Queue Manager name")
+	flag.StringVar(&config.qMgrName, "ibmmq.queueManager", "", "Queue Manager name")
 	flag.StringVar(&config.replyQ, "ibmmq.replyQueue", "SYSTEM.DEFAULT.MODEL.QUEUE", "Reply Queue to collect data")
 	flag.StringVar(&config.monitoredQueues, "ibmmq.monitoredQueues", "", "Patterns of queues to monitor")
 	flag.StringVar(&config.monitoredQueuesFile, "ibmmq.monitoredQueuesFile", "", "File with patterns of queues to monitor")
 
-	flag.StringVar(&config.region, "ibmmq.awsregion", "us-west-2", "AWS Region to connect to")
+	flag.StringVar(&config.region, "ibmmq.awsregion", "", "AWS Region to connect to")
 
 	flag.StringVar(&config.namespace, "ibmmq.namespace", "IBM/MQ", "Namespace for metrics")
 
