@@ -35,8 +35,8 @@ package ibmmq
 */
 
 /*
-#cgo CFLAGS: -I/opt/mqm/inc
-#cgo LDFLAGS: -L/opt/mqm/lib64 -lmqm -m64
+#cgo CFLAGS: -I/opt/mqm/inc -D_REENTRANT
+#cgo LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -m64
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,8 +45,8 @@ package ibmmq
 import "C"
 
 import (
-	"encoding/binary"
-	"unsafe"
+        "encoding/binary"
+        "unsafe"
 )
 
 /*
@@ -68,8 +68,8 @@ import (
 MQQueueManager contains the connection to the queue manager
 */
 type MQQueueManager struct {
-	hConn C.MQHCONN
-	Name  string
+        hConn C.MQHCONN
+        Name  string
 }
 
 /*
@@ -77,17 +77,17 @@ MQObject contains a reference to an open object and the associated
 queue manager
 */
 type MQObject struct {
-	hObj C.MQHOBJ
-	qMgr *MQQueueManager
-	Name string
+        hObj C.MQHOBJ
+        qMgr *MQQueueManager
+        Name string
 }
 
 /*
 MQReturn holds the MQRC and MQCC values returned from an MQI verb
 */
 type MQReturn struct {
-	MQCC int32
-	MQRC int32
+        MQCC int32
+        MQRC int32
 }
 
 /*
@@ -96,121 +96,127 @@ type MQReturn struct {
  * Empty strings have first char set to 0 in MQI structures
  */
 func setMQIString(a *C.char, v string, l int) {
-	if len(v) > 0 {
-		p := C.CString(v)
-		C.strncpy(a, p, (C.size_t)(l))
-		C.free(unsafe.Pointer(p))
-	} else {
-		*a = 0
-	}
+        if len(v) > 0 {
+                p := C.CString(v)
+                C.strncpy(a, p, (C.size_t)(l))
+                C.free(unsafe.Pointer(p))
+        } else {
+                *a = 0
+        }
 }
 
 /*
 Conn is the function to connect to a queue manager
 */
 func Conn(goQMgrName string) (MQQueueManager, MQReturn, error) {
-	return Connx(goQMgrName, nil)
+        return Connx(goQMgrName, nil)
 }
 
 /*
 Connx is the extended function to connect to a queue manager.
 */
 func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqcno C.MQCNO
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqcno C.MQCNO
 
-	if (C.MQENC_NATIVE % 2) == 0 { // May be needed for conversion later
-		endian = binary.LittleEndian
-	} else {
-		endian = binary.BigEndian
-	}
+        if (C.MQENC_NATIVE % 2) == 0 { // May be needed for conversion later
+                endian = binary.LittleEndian
+        } else {
+                endian = binary.BigEndian
+        }
 
-	qMgr := MQQueueManager{}
-	mqQMgrName := unsafe.Pointer(C.CString(goQMgrName))
-	defer C.free(mqQMgrName)
+        qMgr := MQQueueManager{}
+        mqQMgrName := unsafe.Pointer(C.CString(goQMgrName))
+        defer C.free(mqQMgrName)
 
-	if gocno != nil {
-		copyCNOtoC(&mqcno, gocno)
-	}
+        // Set up a default CNO if not provided.
+        if gocno == nil {
+        // Because Go programs are always threaded, and we cannot
+        // tell on which thread we might get dispatched, allow handles always to
+        // be shareable.
+                gocno = NewMQCNO()
+                gocno.Options = MQCNO_HANDLE_SHARE_NO_BLOCK
+        }
+        copyCNOtoC(&mqcno, gocno)
 
-	C.MQCONNX((*C.MQCHAR)(mqQMgrName), &mqcno, &qMgr.hConn, &mqcc, &mqrc)
+        C.MQCONNX((*C.MQCHAR)(mqQMgrName), &mqcno, &qMgr.hConn, &mqcc, &mqrc)
 
-	if gocno != nil {
-		copyCNOfromC(&mqcno, gocno)
-	}
+        if gocno != nil {
+                copyCNOfromC(&mqcno, gocno)
+        }
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return qMgr, mqreturn, mqstrerror("MQCONN", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return qMgr, mqreturn, mqstrerror("MQCONN", mqcc, mqrc)
+        }
 
-	qMgr.Name = goQMgrName
+        qMgr.Name = goQMgrName
 
-	return qMgr, mqreturn, nil
+        return qMgr, mqreturn, nil
 }
 
 /*
 Disc is the function to disconnect from the queue manager
 */
 func (x *MQQueueManager) Disc() (MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
 
-	C.MQDISC(&x.hConn, &mqcc, &mqrc)
+        C.MQDISC(&x.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return mqreturn, mqstrerror("MQDISC", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return mqreturn, mqstrerror("MQDISC", mqcc, mqrc)
+        }
 
-	return mqreturn, nil
+        return mqreturn, nil
 }
 
 /*
 Open an object such as a queue or topic
 */
 func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqod C.MQOD
-	var mqOpenOptions C.MQLONG
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqod C.MQOD
+        var mqOpenOptions C.MQLONG
 
-	object := MQObject{
-		Name: good.ObjectName,
-		qMgr: x,
-	}
+        object := MQObject{
+                Name: good.ObjectName,
+                qMgr: x,
+        }
 
-	copyODtoC(&mqod, good)
-	mqOpenOptions = C.MQLONG(goOpenOptions)
+        copyODtoC(&mqod, good)
+        mqOpenOptions = C.MQLONG(goOpenOptions)
 
-	C.MQOPEN(x.hConn,
-		(C.PMQVOID)(unsafe.Pointer(&mqod)),
-		mqOpenOptions,
-		&object.hObj,
-		&mqcc,
-		&mqrc)
+        C.MQOPEN(x.hConn,
+                (C.PMQVOID)(unsafe.Pointer(&mqod)),
+                mqOpenOptions,
+                &object.hObj,
+                &mqcc,
+                &mqrc)
 
-	copyODfromC(&mqod, good)
+        copyODfromC(&mqod, good)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return object, mqreturn, mqstrerror("MQOPEN", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return object, mqreturn, mqstrerror("MQOPEN", mqcc, mqrc)
+        }
 
-	// ObjectName may have changed because it's a model queue
-	object.Name = good.ObjectName
+        // ObjectName may have changed because it's a model queue
+        object.Name = good.ObjectName
 
-	return object, mqreturn, nil
+        return object, mqreturn, nil
 
 }
 
@@ -218,23 +224,23 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, MQRetu
 Close the object
 */
 func (object *MQObject) Close(goCloseOptions int32) (MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqCloseOptions C.MQLONG
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqCloseOptions C.MQLONG
 
-	mqCloseOptions = C.MQLONG(goCloseOptions)
+        mqCloseOptions = C.MQLONG(goCloseOptions)
 
-	C.MQCLOSE(object.qMgr.hConn, &object.hObj, mqCloseOptions, &mqcc, &mqrc)
+        C.MQCLOSE(object.qMgr.hConn, &object.hObj, mqCloseOptions, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return mqreturn, mqstrerror("MQCLOSE", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return mqreturn, mqstrerror("MQCLOSE", mqcc, mqrc)
+        }
 
-	return mqreturn, nil
+        return mqreturn, nil
 
 }
 
@@ -242,37 +248,37 @@ func (object *MQObject) Close(goCloseOptions int32) (MQReturn, error) {
 Sub is the function to subscribe to a topic
 */
 func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqsd C.MQSD
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqsd C.MQSD
 
-	subObject := MQObject{
-		Name: gosd.ObjectName,
-		qMgr: x,
-	}
+        subObject := MQObject{
+                Name: gosd.ObjectName,
+                qMgr: x,
+        }
 
-	copySDtoC(&mqsd, gosd)
+        copySDtoC(&mqsd, gosd)
 
-	C.MQSUB(x.hConn,
-		(C.PMQVOID)(unsafe.Pointer(&mqsd)),
-		&qObject.hObj,
-		&subObject.hObj,
-		&mqcc,
-		&mqrc)
+        C.MQSUB(x.hConn,
+                (C.PMQVOID)(unsafe.Pointer(&mqsd)),
+                &qObject.hObj,
+                &subObject.hObj,
+                &mqcc,
+                &mqrc)
 
-	copySDfromC(&mqsd, gosd)
+        copySDfromC(&mqsd, gosd)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return subObject, mqreturn, mqstrerror("MQSUB", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return subObject, mqreturn, mqstrerror("MQSUB", mqcc, mqrc)
+        }
 
-	qObject.qMgr = x // Force the correct hConn for managed objects
+        qObject.qMgr = x // Force the correct hConn for managed objects
 
-	return subObject, mqreturn, nil
+        return subObject, mqreturn, nil
 
 }
 
@@ -280,20 +286,20 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, MQReturn,
 Cmit is the function to commit an in-flight transaction
 */
 func (x *MQQueueManager) Cmit() (MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
 
-	C.MQCMIT(x.hConn, &mqcc, &mqrc)
+        C.MQCMIT(x.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return mqreturn, mqstrerror("MQCMIT", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return mqreturn, mqstrerror("MQCMIT", mqcc, mqrc)
+        }
 
-	return mqreturn, nil
+        return mqreturn, nil
 
 }
 
@@ -301,20 +307,20 @@ func (x *MQQueueManager) Cmit() (MQReturn, error) {
 Back is the function to backout an in-flight transaction
 */
 func (x *MQQueueManager) Back() (MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
 
-	C.MQBACK(x.hConn, &mqcc, &mqrc)
+        C.MQBACK(x.hConn, &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return mqreturn, mqstrerror("MQBACK", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return mqreturn, mqstrerror("MQBACK", mqcc, mqrc)
+        }
 
-	return mqreturn, nil
+        return mqreturn, nil
 
 }
 
@@ -322,42 +328,42 @@ func (x *MQQueueManager) Back() (MQReturn, error) {
 Put a message to a queue or publish to a topic
 */
 func (object MQObject) Put(gomd *MQMD,
-	gopmo *MQPMO, buffer []byte) (MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqmd C.MQMD
-	var mqpmo C.MQPMO
-	var ptr C.PMQVOID
+        gopmo *MQPMO, buffer []byte) (MQReturn, error) {
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqmd C.MQMD
+        var mqpmo C.MQPMO
+        var ptr C.PMQVOID
 
-	bufflen := len(buffer)
+        bufflen := len(buffer)
 
-	copyMDtoC(&mqmd, gomd)
-	copyPMOtoC(&mqpmo, gopmo)
+        copyMDtoC(&mqmd, gomd)
+        copyPMOtoC(&mqpmo, gopmo)
 
-	if bufflen > 0 {
-		ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
-	} else {
-		ptr = nil
-	}
+        if bufflen > 0 {
+                ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
+        } else {
+                ptr = nil
+        }
 
-	C.MQPUT(object.qMgr.hConn, object.hObj, (C.PMQVOID)(unsafe.Pointer(&mqmd)),
-		(C.PMQVOID)(unsafe.Pointer(&mqpmo)),
-		(C.MQLONG)(bufflen),
-		ptr,
-		&mqcc, &mqrc)
+        C.MQPUT(object.qMgr.hConn, object.hObj, (C.PMQVOID)(unsafe.Pointer(&mqmd)),
+                (C.PMQVOID)(unsafe.Pointer(&mqpmo)),
+                (C.MQLONG)(bufflen),
+                ptr,
+                &mqcc, &mqrc)
 
-	copyMDfromC(&mqmd, gomd)
-	copyPMOfromC(&mqpmo, gopmo)
+        copyMDfromC(&mqmd, gomd)
+        copyPMOfromC(&mqpmo, gopmo)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return mqreturn, mqstrerror("MQPUT", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return mqreturn, mqstrerror("MQPUT", mqcc, mqrc)
+        }
 
-	return mqreturn, nil
+        return mqreturn, nil
 }
 
 /*
@@ -366,46 +372,46 @@ replies where it can be cheaper than multiple Open/Put/Close
 sequences
 */
 func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
-	gopmo *MQPMO, buffer []byte) (MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqmd C.MQMD
-	var mqpmo C.MQPMO
-	var mqod C.MQOD
-	var ptr C.PMQVOID
+        gopmo *MQPMO, buffer []byte) (MQReturn, error) {
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqmd C.MQMD
+        var mqpmo C.MQPMO
+        var mqod C.MQOD
+        var ptr C.PMQVOID
 
-	copyODtoC(&mqod, good)
-	copyMDtoC(&mqmd, gomd)
-	copyPMOtoC(&mqpmo, gopmo)
+        copyODtoC(&mqod, good)
+        copyMDtoC(&mqmd, gomd)
+        copyPMOtoC(&mqpmo, gopmo)
 
-	bufflen := len(buffer)
+        bufflen := len(buffer)
 
-	if bufflen > 0 {
-		ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
-	} else {
-		ptr = nil
-	}
+        if bufflen > 0 {
+                ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
+        } else {
+                ptr = nil
+        }
 
-	C.MQPUT1(x.hConn, (C.PMQVOID)(unsafe.Pointer(&mqod)),
-		(C.PMQVOID)(unsafe.Pointer(&mqmd)),
-		(C.PMQVOID)(unsafe.Pointer(&mqpmo)),
-		(C.MQLONG)(bufflen),
-		ptr,
-		&mqcc, &mqrc)
+        C.MQPUT1(x.hConn, (C.PMQVOID)(unsafe.Pointer(&mqod)),
+                (C.PMQVOID)(unsafe.Pointer(&mqmd)),
+                (C.PMQVOID)(unsafe.Pointer(&mqpmo)),
+                (C.MQLONG)(bufflen),
+                ptr,
+                &mqcc, &mqrc)
 
-	copyODfromC(&mqod, good)
-	copyMDfromC(&mqmd, gomd)
-	copyPMOfromC(&mqpmo, gopmo)
+        copyODfromC(&mqod, good)
+        copyMDfromC(&mqmd, gomd)
+        copyPMOfromC(&mqpmo, gopmo)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return mqreturn, mqstrerror("MQPUT1", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return mqreturn, mqstrerror("MQPUT1", mqcc, mqrc)
+        }
 
-	return mqreturn, nil
+        return mqreturn, nil
 
 }
 
@@ -414,46 +420,46 @@ Get a message from a queue
 The length of the retrieved message is returned.
 */
 func (object MQObject) Get(gomd *MQMD,
-	gogmo *MQGMO, buffer []byte) (int, MQReturn, error) {
+        gogmo *MQGMO, buffer []byte) (int, MQReturn, error) {
 
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqmd C.MQMD
-	var mqgmo C.MQGMO
-	var datalen C.MQLONG
-	var ptr C.PMQVOID
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqmd C.MQMD
+        var mqgmo C.MQGMO
+        var datalen C.MQLONG
+        var ptr C.PMQVOID
 
-	bufflen := len(buffer)
+        bufflen := len(buffer)
 
-	copyMDtoC(&mqmd, gomd)
-	copyGMOtoC(&mqgmo, gogmo)
+        copyMDtoC(&mqmd, gomd)
+        copyGMOtoC(&mqgmo, gogmo)
 
-	if bufflen > 0 {
-		ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
-	} else {
-		ptr = nil
-	}
+        if bufflen > 0 {
+                ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
+        } else {
+                ptr = nil
+        }
 
-	C.MQGET(object.qMgr.hConn, object.hObj, (C.PMQVOID)(unsafe.Pointer(&mqmd)),
-		(C.PMQVOID)(unsafe.Pointer(&mqgmo)),
-		(C.MQLONG)(bufflen),
-		ptr,
-		&datalen,
-		&mqcc, &mqrc)
+        C.MQGET(object.qMgr.hConn, object.hObj, (C.PMQVOID)(unsafe.Pointer(&mqmd)),
+                (C.PMQVOID)(unsafe.Pointer(&mqgmo)),
+                (C.MQLONG)(bufflen),
+                ptr,
+                &datalen,
+                &mqcc, &mqrc)
 
-	godatalen := int(datalen)
-	copyMDfromC(&mqmd, gomd)
-	copyGMOfromC(&mqgmo, gogmo)
+        godatalen := int(datalen)
+        copyMDfromC(&mqmd, gomd)
+        copyGMOfromC(&mqgmo, gogmo)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return 0, mqreturn, mqstrerror("MQGET", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return 0, mqreturn, mqstrerror("MQGET", mqcc, mqrc)
+        }
 
-	return godatalen, mqreturn, nil
+        return godatalen, mqreturn, nil
 
 }
 
@@ -468,48 +474,48 @@ The caller passes in how many integer selectors are expected to be
 returned, as well as the maximum length of the char buffer to be returned
 */
 func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen int) ([]int32,
-	[]byte, MQReturn, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqCharAttrs C.PMQCHAR
-	var goCharAttrs []byte
-	var goIntAttrs []int32
-	var ptr C.PMQLONG
+        []byte, MQReturn, error) {
+        var mqrc C.MQLONG
+        var mqcc C.MQLONG
+        var mqCharAttrs C.PMQCHAR
+        var goCharAttrs []byte
+        var goIntAttrs []int32
+        var ptr C.PMQLONG
 
-	if intAttrCount > 0 {
-		goIntAttrs = make([]int32, intAttrCount)
-		ptr = (C.PMQLONG)(unsafe.Pointer(&goIntAttrs[0]))
-	} else {
-		ptr = nil
-	}
-	if charAttrLen > 0 {
-		mqCharAttrs = (C.PMQCHAR)(C.malloc(C.size_t(charAttrLen)))
-		defer C.free(unsafe.Pointer(mqCharAttrs))
-	} else {
-		mqCharAttrs = nil
-	}
+        if intAttrCount > 0 {
+                goIntAttrs = make([]int32, intAttrCount)
+                ptr = (C.PMQLONG)(unsafe.Pointer(&goIntAttrs[0]))
+        } else {
+                ptr = nil
+        }
+        if charAttrLen > 0 {
+                mqCharAttrs = (C.PMQCHAR)(C.malloc(C.size_t(charAttrLen)))
+                defer C.free(unsafe.Pointer(mqCharAttrs))
+        } else {
+                mqCharAttrs = nil
+        }
 
-	// Pass in the selectors directly
-	C.MQINQ(object.qMgr.hConn, object.hObj,
-		C.MQLONG(len(goSelectors)),
-		C.PMQLONG(unsafe.Pointer(&goSelectors[0])),
-		C.MQLONG(intAttrCount),
-		ptr,
-		C.MQLONG(charAttrLen),
-		mqCharAttrs,
-		&mqcc, &mqrc)
+        // Pass in the selectors directly
+        C.MQINQ(object.qMgr.hConn, object.hObj,
+                C.MQLONG(len(goSelectors)),
+                C.PMQLONG(unsafe.Pointer(&goSelectors[0])),
+                C.MQLONG(intAttrCount),
+                ptr,
+                C.MQLONG(charAttrLen),
+                mqCharAttrs,
+                &mqcc, &mqrc)
 
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-	}
+        mqreturn := MQReturn{MQCC: int32(mqcc),
+                MQRC: int32(mqrc),
+        }
 
-	if mqcc == C.MQCC_FAILED {
-		return nil, nil, mqreturn, mqstrerror("MQINQ", mqcc, mqrc)
-	}
+        if mqcc == C.MQCC_FAILED {
+                return nil, nil, mqreturn, mqstrerror("MQINQ", mqcc, mqrc)
+        }
 
-	if charAttrLen > 0 {
-		goCharAttrs = C.GoBytes(unsafe.Pointer(mqCharAttrs), C.int(charAttrLen))
-	}
+        if charAttrLen > 0 {
+                goCharAttrs = C.GoBytes(unsafe.Pointer(mqCharAttrs), C.int(charAttrLen))
+        }
 
-	return goIntAttrs, goCharAttrs, mqreturn, nil
+        return goIntAttrs, goCharAttrs, mqreturn, nil
 }

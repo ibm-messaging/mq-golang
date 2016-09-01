@@ -57,6 +57,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 	} else {
 		gocno.Options = ibmmq.MQCNO_LOCAL_BINDING
 	}
+	gocno.Options |= ibmmq.MQCNO_HANDLE_SHARE_BLOCK
 
 	qMgr, _, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {

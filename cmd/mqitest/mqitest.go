@@ -1,20 +1,20 @@
 /*
-  This is a short sample to show how to call IBM MQ from
-  a Go program.
+This is a short sample to show how to call IBM MQ from
+a Go program.
 
-  The flow is to connect to a queue manager,
-  open the queue named on the command line,
-  put a message and then get it back.
-  The queue is closed.
+The flow is to connect to a queue manager,
+open the queue named on the command line,
+put a message and then get it back.
+The queue is closed.
 
-  The program then subscribes to the topic corresponding
-  to collecting activity trace for itself - this requires MQ V9.
+The program then subscribes to the topic corresponding
+to collecting activity trace for itself - this requires MQ V9.
 
-  Finally, it closes the subscription and target queue, and
-  disconnects.
+Finally, it closes the subscription and target queue, and
+disconnects.
 
-  If an error occurs at any stage, the error is reported and
-  subsequent steps skipped.
+If an error occurs at any stage, the error is reported and
+subsequent steps skipped.
 */
 package main
 

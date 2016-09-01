@@ -493,13 +493,16 @@ func ProcessPublications() {
 
 	// Keep reading all available messages until queue is empty. Don't
 	// do a GET-WAIT; just immediate removals.
+	cnt := 0
 	for err == nil {
 		data, err = getMessage(false)
-		elemList, _ := parsePCFResponse(data)
 
 		// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
 		// which will end the loop.
 		if err == nil {
+			cnt++
+			elemList, _ := parsePCFResponse(data)
+
 			// A typical publication contains some fixed
 			// headers (qmgrName, objectName, class, type etc)
 			// followed by a list of index/values.
@@ -572,8 +575,12 @@ func ProcessPublications() {
 					elem.Values[objectName] = value
 				}
 			}
+		} else {
+			log.Debugf("getMessage returned %v", err)
 		}
+
 	}
+	log.Debugf("Processed %d messages", cnt)
 
 }
 
