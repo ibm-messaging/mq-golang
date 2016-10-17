@@ -26,6 +26,75 @@ have a copy of MQ installed to build against. It uses cgo to access the MQI C st
 installed in the default location on a Linux platform (/opt/mqm) but you can easily change the
 cgo directives in the source files if necessary.
 
+Some Windows capability is also included. One constraint in the cgo package is its support
+for path names containing spaces and special characters, which makes it tricky to
+compile against a copy of MQ installed in the regular location. To build these packages I copied
+<mq install>/tools/c/include and <mq install>/bin64 to be under a temporary directory, shown
+in the CFLAGS and LDFLAGS directives.
+
+## Getting started
+
+If you are unfamiliar with Go, the following steps can help create a
+working environment with source code in a suitable tree. Initial setup
+tends to be platform-specific, but subsequent steps are independent of the
+platform.
+
+### Linux
+
+* Install the Go runtime and compiler. On Linux, the packaging may vary
+but a typical directory for the code is /usr/lib/golang.
+* Create a working directory. For example, mkdir $HOME/gowork
+* Set environment variables. Based on the previous lines,
+
+  export GOROOT=/usr/lib/golang
+  export GOPATH=$HOME/gowork
+
+* Install the git client
+
+### Windows
+
+* Install the Go runtime and compiler. On Windows, the
+common directory is c:\Go
+* Ensure you have a gcc-based compiler, for example from the Cygwin
+distribution. I use the mingw variation, to ensure compiled code can
+be used on systems without Cygwin installed
+* Create a working directory. For example, mkdir c:\Gowork
+* Set environment variables. Based on the previous lines,
+
+  set GOROOT=c:\Go
+  set GOPATH=c:\Gowork
+  set CC=x86_64-w64-mingw32-gcc.exe
+
+* Install the git client
+* Make sure the MQ include files and libraries are in a path that does
+not include spaces or other special characters, as discussed above.
+
+### Common
+
+* Make sure your PATH includes routes to the Go compiler ($GOROOT/bin),
+the Git client, and the C compiler.
+* Change directory to the workspace you created earlier. (cd $GOPATH)
+* Use git to get a copy of the MQ components into a new directory in the
+workspace. Use "src" as the destination, to get the directory created
+automatically; this path will then be searched by the Go compiler.
+
+  git clone http://github.com/ibm-messaging/mq-golang src
+
+* Use Go to download prerequisite components for any monitors you are interested
+in running. The logrus package is required for all of the monitors; but not
+all of the monitors require further downloads.
+
+  go get -u github.com/Sirupsen/logrus
+  go get -u github.com/prometheus/client_golang/prometheus
+  go get -u github.com/influxdata/influxdb/client/v2
+  go get -u github.com/aws/aws-sdk-go/service
+
+* Compile the components you are interested in. For example
+
+  go install ./src/cmd/mq_prometheus
+
+At this point, you should have a compiled copy of the code in $GOPATH/bin.
+
 ## Limitations
 
 Not all of the MQI verbs are available through the ibmmq package. This initial
@@ -78,6 +147,12 @@ with MQCONNX.
 23 Aug 2016
 * Added a collector for Amazon AWS CloudWatch monitoring. See the [README](cmd/mq_aws/README.md)
 for more details.
+
+17 Oct 2016
+* Added some Windows support. An example batch file is included in the mq_influx directory;
+changes would be needed to the MQSC script to call it. The other monitor programs can be
+supported with similar modifications.
+* Added a "getting started" section to this README.
 
 ## Health Warning
 

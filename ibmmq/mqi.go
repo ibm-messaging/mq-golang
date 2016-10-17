@@ -35,8 +35,10 @@ package ibmmq
 */
 
 /*
-#cgo CFLAGS: -I/opt/mqm/inc -D_REENTRANT
-#cgo LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -m64
+#cgo !windows CFLAGS: -I/opt/mqm/inc -D_REENTRANT
+#cgo windows CFLAGS:  -IC:/temp/mq/include -m64
+#cgo !windows LDFLAGS: -L/opt/mqm/lib64 -lmqm_r
+#cgo windows LDFLAGS: -L "C:/temp/mq/bin64" -lmqm -m64
 
 #include <stdlib.h>
 #include <string.h>

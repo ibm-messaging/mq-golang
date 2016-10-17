@@ -29,7 +29,7 @@ supporting alternative database collection protocols.
 
 * You also need access to the Prometheus Go client interface.
 
-  The command `go get -u github.com/prometheus/client_golang` should pull
+  The command `go get -u github.com/prometheus/client_golang/prometheus` should pull
   down the client code and its dependencies.
 
 * The error logger package may need to be explicitly downloaded

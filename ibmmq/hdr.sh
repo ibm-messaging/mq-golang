@@ -28,7 +28,7 @@ awk '
                           {
                             const=$2
                             val=$4
-                            if (match($0,"byte") == 0)
+                            if (match($0,"byte") == 0 && match($0,"MQAT_DEFAULT") == 0)
                             {
                               gsub("\"","",const)
                               printf("%-32.32s int32 = %s\n",const,val)

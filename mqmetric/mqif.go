@@ -159,10 +159,14 @@ func getMessage(wait bool) ([]byte, error) {
 	}
 
 	datalen, mqreturn, err = replyQObj.Get(getmqmd, gmo, getBuffer)
+
 	if mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NOT_AVAILABLE ||
 		mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NAME_ERROR ||
 		mqreturn.MQRC == ibmmq.MQRC_Q_MGR_QUIESCING {
 		log.Fatal("Queue Manager error: ", err)
+	}
+	if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+		log.Error("Get message: ", err)
 	}
 
 	return getBuffer[0:datalen], err
