@@ -154,6 +154,11 @@ changes would be needed to the MQSC script to call it. The other monitor program
 supported with similar modifications.
 * Added a "getting started" section to this README.
 
+07 Nov 2016
+* Added a collector that prints metrics in a simple JSON format.
+See the [README](cmd/mq_json/README.md) for more details.
+* Fixed bug where freespace metrics were showing as non-integer bytes, not percentages
+
 ## Health Warning
 
 This package is provided as-is with no guarantees of support or updates. There are also no guarantees of compatibility

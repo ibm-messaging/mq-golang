@@ -27,13 +27,19 @@ and update the various data points.
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"math"
 	"mqmetric"
 	"strings"
+	"time"
 )
 
 var (
 	first      = true
 	errorCount = 0
+)
+
+const (
+	blankString = "                                "
 )
 
 /*
@@ -43,7 +49,7 @@ data
 func Collect() error {
 	var err error
 
-	log.Infof("IBM MQ stdout collector started")
+	log.Infof("IBM MQ JSON collector started")
 
 	// Clear out everything we know so far. In particular, replace
 	// the map of values for each object so the collection starts
@@ -69,11 +75,24 @@ func Collect() error {
 		// a misleading range on graphs.
 		first = false
 	} else {
+		firstPoint := true
+		fmt.Printf("\n{\n")
+		fmt.Printf("%s\"collectionTime\" : {\n", blankString[0:2])
+		t := time.Now()
+		fmt.Printf("%s\"timestamp\" : \"%s\",\n", blankString[0:4], t.Format(time.RFC3339))
+		fmt.Printf("%s\"epoch\" : %d\n", blankString[0:4], t.Unix())
+		fmt.Printf("%s},\n", blankString[0:2])
 
+		fmt.Printf("%s\"points\" : [\n", blankString[0:2])
 		for _, cl := range mqmetric.Metrics.Classes {
 			for _, ty := range cl.Types {
 				for _, elem := range ty.Elements {
 					for key, value := range elem.Values {
+						if !firstPoint {
+							fmt.Printf(",\n")
+						} else {
+							firstPoint = false
+						}
 						f := mqmetric.Normalise(elem, key, value)
 						tags := map[string]string{
 							"qmgr": config.qMgrName,
@@ -88,6 +107,7 @@ func Collect() error {
 				}
 			}
 		}
+		fmt.Printf("\n%s]\n}\n", blankString[0:2])
 
 	}
 
@@ -96,19 +116,41 @@ func Collect() error {
 }
 
 func printPoint(metric string, val float32, tags map[string]string) {
+	fmt.Printf("%s{\n", blankString[0:2])
 	qmgr := tags["qmgr"]
+	fmt.Printf("%s\"queueManager\" : \"%s\",\n", blankString[0:4], qmgr)
 	if q, ok := tags["object"]; ok {
-		if !strings.HasPrefix(metric, "queue") {
-			metric = "queue_" + metric
-		}
-		metric += "-" + fixup(q)
+		fmt.Printf("%s\"queue\" : \"%s\",\n", blankString[0:4], q)
 	}
-	fmt.Printf("PUTVAL %s/%s-%s/%s interval=%s N:%f\n",
-		config.hostlabel, "qmgr", fixup(qmgr), metric, config.interval, val)
+	if float64(val) == math.Trunc(float64(val)) {
+		fmt.Printf("%s\"%s\" : %d\n", blankString[0:4], fixup(metric), int64(val))
+	} else {
+		fmt.Printf("%s\"%s\" : %f\n", blankString[0:4], fixup(metric), val)
+	}
+	fmt.Printf("%s}", blankString[0:2])
 	return
 }
 
 func fixup(s1 string) string {
-	s2 := strings.Replace(s1, ".", "_", -1)
+	// Another reformatting of the metric name - this one converts
+	// something like queue_avoided_bytes into queueAvoidedBytes
+	s2 := ""
+	c := ""
+	nextCaseUpper := false
+
+	for i := 0; i < len(s1); i++ {
+		if s1[i] != '_' {
+			if nextCaseUpper {
+				c = strings.ToUpper(s1[i : i+1])
+				nextCaseUpper = false
+			} else {
+				c = strings.ToLower(s1[i : i+1])
+			}
+			s2 += c
+		} else {
+			nextCaseUpper = true
+		}
+
+	}
 	return s2
 }

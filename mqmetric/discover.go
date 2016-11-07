@@ -668,7 +668,7 @@ func formatDescription(elem *MonElement) string {
 	s = strings.Replace(s, "messages_expired", "expired_messages", -1)
 
 	if strings.HasSuffix(s, "free_space") {
-		s = s + "_bytes"
+		s = s + "_percentage"
 	}
 
 	// Make "byte", "file" and "message" units plural

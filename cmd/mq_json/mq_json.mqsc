@@ -1,0 +1,18 @@
+* Cleanup any existing service
+STOP SERVICE(MQJSON)
+DELETE SERVICE(MQJSON)
+
+* Reset the definition
+DEFINE SERVICE(MQJSON)         +
+       CONTROL(QMGR)               +
+       SERVTYPE(SERVER)            +
+       STARTCMD('/usr/local/bin/mqgo/mq_json.sh') +
+       STARTARG(+QMNAME+)          +
+       STOPCMD('/usr/bin/kill ' )  +
+       STOPARG(+MQ_SERVER_PID+)    +
+       STDOUT('/var/mqm/errors/json.out')  +
+       STDERR('/var/mqm/errors/json.out')  +
+       DESCR('MQ exporter for JSON format')
+
+* Start it manually now; will be automatically started on future qmgr startup
+START SERVICE(MQJSON)

@@ -143,7 +143,6 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 			C.free(unsafe.Pointer(mqcno.SecurityParmsPtr.CSPPasswordPtr))
 		}
 		C.free(unsafe.Pointer(mqcno.SecurityParmsPtr))
-		// TODO - if userid/password set, C.free(them)
 	}
 
 	if mqcno.CCDTUrlPtr != nil {
