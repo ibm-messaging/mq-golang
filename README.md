@@ -47,6 +47,7 @@ but a typical directory for the code is /usr/lib/golang.
 * Set environment variables. Based on the previous lines,
 
   export GOROOT=/usr/lib/golang
+
   export GOPATH=$HOME/gowork
 
 * Install the git client
@@ -62,7 +63,9 @@ be used on systems without Cygwin installed
 * Set environment variables. Based on the previous lines,
 
   set GOROOT=c:\Go
+
   set GOPATH=c:\Gowork
+
   set CC=x86_64-w64-mingw32-gcc.exe
 
 * Install the git client
@@ -161,6 +164,10 @@ supported with similar modifications.
 * Added a collector that prints metrics in a simple JSON format.
 See the [README](cmd/mq_json/README.md) for more details.
 * Fixed bug where freespace metrics were showing as non-integer bytes, not percentages
+
+14 Dec 2016
+* Minor updates to this README for formatting
+* Removed the pointless xxx_CURRENT_LENGTH definitions from cmqc
 
 ## Health Warning
 
