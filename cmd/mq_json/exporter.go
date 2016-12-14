@@ -79,7 +79,7 @@ func Collect() error {
 		fmt.Printf("\n{\n")
 		fmt.Printf("%s\"collectionTime\" : {\n", blankString[0:2])
 		t := time.Now()
-		fmt.Printf("%s\"timestamp\" : \"%s\",\n", blankString[0:4], t.Format(time.RFC3339))
+		fmt.Printf("%s\"timeStamp\" : \"%s\",\n", blankString[0:4], t.Format(time.RFC3339))
 		fmt.Printf("%s\"epoch\" : %d\n", blankString[0:4], t.Unix())
 		fmt.Printf("%s},\n", blankString[0:2])
 

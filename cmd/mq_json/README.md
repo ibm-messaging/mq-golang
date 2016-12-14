@@ -57,7 +57,7 @@ metric and the resource it refers to.
 For example,
     {
        "collectionTime" : {
-          "timestamp" : "2016-11-07-T15:00:55Z"
+          "timeStamp" : "2016-11-07-T15:00:55Z"
           "epoch" : 1478527255
        },
        "points" : [

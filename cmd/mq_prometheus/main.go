@@ -56,7 +56,7 @@ func main() {
 	// What metrics can the queue manager provide? Find out, and
 	// subscribe.
 	if err == nil {
-		err = mqmetric.DiscoverAndSubscribe(config.monitoredQueues)
+		err = mqmetric.DiscoverAndSubscribe(config.monitoredQueues, true, "")
 	}
 
 	// Once everything has been discovered, and the subscriptions

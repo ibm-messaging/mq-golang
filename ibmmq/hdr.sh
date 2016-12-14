@@ -1,9 +1,10 @@
 #!/bin/ksh
 
-d="/opt/mqm/inc"
-f="cmqstrc.h"
+function makeHeader {
 
-(
+d=$1
+f=$2
+
 cat <<EOF
 
 package ibmmq
@@ -17,6 +18,9 @@ var (
 EOF
 
 cat $d/$f |\
+grep -v "8 byte" |\
+grep -v "4 byte" |\
+grep -v "CURRENT_LENGTH" |\
 awk '
       BEGIN {doprint=0}
       /MQI_BY_NAME_STR/ {
@@ -38,4 +42,10 @@ awk '
 
     END { printf(")\n") }
     '
-) > cmqc.go
+}
+
+d="/Localdev/metaylor/mf/GitHub/ibm-messaging/mq-golang/src/product"
+makeHeader $d cmqstrc.h.amd64_linux2 > cmqc_linux.go
+makeHeader $d cmqstrc.h.amd64_nt_4   > cmqc_windows.go
+
+go fmt cmqc*.go

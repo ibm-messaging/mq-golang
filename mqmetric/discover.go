@@ -91,17 +91,21 @@ DiscoverAndSubscribe does all the work of finding the
 different resources available from a queue manager and
 issuing the MQSUB calls to collect the data
 */
-func DiscoverAndSubscribe(queueList string) error {
+func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
 	var err error
 	// What metrics can the queue manager provide?
 	if err == nil {
-		err = discoverStats()
+		err = discoverStats(metaPrefix)
 	}
 
 	// Which queues have we been asked to monitor? Expand wildcards
 	// to explicit names so that subscriptions work.
 	if err == nil {
-		discoverQueues(queueList)
+		if checkQueueList {
+			discoverQueues(queueList)
+		} else {
+			qList = strings.Split(queueList, ",")
+		}
 	}
 
 	// Subscribe to all of the various topics
@@ -112,13 +116,19 @@ func DiscoverAndSubscribe(queueList string) error {
 	return err
 }
 
-func discoverClasses() error {
+func discoverClasses(metaPrefix string) error {
 	var data []byte
 	var sub ibmmq.MQObject
 	var err error
+	var rootTopic string
 
 	// Have to know the starting point for the topic that tells about classes
-	sub, err = subscribe("$SYS/MQ/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES")
+	if metaPrefix == "" {
+		rootTopic = "$SYS/MQ/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
+	} else {
+		rootTopic = metaPrefix + "/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
+	}
+	sub, err = subscribe(rootTopic)
 	if err == nil {
 		data, err = getMessage(true)
 		sub.Close(0)
@@ -268,14 +278,14 @@ by working through the classes, types and individual elements.
 
 Then discover the list of individual queues we have been asked for.
 */
-func discoverStats() error {
+func discoverStats(metaPrefix string) error {
 	var err error
 
 	// Start with an empty set of information about the available stats
 	Metrics.Classes = make(map[int]*MonClass)
 
 	// Then get the list of CLASSES
-	err = discoverClasses()
+	err = discoverClasses(metaPrefix)
 
 	// For each CLASS, discover the TYPEs of data available
 	if err == nil {
@@ -517,6 +527,8 @@ func ProcessPublications() {
 				case ibmmq.MQCA_Q_MGR_NAME:
 					_ = strings.TrimSpace(elemList[i].String[0])
 				case ibmmq.MQCA_Q_NAME:
+					qName = strings.TrimSpace(elemList[i].String[0])
+				case ibmmq.MQCA_TOPIC_NAME:
 					qName = strings.TrimSpace(elemList[i].String[0])
 				case ibmmq.MQIACF_OBJECT_TYPE:
 					// Will need to use this as part of the object key and

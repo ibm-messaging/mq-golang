@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-This file was generated from /opt/mqm/inc/cmqstrc.h using
+This file was generated from /Localdev/metaylor/mf/GitHub/ibm-messaging/mq-golang/src/product/cmqstrc.h.amd64_linux2 using
 the hdr.sh script.
 */
 
@@ -176,7 +176,6 @@ var (
 	MQBA_FIRST                     int32 = 6001
 	MQBA_LAST                      int32 = 8000
 	MQBL_NULL_TERMINATED           int32 = -1
-	MQBMHO_CURRENT_LENGTH          int32 = 8
 	MQBMHO_CURRENT_VERSION         int32 = 1
 	MQBMHO_DELETE_PROPERTIES       int32 = 1
 	MQBMHO_LENGTH_1                int32 = 8
@@ -185,7 +184,6 @@ var (
 	MQBND_BIND_NOT_FIXED           int32 = 1
 	MQBND_BIND_ON_GROUP            int32 = 2
 	MQBND_BIND_ON_OPEN             int32 = 0
-	MQBO_CURRENT_LENGTH            int32 = 8
 	MQBO_CURRENT_VERSION           int32 = 1
 	MQBO_LENGTH_1                  int32 = 8
 	MQBO_NONE                      int32 = 0
@@ -860,7 +858,6 @@ var (
 	MQCHT_SENDER                   int32 = 1
 	MQCHT_SERVER                   int32 = 2
 	MQCHT_SVRCONN                  int32 = 7
-	MQCIH_CURRENT_LENGTH           int32 = 8
 	MQCIH_CURRENT_VERSION          int32 = 2
 	MQCIH_LENGTH_1                 int32 = 8
 	MQCIH_LENGTH_2                 int32 = 8
@@ -911,7 +908,7 @@ var (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32 = 17
 	MQCMDI_SEC_TIMER_ZERO          int32 = 14
 	MQCMDI_SEC_UPPERCASE           int32 = 21
-	MQCMDL_CURRENT_LEVEL           int32 = 900
+	MQCMDL_CURRENT_LEVEL           int32 = 902
 	MQCMDL_LEVEL_1                 int32 = 100
 	MQCMDL_LEVEL_101               int32 = 101
 	MQCMDL_LEVEL_110               int32 = 110
@@ -941,6 +938,8 @@ var (
 	MQCMDL_LEVEL_801               int32 = 801
 	MQCMDL_LEVEL_802               int32 = 802
 	MQCMDL_LEVEL_900               int32 = 900
+	MQCMDL_LEVEL_901               int32 = 901
+	MQCMDL_LEVEL_902               int32 = 902
 	MQCMD_ACCOUNTING_MQI           int32 = 167
 	MQCMD_ACCOUNTING_Q             int32 = 168
 	MQCMD_ACTIVITY_MSG             int32 = 69
@@ -1134,7 +1133,6 @@ var (
 	MQCMD_SUSPEND_Q_MGR            int32 = 146
 	MQCMD_SUSPEND_Q_MGR_CLUSTER    int32 = 72
 	MQCMD_TRACE_ROUTE              int32 = 75
-	MQCMHO_CURRENT_LENGTH          int32 = 8
 	MQCMHO_CURRENT_VERSION         int32 = 1
 	MQCMHO_DEFAULT_VALIDATION      int32 = 0
 	MQCMHO_LENGTH_1                int32 = 8
@@ -1278,14 +1276,12 @@ var (
 	MQDELO_NONE                    int32 = 0
 	MQDHF_NEW_MSG_IDS              int32 = 1
 	MQDHF_NONE                     int32 = 0
-	MQDH_CURRENT_LENGTH            int32 = 8
 	MQDH_CURRENT_VERSION           int32 = 1
 	MQDH_LENGTH_1                  int32 = 8
 	MQDH_VERSION_1                 int32 = 1
 	MQDISCONNECT_IMPLICIT          int32 = 1
 	MQDISCONNECT_NORMAL            int32 = 0
 	MQDISCONNECT_Q_MGR             int32 = 2
-	MQDLH_CURRENT_LENGTH           int32 = 8
 	MQDLH_CURRENT_VERSION          int32 = 1
 	MQDLH_LENGTH_1                 int32 = 8
 	MQDLH_VERSION_1                int32 = 1
@@ -1295,12 +1291,10 @@ var (
 	MQDLV_AS_PARENT                int32 = 0
 	MQDL_NOT_SUPPORTED             int32 = 0
 	MQDL_SUPPORTED                 int32 = 1
-	MQDMHO_CURRENT_LENGTH          int32 = 8
 	MQDMHO_CURRENT_VERSION         int32 = 1
 	MQDMHO_LENGTH_1                int32 = 8
 	MQDMHO_NONE                    int32 = 0
 	MQDMHO_VERSION_1               int32 = 1
-	MQDMPO_CURRENT_LENGTH          int32 = 8
 	MQDMPO_CURRENT_VERSION         int32 = 1
 	MQDMPO_DEL_FIRST               int32 = 0
 	MQDMPO_DEL_PROP_UNDER_CURSOR   int32 = 1
@@ -1356,7 +1350,6 @@ var (
 	MQENC_S390                     int32 = 785
 	MQENC_TNS                      int32 = 1041
 	MQEPH_CCSID_EMBEDDED           int32 = 1
-	MQEPH_CURRENT_LENGTH           int32 = 8
 	MQEPH_CURRENT_VERSION          int32 = 1
 	MQEPH_LENGTH_1                 int32 = 8
 	MQEPH_NONE                     int32 = 0
@@ -1371,6 +1364,7 @@ var (
 	MQEVO_MQSUB                    int32 = 6
 	MQEVO_MSG                      int32 = 3
 	MQEVO_OTHER                    int32 = 0
+	MQEVO_REST                     int32 = 8
 	MQEVR_ADMIN_ONLY               int32 = 5
 	MQEVR_API_ONLY                 int32 = 4
 	MQEVR_DISABLED                 int32 = 0
@@ -1498,7 +1492,6 @@ var (
 	MQGMO_BROWSE_NEXT              int32 = 32
 	MQGMO_COMPLETE_MSG             int32 = 65536
 	MQGMO_CONVERT                  int32 = 16384
-	MQGMO_CURRENT_LENGTH           int32 = 8
 	MQGMO_CURRENT_VERSION          int32 = 4
 	MQGMO_FAIL_IF_QUIESCING        int32 = 8192
 	MQGMO_LENGTH_1                 int32 = 8
@@ -2451,7 +2444,6 @@ var (
 	MQIGQ_DISABLED                 int32 = 0
 	MQIGQ_ENABLED                  int32 = 1
 	MQIIH_CM0_REQUEST_RESPONSE     int32 = 32
-	MQIIH_CURRENT_LENGTH           int32 = 8
 	MQIIH_CURRENT_VERSION          int32 = 1
 	MQIIH_IGNORE_PURG              int32 = 16
 	MQIIH_LENGTH_1                 int32 = 8
@@ -2555,19 +2547,15 @@ var (
 	MQMC_DISABLED                  int32 = 2
 	MQMC_ENABLED                   int32 = 1
 	MQMC_ONLY                      int32 = 3
-	MQMD1_CURRENT_LENGTH           int32 = 8
 	MQMD1_LENGTH_1                 int32 = 8
-	MQMD2_CURRENT_LENGTH           int32 = 8
 	MQMD2_LENGTH_1                 int32 = 8
 	MQMD2_LENGTH_2                 int32 = 8
 	MQMDEF_NONE                    int32 = 0
-	MQMDE_CURRENT_LENGTH           int32 = 8
 	MQMDE_CURRENT_VERSION          int32 = 2
 	MQMDE_LENGTH_2                 int32 = 8
 	MQMDE_VERSION_2                int32 = 2
 	MQMDS_FIFO                     int32 = 1
 	MQMDS_PRIORITY                 int32 = 0
-	MQMD_CURRENT_LENGTH            int32 = 8
 	MQMD_CURRENT_VERSION           int32 = 2
 	MQMD_LENGTH_1                  int32 = 8
 	MQMD_LENGTH_2                  int32 = 8
@@ -2583,7 +2571,6 @@ var (
 	MQMF_SEGMENT                   int32 = 2
 	MQMF_SEGMENTATION_ALLOWED      int32 = 1
 	MQMF_SEGMENTATION_INHIBITED    int32 = 0
-	MQMHBO_CURRENT_LENGTH          int32 = 8
 	MQMHBO_CURRENT_VERSION         int32 = 1
 	MQMHBO_DELETE_PROPERTIES       int32 = 2
 	MQMHBO_LENGTH_1                int32 = 8
@@ -2761,7 +2748,6 @@ var (
 	MQPBC_VERSION_2                int32 = 2
 	MQPD_ACCEPT_UNSUP_IF_XMIT_MASK int32 = 1047552
 	MQPD_ACCEPT_UNSUP_MASK         int32 = 1023
-	MQPD_CURRENT_LENGTH            int32 = 8
 	MQPD_CURRENT_VERSION           int32 = 1
 	MQPD_LENGTH_1                  int32 = 8
 	MQPD_NONE                      int32 = 0
@@ -3909,9 +3895,7 @@ var (
 	MQREGO_VARIABLE_USER_ID        int32 = 1048576
 	MQREORG_DISABLED               int32 = 0
 	MQREORG_ENABLED                int32 = 1
-	MQRFH2_CURRENT_LENGTH          int32 = 8
 	MQRFH2_LENGTH_2                int32 = 8
-	MQRFH_CURRENT_LENGTH           int32 = 8
 	MQRFH_FLAGS_RESTRICTED_MASK    int32 = -65536
 	MQRFH_LENGTH_1                 int32 = 8
 	MQRFH_NONE                     int32 = 0
@@ -3923,7 +3907,6 @@ var (
 	MQRL_UNDEFINED                 int32 = -1
 	MQRMHF_LAST                    int32 = 1
 	MQRMHF_NOT_LAST                int32 = 0
-	MQRMH_CURRENT_LENGTH           int32 = 8
 	MQRMH_CURRENT_VERSION          int32 = 1
 	MQRMH_LENGTH_1                 int32 = 8
 	MQRMH_VERSION_1                int32 = 1
@@ -4079,7 +4062,6 @@ var (
 	MQSEL_ANY_SYSTEM_SELECTOR      int32 = -30003
 	MQSEL_ANY_USER_SELECTOR        int32 = -30002
 	MQSMPO_APPEND_PROPERTY         int32 = 4
-	MQSMPO_CURRENT_LENGTH          int32 = 8
 	MQSMPO_CURRENT_VERSION         int32 = 1
 	MQSMPO_LENGTH_1                int32 = 8
 	MQSMPO_NONE                    int32 = 0
@@ -4115,7 +4097,6 @@ var (
 	MQSP_NOT_AVAILABLE             int32 = 0
 	MQSQQM_IGNORE                  int32 = 1
 	MQSQQM_USE                     int32 = 0
-	MQSRO_CURRENT_LENGTH           int32 = 8
 	MQSRO_CURRENT_VERSION          int32 = 1
 	MQSRO_FAIL_IF_QUIESCING        int32 = 8192
 	MQSRO_LENGTH_1                 int32 = 8
@@ -4215,12 +4196,9 @@ var (
 	MQTC_ON                        int32 = 1
 	MQTIME_UNIT_MINS               int32 = 0
 	MQTIME_UNIT_SECS               int32 = 1
-	MQTMC2_CURRENT_LENGTH          int32 = 8
 	MQTMC2_LENGTH_1                int32 = 8
 	MQTMC2_LENGTH_2                int32 = 8
-	MQTMC_CURRENT_LENGTH           int32 = 8
 	MQTMC_LENGTH_1                 int32 = 8
-	MQTM_CURRENT_LENGTH            int32 = 8
 	MQTM_CURRENT_VERSION           int32 = 1
 	MQTM_LENGTH_1                  int32 = 8
 	MQTM_VERSION_1                 int32 = 1
@@ -4296,33 +4274,25 @@ var (
 	MQVU_FIXED_USER                int32 = 1
 	MQWARN_NO                      int32 = 0
 	MQWARN_YES                     int32 = 1
-	MQWDR1_CURRENT_LENGTH          int32 = 8
 	MQWDR1_LENGTH_1                int32 = 8
-	MQWDR2_CURRENT_LENGTH          int32 = 8
 	MQWDR2_LENGTH_1                int32 = 8
 	MQWDR2_LENGTH_2                int32 = 8
-	MQWDR_CURRENT_LENGTH           int32 = 8
 	MQWDR_CURRENT_VERSION          int32 = 2
 	MQWDR_LENGTH_1                 int32 = 8
 	MQWDR_LENGTH_2                 int32 = 8
 	MQWDR_VERSION_1                int32 = 1
 	MQWDR_VERSION_2                int32 = 2
-	MQWIH_CURRENT_LENGTH           int32 = 8
 	MQWIH_CURRENT_VERSION          int32 = 1
 	MQWIH_LENGTH_1                 int32 = 8
 	MQWIH_NONE                     int32 = 0
 	MQWIH_VERSION_1                int32 = 1
 	MQWI_UNLIMITED                 int32 = -1
-	MQWQR1_CURRENT_LENGTH          int32 = 8
 	MQWQR1_LENGTH_1                int32 = 8
-	MQWQR2_CURRENT_LENGTH          int32 = 8
 	MQWQR2_LENGTH_1                int32 = 8
 	MQWQR2_LENGTH_2                int32 = 8
-	MQWQR3_CURRENT_LENGTH          int32 = 8
 	MQWQR3_LENGTH_1                int32 = 8
 	MQWQR3_LENGTH_2                int32 = 8
 	MQWQR3_LENGTH_3                int32 = 8
-	MQWQR_CURRENT_LENGTH           int32 = 8
 	MQWQR_CURRENT_VERSION          int32 = 3
 	MQWQR_LENGTH_1                 int32 = 8
 	MQWQR_LENGTH_2                 int32 = 8
@@ -4418,10 +4388,8 @@ var (
 	MQXPT_SPX                      int32 = 4
 	MQXPT_TCP                      int32 = 2
 	MQXPT_UDP                      int32 = 6
-	MQXP_CURRENT_LENGTH            int32 = 8
 	MQXP_LENGTH_1                  int32 = 8
 	MQXP_VERSION_1                 int32 = 1
-	MQXQH_CURRENT_LENGTH           int32 = 8
 	MQXQH_CURRENT_VERSION          int32 = 1
 	MQXQH_LENGTH_1                 int32 = 8
 	MQXQH_VERSION_1                int32 = 1
@@ -4472,10 +4440,8 @@ var (
 	MQXT_PRECONNECT_EXIT           int32 = 23
 	MQXT_PUBLISH_EXIT              int32 = 22
 	MQXT_PUBSUB_ROUTING_EXIT       int32 = 21
-	MQXWD_CURRENT_LENGTH           int32 = 8
 	MQXWD_LENGTH_1                 int32 = 8
 	MQXWD_VERSION_1                int32 = 1
-	MQZAC_CURRENT_LENGTH           int32 = 8
 	MQZAC_CURRENT_VERSION          int32 = 1
 	MQZAC_LENGTH_1                 int32 = 8
 	MQZAC_VERSION_1                int32 = 1
@@ -4531,7 +4497,6 @@ var (
 	MQZED_VERSION_2                int32 = 2
 	MQZFP_CURRENT_VERSION          int32 = 1
 	MQZFP_VERSION_1                int32 = 1
-	MQZIC_CURRENT_LENGTH           int32 = 8
 	MQZIC_CURRENT_VERSION          int32 = 1
 	MQZIC_LENGTH_1                 int32 = 8
 	MQZIC_VERSION_1                int32 = 1
