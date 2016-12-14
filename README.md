@@ -85,8 +85,11 @@ in running. The logrus package is required for all of the monitors; but not
 all of the monitors require further downloads.
 
   go get -u github.com/Sirupsen/logrus
+
   go get -u github.com/prometheus/client_golang/prometheus
+
   go get -u github.com/influxdata/influxdb/client/v2
+
   go get -u github.com/aws/aws-sdk-go/service
 
 * Compile the components you are interested in. For example
