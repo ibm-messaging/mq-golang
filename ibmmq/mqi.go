@@ -13,6 +13,14 @@ All the MQI verbs included here return a structure containing
 the CompletionCode and ReasonCode values. If an MQI call returns
 MQCC_FAILED, an error is also returned containing the MQCC/MQRC values as
 a formatted string.
+
+The build directives for Windows assume the header and library files have
+been copied to a temporary location, because the default paths are not
+acceptable to Go (it does not like spaces or special characters like ~).
+
+The build directives for Linux assume the default MQ installation path
+in /opt/mqm. These would need to be changed in this file if you use a
+non-default path.
 */
 package ibmmq
 
@@ -37,7 +45,7 @@ package ibmmq
 /*
 #cgo !windows CFLAGS: -I/opt/mqm/inc -D_REENTRANT
 #cgo windows CFLAGS:  -IC:/temp/mq/include -m64
-#cgo !windows LDFLAGS: -L/opt/mqm/lib64 -lmqm_r
+#cgo !windows LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -Wl,-rpath=/opt/mqm/lib64
 #cgo windows LDFLAGS: -L "C:/temp/mq/bin64" -lmqm -m64
 
 #include <stdlib.h>
