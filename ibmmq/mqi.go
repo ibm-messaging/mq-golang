@@ -51,6 +51,7 @@ package ibmmq
 #include <stdlib.h>
 #include <string.h>
 #include <cmqc.h>
+#include <cmqxc.h>
 */
 import "C"
 

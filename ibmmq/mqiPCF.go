@@ -19,8 +19,6 @@ package ibmmq
 */
 
 /*
-#cgo CFLAGS: -I/opt/mqm/inc -D_REENTRANT
-
 #include <stdlib.h>
 #include <cmqc.h>
 #include <cmqcfc.h>

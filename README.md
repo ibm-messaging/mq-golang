@@ -103,9 +103,9 @@ At this point, you should have a compiled copy of the code in $GOPATH/bin.
 
 ## Limitations
 
-Not all of the MQI verbs are available through the ibmmq package. This initial
-implementation concentrates on the core API calls needed to put and get messages. Currently unavailable
-verbs include:
+Not all of the MQI verbs are available through the ibmmq package. This
+implementation concentrates on the core API calls needed to put and get messages.
+Currently unavailable verbs include:
 * MQSET
 * All of the message property manipulators
 * MQCB
@@ -167,7 +167,13 @@ See the [README](cmd/mq_json/README.md) for more details.
 
 14 Dec 2016
 * Minor updates to this README for formatting
-* Removed the pointless xxx_CURRENT_LENGTH definitions from cmqc
+* Removed xxx_CURRENT_LENGTH definitions from cmqc
+
+10 Jan 2017
+* Added support for the MQCD structure to allow programmable client
+connectivity, without requiring a CCDT. See the clienttest program
+for an example of using it.
+* Moved sample programs into subdirectory
 
 ## Health Warning
 

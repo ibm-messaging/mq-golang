@@ -19,11 +19,11 @@ package ibmmq
 */
 
 /*
-#cgo CFLAGS: -I/opt/mqm/inc -D_REENTRANT
 
 #include <stdlib.h>
 #include <string.h>
 #include <cmqc.h>
+#include <cmqxc.h>
 
 */
 import "C"
@@ -39,6 +39,7 @@ type MQCNO struct {
 	Options       int32
 	SecurityParms *MQCSP
 	CCDTUrl       string
+	ClientConn    *MQCD
 }
 
 /*
@@ -59,6 +60,7 @@ func NewMQCNO() *MQCNO {
 	cno.Version = int32(C.MQCNO_VERSION_1)
 	cno.Options = int32(C.MQCNO_NONE)
 	cno.SecurityParms = nil
+	cno.ClientConn = nil
 
 	return cno
 }
@@ -79,6 +81,7 @@ func NewMQCSP() *MQCSP {
 func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	var i int
 	var mqcsp C.PMQCSP
+	var mqcd C.PMQCD
 
 	setMQIString((*C.char)(&mqcno.StrucId[0]), "CNO ", 4)
 	mqcno.Version = C.MQLONG(gocno.Version)
@@ -96,6 +99,16 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 
 	mqcno.SSLConfigOffset = 0
 	mqcno.SSLConfigPtr = nil
+
+	if gocno.ClientConn != nil {
+		gocd := gocno.ClientConn
+		mqcd = C.PMQCD(C.malloc(C.MQCD_CURRENT_LENGTH))
+		copyCDtoC(mqcd, gocd)
+		mqcno.ClientConnPtr = C.MQPTR(mqcd)
+		if gocno.Version < 2 {
+			mqcno.Version = C.MQCNO_VERSION_2
+		}
+	}
 
 	mqcno.SecurityParmsOffset = 0
 	if gocno.SecurityParms != nil {
@@ -117,6 +130,9 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 			mqcsp.CSPPasswordLength = C.MQLONG(len(gocsp.Password))
 		}
 		mqcno.SecurityParmsPtr = C.PMQCSP(mqcsp)
+		if gocno.Version < 5 {
+			mqcno.Version = C.MQCNO_VERSION_5
+		}
 
 	} else {
 		mqcno.SecurityParmsPtr = nil
@@ -143,6 +159,11 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 			C.free(unsafe.Pointer(mqcno.SecurityParmsPtr.CSPPasswordPtr))
 		}
 		C.free(unsafe.Pointer(mqcno.SecurityParmsPtr))
+	}
+
+	if mqcno.ClientConnPtr != nil {
+		copyCDfromC(C.PMQCD(mqcno.ClientConnPtr), gocno.ClientConn)
+		C.free(unsafe.Pointer(mqcno.ClientConnPtr))
 	}
 
 	if mqcno.CCDTUrlPtr != nil {
