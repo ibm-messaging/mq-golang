@@ -40,6 +40,7 @@ type MQCNO struct {
 	SecurityParms *MQCSP
 	CCDTUrl       string
 	ClientConn    *MQCD
+	SSLConfig     *MQSCO
 }
 
 /*
@@ -82,13 +83,11 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	var i int
 	var mqcsp C.PMQCSP
 	var mqcd C.PMQCD
+	var mqsco C.PMQSCO
 
 	setMQIString((*C.char)(&mqcno.StrucId[0]), "CNO ", 4)
 	mqcno.Version = C.MQLONG(gocno.Version)
 	mqcno.Options = C.MQLONG(gocno.Options)
-
-	mqcno.ClientConnOffset = 0
-	mqcno.ClientConnPtr = nil
 
 	for i = 0; i < C.MQ_CONN_TAG_LENGTH; i++ {
 		mqcno.ConnTag[i] = 0
@@ -97,26 +96,39 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcno.ConnectionId[i] = 0
 	}
 
-	mqcno.SSLConfigOffset = 0
-	mqcno.SSLConfigPtr = nil
-
+	mqcno.ClientConnOffset = 0
 	if gocno.ClientConn != nil {
 		gocd := gocno.ClientConn
-		mqcd = C.PMQCD(C.malloc(C.MQCD_CURRENT_LENGTH))
+		mqcd = C.PMQCD(C.malloc(C.MQCD_LENGTH_11))
 		copyCDtoC(mqcd, gocd)
 		mqcno.ClientConnPtr = C.MQPTR(mqcd)
 		if gocno.Version < 2 {
 			mqcno.Version = C.MQCNO_VERSION_2
 		}
+	} else {
+		mqcno.ClientConnPtr = nil
+	}
+
+	mqcno.SSLConfigOffset = 0
+	if gocno.SSLConfig != nil {
+		gosco := gocno.SSLConfig
+		mqsco = C.PMQSCO(C.malloc(C.MQSCO_LENGTH_5))
+		copySCOtoC(mqsco, gosco)
+		mqcno.SSLConfigPtr = C.PMQSCO(mqsco)
+		if gocno.Version < 4 {
+			mqcno.Version = C.MQCNO_VERSION_4
+		}
+	} else {
+		mqcno.SSLConfigPtr = nil
 	}
 
 	mqcno.SecurityParmsOffset = 0
 	if gocno.SecurityParms != nil {
 		gocsp := gocno.SecurityParms
 
-		mqcsp = C.PMQCSP(C.malloc(C.MQCSP_CURRENT_LENGTH))
+		mqcsp = C.PMQCSP(C.malloc(C.MQCSP_LENGTH_1))
 		setMQIString((*C.char)(&mqcsp.StrucId[0]), "CSP ", 4)
-		mqcsp.Version = C.MQCSP_CURRENT_VERSION
+		mqcsp.Version = C.MQCSP_VERSION_1
 		mqcsp.AuthenticationType = C.MQLONG(gocsp.AuthenticationType)
 		mqcsp.CSPUserIdOffset = 0
 		mqcsp.CSPPasswordOffset = 0
@@ -164,6 +176,11 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 	if mqcno.ClientConnPtr != nil {
 		copyCDfromC(C.PMQCD(mqcno.ClientConnPtr), gocno.ClientConn)
 		C.free(unsafe.Pointer(mqcno.ClientConnPtr))
+	}
+
+	if mqcno.SSLConfigPtr != nil {
+		copySCOfromC(C.PMQSCO(mqcno.SSLConfigPtr), gocno.SSLConfig)
+		C.free(unsafe.Pointer(mqcno.SSLConfigPtr))
 	}
 
 	if mqcno.CCDTUrlPtr != nil {

@@ -97,7 +97,7 @@ MQ_CLIENT_CONN_DEFAULT structure for consistency.
 func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 
 	setMQIString((*C.char)(&mqcd.ChannelName[0]), gocd.ChannelName, C.MQ_CHANNEL_NAME_LENGTH)
-	mqcd.Version = C.MQCD_VERSION_11
+	mqcd.Version = C.MQCD_VERSION_11 // The version this is written to match
 	mqcd.ChannelType = C.MQCHT_CLNTCONN
 	mqcd.TransportType = C.MQXPT_TCP
 	setMQIString((*C.char)(&mqcd.Desc[0]), "", C.MQ_CHANNEL_DESC_LENGTH)
@@ -139,7 +139,7 @@ func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 	mqcd.HeartbeatInterval = 1
 	mqcd.BatchInterval = 0
 	mqcd.NonPersistentMsgSpeed = C.MQNPMS_FAST
-	mqcd.StrucLength = C.MQCD_CURRENT_LENGTH
+	mqcd.StrucLength = C.MQCD_LENGTH_11
 	mqcd.ExitNameLength = C.MQ_EXIT_NAME_LENGTH
 	mqcd.ExitDataLength = C.MQ_EXIT_DATA_LENGTH
 	mqcd.MsgExitsDefined = 0

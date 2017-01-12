@@ -170,9 +170,9 @@ See the [README](cmd/mq_json/README.md) for more details.
 * Removed xxx_CURRENT_LENGTH definitions from cmqc
 
 10 Jan 2017
-* Added support for the MQCD structure to allow programmable client
-connectivity, without requiring a CCDT. See the clienttest program
-for an example of using it.
+* Added support for the MQCD and MQSCO structures to allow programmable client
+connectivity, without requiring a CCDT. See the clientconn sample program
+for an example of using the MQCD.
 * Moved sample programs into subdirectory
 
 ## Health Warning
