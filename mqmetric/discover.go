@@ -391,7 +391,7 @@ func discoverQueues(monitoredQueues string) error {
 		buf = append(cfh.Bytes(), buf...)
 
 		// And put the command to the queue
-		_, err = cmdQObj.Put(putmqmd, pmo, buf)
+		err = cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
 			log.Error(err)
@@ -409,7 +409,7 @@ func discoverQueues(monitoredQueues string) error {
 		// Ought to add a loop here in case we get truncated data
 		buf = make([]byte, 32768)
 
-		datalen, _, err = replyQObj.Get(getmqmd, gmo, buf)
+		datalen, err = replyQObj.Get(getmqmd, gmo, buf)
 		if err == nil {
 			cfh, offset := ibmmq.ReadPCFHeader(buf)
 			if cfh.CompCode != ibmmq.MQCC_OK {

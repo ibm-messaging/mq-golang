@@ -29,6 +29,8 @@ type mqExporterConfig struct {
 	monitoredQueues     string
 	monitoredQueuesFile string
 
+	metaPrefix string
+
 	cc mqmetric.ClientConfig
 
 	httpListenPort string
@@ -56,6 +58,7 @@ func initConfig() {
 	flag.StringVar(&config.replyQ, "ibmmq.replyQueue", "SYSTEM.DEFAULT.MODEL.QUEUE", "Reply Queue to collect data")
 	flag.StringVar(&config.monitoredQueues, "ibmmq.monitoredQueues", "", "Patterns of queues to monitor")
 	flag.StringVar(&config.monitoredQueuesFile, "ibmmq.monitoredQueuesFile", "", "File with patterns of queues to monitor")
+	flag.StringVar(&config.metaPrefix, "metaPrefix", "", "Override path to monitoring resource topic")
 
 	flag.BoolVar(&config.cc.ClientMode, "ibmmq.client", false, "Connect as MQ client")
 

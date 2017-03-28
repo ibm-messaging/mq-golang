@@ -59,7 +59,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 	}
 	gocno.Options |= ibmmq.MQCNO_HANDLE_SHARE_BLOCK
 
-	qMgr, _, err = ibmmq.Connx(qMgrName, gocno)
+	qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
 	}
@@ -73,7 +73,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
 
-		cmdQObj, _, err = qMgr.Open(mqod, openOptions)
+		cmdQObj, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			log.Infoln("Command queue open ok")
 		}
@@ -86,7 +86,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
-		replyQObj, _, err = qMgr.Open(mqod, openOptions)
+		replyQObj, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			queuesOpened = true
 			log.Infoln("Reply queue open ok")
@@ -143,7 +143,7 @@ be big enough for what we are expecting.
 func getMessage(wait bool) ([]byte, error) {
 	var err error
 	var datalen int
-	var mqreturn ibmmq.MQReturn
+	var mqreturn *ibmmq.MQReturn
 
 	getmqmd := ibmmq.NewMQMD()
 	gmo := ibmmq.NewMQGMO()
@@ -158,7 +158,8 @@ func getMessage(wait bool) ([]byte, error) {
 		gmo.WaitInterval = 30 * 1000
 	}
 
-	datalen, mqreturn, err = replyQObj.Get(getmqmd, gmo, getBuffer)
+	datalen, err = replyQObj.Get(getmqmd, gmo, getBuffer)
+	mqreturn = err.(*ibmmq.MQReturn)
 
 	if mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NOT_AVAILABLE ||
 		mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NAME_ERROR ||
@@ -189,7 +190,7 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 	mqsd.ObjectString = topic
 
 	log.Infof("Subscribing to topic '%s'", topic)
-	subObj, _, err := qMgr.Sub(mqsd, &replyQObj)
+	subObj, err := qMgr.Sub(mqsd, &replyQObj)
 	if err != nil {
 		log.Errorf("Error subscribing to topic '%s': %v", topic, err)
 	}

@@ -34,8 +34,8 @@ import (
    Convert MQCC/MQRC values into readable text using
    the functions introduced in cmqstrc.h in MQ V8004
 */
-func mqstrerror(verb string, mqcc C.MQLONG, mqrc C.MQLONG) error {
-	return fmt.Errorf("%s: MQCC = %s [%d] MQRC = %s [%d]", verb,
+func mqstrerror(verb string, mqcc C.MQLONG, mqrc C.MQLONG) string {
+	return fmt.Sprintf("%s: MQCC = %s [%d] MQRC = %s [%d]", verb,
 		C.GoString(C.MQCC_STR(mqcc)), mqcc,
 		C.GoString(C.MQRC_STR(mqrc)), mqrc)
 }

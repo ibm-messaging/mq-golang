@@ -4,6 +4,10 @@ This repository demonstrates how you can call IBM MQ from applications written i
 The repository also includes programs to export MQ statistics to some monitoring
 packages including Prometheus, InfluxDB and OpenTSDB.
 
+A minimum level of MQ V9 is required to build this package.
+The monitoring data published by the queue manager is not available before
+that version.
+
 ## MQI Description
 
 The ibmmq directory contains a Go package, exposing an MQI-like interface.
@@ -25,6 +29,9 @@ To use code in this repository, you will need to be able to build Go application
 have a copy of MQ installed to build against. It uses cgo to access the MQI C structures and definitions. It assumes that MQ has been
 installed in the default location on a Linux platform (/opt/mqm) but you can easily change the
 cgo directives in the source files if necessary.
+
+A minimum level of MQ V9 is required. The monitoring data published
+by the queue manager is not available before that version.
 
 Some Windows capability is also included. One constraint in the cgo package is its support
 for path names containing spaces and special characters, which makes it tricky to
@@ -174,6 +181,16 @@ See the [README](cmd/mq_json/README.md) for more details.
 connectivity, without requiring a CCDT. See the clientconn sample program
 for an example of using the MQCD.
 * Moved sample programs into subdirectory
+
+15 Feb 2017
+* API BREAKING CHANGE: The MQI verbs have been changed to return a single
+error indicator instead of two separate values. See mqitest.go for
+examples of how MQRC/MQCC codes can now be tested and extracted. This change
+makes the MQI implementation a bit more natural for Go environments.
+
+25 Mar 2017
+* Added the metaPrefix option to the Prometheus monitor. This allows selection of non-default resources such as the MQ Bridge for Salesforce included in MQ 9.0.2.
+
 
 ## Health Warning
 

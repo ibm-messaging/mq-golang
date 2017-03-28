@@ -155,6 +155,11 @@ func copyODtoC(mqod *C.MQOD, good *MQOD) {
 	} else {
 		mqod.SelectionString.VSPtr = (C.MQPTR)(C.CString(good.SelectionString))
 	}
+	if mqod.SelectionString.VSLength > 0 || mqod.ObjectString.VSLength > 0 {
+		if mqod.Version < C.MQOD_VERSION_4 {
+			mqod.Version = C.MQOD_VERSION_4
+		}
+	}
 
 	mqod.ResObjectString.VSLength = (C.MQLONG)(len(good.ResObjectString))
 	mqod.ResObjectString.VSCCSID = C.MQCCSI_APPL

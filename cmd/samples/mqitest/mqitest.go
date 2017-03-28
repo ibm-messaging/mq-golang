@@ -62,7 +62,7 @@ func main() {
 
 	qMgrName = os.Args[2]
 	connected := false
-	qMgr, mqreturn, err := ibmmq.Conn(qMgrName)
+	qMgr, err := ibmmq.Conn(qMgrName)
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -80,7 +80,7 @@ func main() {
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = os.Args[1]
 
-		qObject, mqreturn, err = qMgr.Open(mqod, openOptions)
+		qObject, err = qMgr.Open(mqod, openOptions)
 		if err != nil {
 			fmt.Println(err)
 		} else {
@@ -103,7 +103,7 @@ func main() {
 		msgData := "Hello from Go"
 		buffer := []byte(msgData)
 
-		mqreturn, err = qObject.Put(putmqmd, pmo, buffer)
+		err = qObject.Put(putmqmd, pmo, buffer)
 
 		if err != nil {
 			fmt.Println(err)
@@ -115,7 +115,7 @@ func main() {
 	// The message was put in syncpoint so it needs
 	// to be committed.
 	if err == nil {
-		mqreturn, err = qMgr.Cmit()
+		err = qMgr.Cmit()
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -136,12 +136,13 @@ func main() {
 			gmo.WaitInterval = 3000
 			buffer := make([]byte, 32768)
 
-			datalen, mqreturn, err = qObject.Get(getmqmd, gmo, buffer)
+			datalen, err = qObject.Get(getmqmd, gmo, buffer)
 
 			if err != nil {
 				msgAvail = false
 				fmt.Println(err)
-				if mqreturn.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
+				mqret := err.(*ibmmq.MQReturn)
+				if mqret.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
 					// not a real error so reset err
 					err = nil
 				}
@@ -154,7 +155,7 @@ func main() {
 
 	// MQCLOSE the queue
 	if err == nil {
-		mqreturn, err = qObject.Close(0)
+		err = qObject.Close(0)
 		if err != nil {
 			fmt.Println(err)
 		} else {
@@ -174,7 +175,7 @@ func main() {
 		mqsd.Options |= ibmmq.MQSO_MANAGED
 		mqsd.ObjectString = "$SYS/MQ/INFO/QMGR/" + qMgrName + "/ActivityTrace/ApplName/mqitest"
 
-		subObject, mqreturn, err = qMgr.Sub(mqsd, &managedQObject)
+		subObject, err = qMgr.Sub(mqsd, &managedQObject)
 
 		if err != nil {
 			fmt.Println(err)
@@ -201,12 +202,13 @@ func main() {
 			gmo.WaitInterval = 3000
 			buffer := make([]byte, 32768)
 
-			datalen, mqreturn, err = managedQObject.Get(getmqmd, gmo, buffer)
+			datalen, err = managedQObject.Get(getmqmd, gmo, buffer)
 
 			if err != nil {
 				msgAvail = false
 				fmt.Println(err)
-				if mqreturn.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
+				mqret := err.(*ibmmq.MQReturn)
+				if mqret.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
 					// not a real error so reset err, but
 					// end retrieval loop
 					err = nil
@@ -229,7 +231,7 @@ func main() {
 		mqod.ObjectType = ibmmq.MQOT_Q_MGR
 		mqod.ObjectName = ""
 
-		qMgrObject, mqreturn, err = qMgr.Open(mqod, openOptions)
+		qMgrObject, err = qMgr.Open(mqod, openOptions)
 
 		if err != nil {
 			fmt.Println(err)
@@ -243,7 +245,7 @@ func main() {
 			ibmmq.MQCA_DEAD_LETTER_Q_NAME,
 			ibmmq.MQIA_MSG_MARK_BROWSE_INTERVAL}
 
-		intAttrs, charAttrs, _, err := qMgrObject.Inq(selectors, 2, 160)
+		intAttrs, charAttrs, err := qMgrObject.Inq(selectors, 2, 160)
 
 		if err != nil {
 			fmt.Println(err)
@@ -258,10 +260,15 @@ func main() {
 
 	// MQDISC regardless of other errors
 	if connected {
-		mqreturn, err = qMgr.Disc()
+		err = qMgr.Disc()
 		fmt.Println("Disconnected from queue manager ", qMgrName)
 	}
 
-	os.Exit((int)(mqreturn.MQCC))
+	if err == nil {
+		os.Exit(0)
+	} else {
+		mqret := err.(*ibmmq.MQReturn)
+		os.Exit((int)(mqret.MQCC))
+	}
 
 }

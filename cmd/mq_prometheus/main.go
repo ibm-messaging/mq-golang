@@ -56,7 +56,13 @@ func main() {
 	// What metrics can the queue manager provide? Find out, and
 	// subscribe.
 	if err == nil {
-		err = mqmetric.DiscoverAndSubscribe(config.monitoredQueues, true, "")
+		// Do we need to expand wildcarded queue names
+		// or use the wildcard as-is in the subscriptions
+		wildcardResource := true
+		if config.metaPrefix != "" {
+			wildcardResource = false
+		}
+		err = mqmetric.DiscoverAndSubscribe(config.monitoredQueues, wildcardResource, config.metaPrefix)
 	}
 
 	// Once everything has been discovered, and the subscriptions
