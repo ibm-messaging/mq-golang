@@ -37,3 +37,6 @@ scrape_configs:
 
     static_configs:
        - targets: ['hostname.example.com:9157']
+  # targets: ['hostname.example.com:9157','hostname.example.com:9158'] is
+  # the syntax if you want to have several prometheus monitors on the same
+  # box.
