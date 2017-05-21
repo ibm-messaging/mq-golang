@@ -6,7 +6,8 @@ packages including Prometheus, InfluxDB and OpenTSDB.
 
 A minimum level of MQ V9 is required to build this package.
 The monitoring data published by the queue manager is not available before
-that version.
+that version; the interface also assumes availability of 
+MQI structures from that level of MQ.
 
 ## MQI Description
 
@@ -30,10 +31,7 @@ have a copy of MQ installed to build against. It uses cgo to access the MQI C st
 installed in the default location on a Linux platform (/opt/mqm) but you can easily change the
 cgo directives in the source files if necessary.
 
-A minimum level of MQ V9 is required. The monitoring data published
-by the queue manager is not available before that version.
-
-Some Windows capability is also included. One constraint in the cgo package is its support
+Some Windows capability is also included. One constraint in the cgo package is its (lack of) support
 for path names containing spaces and special characters, which makes it tricky to
 compile against a copy of MQ installed in the regular location. To build these packages I copied
 <mq install>/tools/c/include and <mq install>/bin64 to be under a temporary directory, shown
@@ -191,13 +189,17 @@ makes the MQI implementation a bit more natural for Go environments.
 25 Mar 2017
 * Added the metaPrefix option to the Prometheus monitor. This allows selection of non-default resources such as the MQ Bridge for Salesforce included in MQ 9.0.2.
 
+18 May 2017
+* Added the V9.0.3 constant definitions.
+* Reinstated 64-bit structure "length" fields in 
+cmqc.go after fixing a bug in the base product C source code generator.
 
 ## Health Warning
 
 This package is provided as-is with no guarantees of support or updates. There are also no guarantees of compatibility
 with any future versions of the package; the API is subject to change based on any feedback.
 
-##Issues and Contributions
+## Issues and Contributions
 
 For feedback and issues relating specifically to this package, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-golang/issues).
 
