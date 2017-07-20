@@ -17,6 +17,10 @@ the particular MQRC or MQCC values.
 The build directives for Windows assume the header and library files have
 been copied to a temporary location, because the default paths are not
 acceptable to Go (it does not like spaces or special characters like ~).
+Note: This problem appears to have been fixed in Go 1.9, and once that
+is fully available, the directives will be changed to a more reasonable
+path in this file. For example
+    cgo windows CFLAGS -I"c:/Program Files/IBM/MQ/tools/c/include" -m64
 
 The build directives for Linux assume the default MQ installation path
 in /opt/mqm. These would need to be changed in this file if you use a

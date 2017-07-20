@@ -35,7 +35,9 @@ Some Windows capability is also included. One constraint in the cgo package is i
 for path names containing spaces and special characters, which makes it tricky to
 compile against a copy of MQ installed in the regular location. To build these packages I copied
 <mq install>/tools/c/include and <mq install>/bin64 to be under a temporary directory, shown
-in the CFLAGS and LDFLAGS directives.
+in the CFLAGS and LDFLAGS directives. This constraint seems to be removed
+in the Go 1.9 compiler; once that has reached a general availability level,  
+I'll update this package to use standard MQ install paths.
 
 ## Getting started
 
