@@ -161,6 +161,8 @@ func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 	C.memset((unsafe.Pointer)(&mqcd.MCASecurityId[0]), 0, C.MQ_SECURITY_ID_LENGTH)
 	C.memset((unsafe.Pointer)(&mqcd.RemoteSecurityId[0]), 0, C.MQ_SECURITY_ID_LENGTH)
 	setMQIString((*C.char)(&mqcd.SSLCipherSpec[0]), gocd.SSLCipherSpec, C.MQ_SSL_CIPHER_SPEC_LENGTH)
+	mqcd.SSLPeerNamePtr = C.MQPTR(nil)
+	mqcd.SSLPeerNameLength = 0
 	if gocd.SSLPeerName != "" {
 		mqcd.SSLPeerNamePtr = C.MQPTR(unsafe.Pointer(C.CString(gocd.SSLPeerName)))
 		mqcd.SSLPeerNameLength = C.MQLONG(len(gocd.SSLPeerName))
