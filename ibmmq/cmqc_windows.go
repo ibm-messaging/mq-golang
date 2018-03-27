@@ -1,6 +1,7 @@
 package ibmmq
 
 /*
+<<<<<<< HEAD
 ****************************************************************
 *
 *                     IBM MQ for Windows
@@ -36,6 +37,13 @@ package ibmmq
 *  Pointer Size:  64 Bit
 *  <END_BUILDINFO>
  */
+=======
+This file was generated from ./cmqstrc.h.903.amd64_nt_4 using
+the hdr.sh script.
+It is used for 64-bit applications.
+*/
+
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 var (
 	MQACH_CURRENT_LENGTH           int32 = 72
 	MQACH_CURRENT_VERSION          int32 = 1
@@ -723,6 +731,7 @@ var (
 	MQCDC_CURRENT_LENGTH           int32 = 1984
 	MQCDC_CURRENT_VERSION          int32 = 11
 	MQCDC_LENGTH_1                 int32 = 984
+<<<<<<< HEAD
 	MQCDC_LENGTH_10                int32 = 1920
 	MQCDC_LENGTH_11                int32 = 1984
 	MQCDC_LENGTH_2                 int32 = 1312
@@ -733,6 +742,10 @@ var (
 	MQCDC_LENGTH_7                 int32 = 1792
 	MQCDC_LENGTH_8                 int32 = 1888
 	MQCDC_LENGTH_9                 int32 = 1912
+=======
+	MQCDC_LENGTH_2                 int32 = 1312
+	MQCDC_LENGTH_3                 int32 = 1480
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQCDC_NO_SENDER_CONVERSION     int32 = 0
 	MQCDC_SENDER_CONVERSION        int32 = 1
 	MQCDC_VERSION_1                int32 = 1
@@ -749,6 +762,7 @@ var (
 	MQCD_CURRENT_LENGTH            int32 = 1984
 	MQCD_CURRENT_VERSION           int32 = 11
 	MQCD_LENGTH_1                  int32 = 984
+<<<<<<< HEAD
 	MQCD_LENGTH_10                 int32 = 1920
 	MQCD_LENGTH_11                 int32 = 1984
 	MQCD_LENGTH_2                  int32 = 1312
@@ -759,6 +773,10 @@ var (
 	MQCD_LENGTH_7                  int32 = 1792
 	MQCD_LENGTH_8                  int32 = 1888
 	MQCD_LENGTH_9                  int32 = 1912
+=======
+	MQCD_LENGTH_2                  int32 = 1312
+	MQCD_LENGTH_3                  int32 = 1480
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQCD_VERSION_1                 int32 = 1
 	MQCD_VERSION_10                int32 = 10
 	MQCD_VERSION_11                int32 = 11
@@ -979,7 +997,11 @@ var (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32 = 17
 	MQCMDI_SEC_TIMER_ZERO          int32 = 14
 	MQCMDI_SEC_UPPERCASE           int32 = 21
+<<<<<<< HEAD
 	MQCMDL_CURRENT_LEVEL           int32 = 905
+=======
+	MQCMDL_CURRENT_LEVEL           int32 = 903
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQCMDL_LEVEL_1                 int32 = 100
 	MQCMDL_LEVEL_101               int32 = 101
 	MQCMDL_LEVEL_110               int32 = 110
@@ -1012,8 +1034,11 @@ var (
 	MQCMDL_LEVEL_901               int32 = 901
 	MQCMDL_LEVEL_902               int32 = 902
 	MQCMDL_LEVEL_903               int32 = 903
+<<<<<<< HEAD
 	MQCMDL_LEVEL_904               int32 = 904
 	MQCMDL_LEVEL_905               int32 = 905
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQCMD_ACCOUNTING_MQI           int32 = 167
 	MQCMD_ACCOUNTING_Q             int32 = 168
 	MQCMD_ACTIVITY_MSG             int32 = 69
@@ -1232,11 +1257,14 @@ var (
 	MQCNO_HANDLE_SHARE_NO_BLOCK    int32 = 128
 	MQCNO_ISOLATED_BINDING         int32 = 512
 	MQCNO_LENGTH_1                 int32 = 12
+<<<<<<< HEAD
 	MQCNO_LENGTH_2                 int32 = 24
 	MQCNO_LENGTH_3                 int32 = 152
 	MQCNO_LENGTH_4                 int32 = 168
 	MQCNO_LENGTH_5                 int32 = 200
 	MQCNO_LENGTH_6                 int32 = 224
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQCNO_LOCAL_BINDING            int32 = 1024
 	MQCNO_NONE                     int32 = 0
 	MQCNO_NO_CONV_SHARING          int32 = 65536
@@ -1331,10 +1359,13 @@ var (
 	MQCXP_LENGTH_3                 int32 = 156
 	MQCXP_LENGTH_4                 int32 = 156
 	MQCXP_LENGTH_5                 int32 = 160
+<<<<<<< HEAD
 	MQCXP_LENGTH_6                 int32 = 200
 	MQCXP_LENGTH_7                 int32 = 208
 	MQCXP_LENGTH_8                 int32 = 224
 	MQCXP_LENGTH_9                 int32 = 240
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQCXP_VERSION_1                int32 = 1
 	MQCXP_VERSION_2                int32 = 2
 	MQCXP_VERSION_3                int32 = 3
@@ -1415,7 +1446,10 @@ var (
 	MQDXP_CURRENT_LENGTH           int32 = 56
 	MQDXP_CURRENT_VERSION          int32 = 2
 	MQDXP_LENGTH_1                 int32 = 44
+<<<<<<< HEAD
 	MQDXP_LENGTH_2                 int32 = 56
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQDXP_VERSION_1                int32 = 1
 	MQDXP_VERSION_2                int32 = 2
 	MQEC_CONNECTION_QUIESCING      int32 = 6
@@ -2393,7 +2427,11 @@ var (
 	MQIA_IP_ADDRESS_VERSION        int32 = 93
 	MQIA_KEY_REUSE_COUNT           int32 = 267
 	MQIA_LAST                      int32 = 2000
+<<<<<<< HEAD
 	MQIA_LAST_USED                 int32 = 273
+=======
+	MQIA_LAST_USED                 int32 = 272
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQIA_LDAP_AUTHORMD             int32 = 263
 	MQIA_LDAP_NESTGRP              int32 = 264
 	MQIA_LDAP_SECURE_COMM          int32 = 261
@@ -2781,9 +2819,12 @@ var (
 	MQOD_CURRENT_LENGTH            int32 = 424
 	MQOD_CURRENT_VERSION           int32 = 4
 	MQOD_LENGTH_1                  int32 = 168
+<<<<<<< HEAD
 	MQOD_LENGTH_2                  int32 = 208
 	MQOD_LENGTH_3                  int32 = 344
 	MQOD_LENGTH_4                  int32 = 424
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQOD_VERSION_1                 int32 = 1
 	MQOD_VERSION_2                 int32 = 2
 	MQOD_VERSION_3                 int32 = 3
@@ -2931,8 +2972,11 @@ var (
 	MQPMO_DEFAULT_CONTEXT          int32 = 32
 	MQPMO_FAIL_IF_QUIESCING        int32 = 8192
 	MQPMO_LENGTH_1                 int32 = 128
+<<<<<<< HEAD
 	MQPMO_LENGTH_2                 int32 = 160
 	MQPMO_LENGTH_3                 int32 = 184
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQPMO_LOGICAL_ORDER            int32 = 32768
 	MQPMO_MD_FOR_OUTPUT_ONLY       int32 = 8388608
 	MQPMO_NEW_CORREL_ID            int32 = 128
@@ -4281,7 +4325,10 @@ var (
 	MQSTS_CURRENT_LENGTH           int32 = 280
 	MQSTS_CURRENT_VERSION          int32 = 2
 	MQSTS_LENGTH_1                 int32 = 224
+<<<<<<< HEAD
 	MQSTS_LENGTH_2                 int32 = 280
+=======
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	MQSTS_VERSION_1                int32 = 1
 	MQSTS_VERSION_2                int32 = 2
 	MQSUBTYPE_ADMIN                int32 = 2

@@ -200,7 +200,11 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 		gmo.WaitInterval = 30 * 1000
 	}
 
+<<<<<<< HEAD
 	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
+=======
+	datalen, err = replyQObj.Get(getmqmd, gmo, getBuffer)
+>>>>>>> c44b74e0cfbde3afbbf7bc3ac939a9bdf757db2e
 	if err != nil {
 		mqreturn = err.(*ibmmq.MQReturn)
 
