@@ -22,4 +22,4 @@ queues="#,/topic/PT1,/topic/PT2,/event/PE2__e,/event/PE1__e"
 # to kill it on shutdown.
 # Need to specify an HTTP port that is not currently used. The default 9157 may
 # be used by the collector accessing queue manager resource statistics.
-exec /usr/local/bin/mqgo/mq_prometheus -ibmmq.queueManager=$qMgr -ibmmq.monitoredQueues="$queues" -log.level=error -metaPrefix="\$SYS/Application/runmqsfb" -ibmmq.httpListenPort=9158
+exec /usr/local/bin/mqgo/mq_prometheus -ibmmq.queueManager=$qMgr -ibmmq.monitoredQueues="$queues" -log.level=error -metaPrefix="\$SYS/Application/runmqsfb" -ibmmq.httpListenPort=9158 -namespace=ibmmqsf

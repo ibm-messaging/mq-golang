@@ -49,10 +49,6 @@ var (
 	gaugeMap = make(map[string]*prometheus.GaugeVec)
 )
 
-const (
-	namespace = "ibmmq"
-)
-
 /*
 Describe is called by Prometheus on startup of this monitor. It needs to tell
 the caller about all of the available metrics.
@@ -185,7 +181,7 @@ func newMqGaugeVec(elem *mqmetric.MonElement) *prometheus.GaugeVec {
 
 	gaugeVec := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: config.namespace,
 			Name:      prefix + elem.MetricName,
 			Help:      elem.Description,
 		},
@@ -195,3 +191,29 @@ func newMqGaugeVec(elem *mqmetric.MonElement) *prometheus.GaugeVec {
 	log.Infof("Created gauge for %s", elem.MetricName)
 	return gaugeVec
 }
+
+/*
+newMqGaugeVec returns the structure which will contain the
+values and suitable labels. For queues we tag each entry
+with both the queue and qmgr name; for the qmgr-wide entries, we
+only need the single label.
+*/
+
+// TODO: Finish this
+/*
+func newMqGaugeVecChl(elem *ibmmq.Statistic) *prometheus.GaugeVec {
+        prefix := "channel_"
+
+        gaugeVec := prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Namespace: config.namespace,
+                        Name:      prefix + elem.MetricName,
+                        Help:      elem.Description,
+                },
+                labels,
+        )
+
+        log.Infof("Created gauge for %s", elem.MetricName)
+        return gaugeVec
+}
+*/

@@ -32,7 +32,6 @@ import "bytes"
 MQGMO is a structure containing the MQ Get Message Options (MQGMO)
 */
 type MQGMO struct {
-	StrucId        string
 	Version        int32
 	Options        int32
 	WaitInterval   int32
@@ -56,7 +55,6 @@ NewMQGMO fills in default values for the MQGMO structure
 func NewMQGMO() *MQGMO {
 
 	gmo := new(MQGMO)
-	gmo.StrucId = "GMO "
 	gmo.Version = int32(C.MQGMO_VERSION_1)
 	gmo.Options = int32(C.MQGMO_NO_WAIT + C.MQGMO_PROPERTIES_AS_Q_DEF)
 	gmo.WaitInterval = int32(C.MQWI_UNLIMITED)
@@ -79,7 +77,7 @@ func NewMQGMO() *MQGMO {
 func copyGMOtoC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	var i int
 
-	setMQIString((*C.char)(&mqgmo.StrucId[0]), gogmo.StrucId, 4)
+	setMQIString((*C.char)(&mqgmo.StrucId[0]), "GMO ", 4)
 	mqgmo.Version = C.MQLONG(gogmo.Version)
 	mqgmo.Options = C.MQLONG(gogmo.Options)
 	mqgmo.WaitInterval = C.MQLONG(gogmo.WaitInterval)
@@ -103,7 +101,6 @@ func copyGMOtoC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 func copyGMOfromC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	var i int
 
-	gogmo.StrucId = C.GoStringN((*C.char)(&mqgmo.StrucId[0]), 4)
 	gogmo.Version = int32(mqgmo.Version)
 	gogmo.Options = int32(mqgmo.Options)
 	gogmo.WaitInterval = int32(mqgmo.WaitInterval)

@@ -17,6 +17,10 @@ the particular MQRC or MQCC values.
 The build directives for Windows assume the header and library files have
 been copied to a temporary location, because the default paths are not
 acceptable to Go (it does not like spaces or special characters like ~).
+Note: This problem appears to have been fixed in Go 1.9, and once that
+is fully available, the directives will be changed to a more reasonable
+path in this file. For example
+    cgo windows CFLAGS -I"c:/Program Files/IBM/MQ/tools/c/include" -m64
 
 The build directives for Linux assume the default MQ installation path
 in /opt/mqm. These would need to be changed in this file if you use a
@@ -44,9 +48,9 @@ package ibmmq
 
 /*
 #cgo !windows CFLAGS: -I/opt/mqm/inc -D_REENTRANT
-#cgo windows CFLAGS:  -IC:/temp/mq/include -m64
+#cgo windows CFLAGS:  -I"C:/Program Files/IBM/MQ/Tools/c/include"
 #cgo !windows LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -Wl,-rpath=/opt/mqm/lib64 -Wl,-rpath=/usr/lib64
-#cgo windows LDFLAGS: -L "C:/temp/mq/bin64" -lmqm -m64
+#cgo windows LDFLAGS: -L "C:/Program Files/IBM/MQ/bin64" -lmqm
 
 #include <stdlib.h>
 #include <string.h>
@@ -156,6 +160,11 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 		// be shareable.
 		gocno = NewMQCNO()
 		gocno.Options = MQCNO_HANDLE_SHARE_NO_BLOCK
+	} else {
+		if (gocno.Options & (MQCNO_HANDLE_SHARE_NO_BLOCK |
+			MQCNO_HANDLE_SHARE_BLOCK)) == 0 {
+			gocno.Options |= MQCNO_HANDLE_SHARE_NO_BLOCK
+		}
 	}
 	copyCNOtoC(&mqcno, gocno)
 

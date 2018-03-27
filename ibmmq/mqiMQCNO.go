@@ -134,6 +134,7 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcsp.CSPPasswordOffset = 0
 
 		if gocsp.UserId != "" {
+			mqcsp.AuthenticationType = C.MQLONG(C.MQCSP_AUTH_USER_ID_AND_PWD)
 			mqcsp.CSPUserIdPtr = C.MQPTR(unsafe.Pointer(C.CString(gocsp.UserId)))
 			mqcsp.CSPUserIdLength = C.MQLONG(len(gocsp.UserId))
 		}
@@ -167,7 +168,9 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		if mqcno.SecurityParmsPtr.CSPUserIdPtr != nil {
 			C.free(unsafe.Pointer(mqcno.SecurityParmsPtr.CSPUserIdPtr))
 		}
+		// Set memory to 0 for area that held a password
 		if mqcno.SecurityParmsPtr.CSPPasswordPtr != nil {
+			C.memset((unsafe.Pointer)(mqcno.SecurityParmsPtr.CSPPasswordPtr), 0, C.size_t(mqcno.SecurityParmsPtr.CSPPasswordLength))
 			C.free(unsafe.Pointer(mqcno.SecurityParmsPtr.CSPPasswordPtr))
 		}
 		C.free(unsafe.Pointer(mqcno.SecurityParmsPtr))

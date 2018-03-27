@@ -33,7 +33,7 @@ type mqOpenTSDBConfig struct {
 	monitoredQueues     string
 	monitoredQueuesFile string
 
-	cc mqmetric.ClientConfig
+	cc mqmetric.ConnectionConfig
 
 	databaseName    string
 	databaseAddress string

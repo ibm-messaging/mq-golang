@@ -31,7 +31,6 @@ import "C"
 MQPMO is a structure containing the MQ Put MessageOptions (MQPMO)
 */
 type MQPMO struct {
-	StrucId           string
 	Version           int32
 	Options           int32
 	Timeout           int32
@@ -60,7 +59,6 @@ NewMQPMO fills in default values for the MQPMO structure
 func NewMQPMO() *MQPMO {
 
 	pmo := new(MQPMO)
-	pmo.StrucId = "PMO "
 
 	pmo.Version = int32(C.MQPMO_VERSION_1)
 	pmo.Options = int32(C.MQPMO_NONE)
@@ -88,7 +86,7 @@ func NewMQPMO() *MQPMO {
 
 func copyPMOtoC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 
-	setMQIString((*C.char)(&mqpmo.StrucId[0]), gopmo.StrucId, 4)
+	setMQIString((*C.char)(&mqpmo.StrucId[0]), "PMO ", 4)
 	mqpmo.Version = C.MQLONG(gopmo.Version)
 
 	mqpmo.Options = C.MQLONG(gopmo.Options)
@@ -118,7 +116,6 @@ func copyPMOtoC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 
 func copyPMOfromC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 
-	gopmo.StrucId = C.GoStringN((*C.char)(&mqpmo.StrucId[0]), 4)
 	gopmo.Version = int32(mqpmo.Version)
 
 	gopmo.Options = int32(mqpmo.Options)

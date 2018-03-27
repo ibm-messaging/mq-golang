@@ -33,7 +33,7 @@ type mqCloudWatchConfig struct {
 
 	namespace string
 
-	cc mqmetric.ClientConfig
+	cc mqmetric.ConnectionConfig
 
 	interval  string
 	maxErrors int

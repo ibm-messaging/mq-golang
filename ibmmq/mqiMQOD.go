@@ -36,7 +36,6 @@ import (
 MQOD is a structure containing the MQ Object Descriptor (MQOD)
 */
 type MQOD struct {
-	StrucId         string
 	Version         int32
 	ObjectType      int32
 	ObjectName      string
@@ -70,7 +69,6 @@ NewMQOD fills in default values for the MQOD structure
 func NewMQOD() *MQOD {
 
 	od := new(MQOD)
-	od.StrucId = "OD  "
 	od.Version = 1
 	od.ObjectType = C.MQOT_Q
 	od.ObjectName = ""
@@ -113,7 +111,7 @@ func NewMQOD() *MQOD {
 func copyODtoC(mqod *C.MQOD, good *MQOD) {
 	var i int
 	const vsbufsize = 10240
-	setMQIString((*C.char)(&mqod.StrucId[0]), good.StrucId, 4)
+	setMQIString((*C.char)(&mqod.StrucId[0]), "OD  ", 4)
 	mqod.Version = C.MQLONG(good.Version)
 	mqod.ObjectType = C.MQLONG(good.ObjectType)
 	setMQIString((*C.char)(&mqod.ObjectName[0]), good.ObjectName, C.MQ_OBJECT_NAME_LENGTH)
@@ -178,7 +176,6 @@ func copyODtoC(mqod *C.MQOD, good *MQOD) {
 func copyODfromC(mqod *C.MQOD, good *MQOD) {
 	var i int
 
-	good.StrucId = C.GoStringN((*C.char)(&mqod.StrucId[0]), 4)
 	good.Version = int32(mqod.Version)
 	good.ObjectType = int32(mqod.ObjectType)
 	good.ObjectName = C.GoStringN((*C.char)(&mqod.ObjectName[0]), C.MQ_OBJECT_NAME_LENGTH)

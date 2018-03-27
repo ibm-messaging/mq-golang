@@ -264,7 +264,7 @@ func discoverElements(ty *MonType) error {
 				}
 			}
 
-			elem.MetricName = formatDescription(elem)
+			elem.MetricName = formatDescriptionElem(elem)
 			ty.Elements[elementIndex] = elem
 		}
 	}
@@ -588,7 +588,11 @@ func ProcessPublications() {
 				}
 			}
 		} else {
-			log.Debugf("getMessage returned %v", err)
+			mqreturn := err.(*ibmmq.MQReturn)
+			// Printing this for 2033 is excessive, even in debug
+			if mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+				log.Debugf("getMessage returned %v", err)
+			}
 		}
 
 	}
@@ -656,9 +660,23 @@ bytes etc), and organisation of the elements of the name (units last)
 While we can't change the MQ-generated descriptions for its statistics,
 we can reformat most of them heuristically here.
 */
-func formatDescription(elem *MonElement) string {
-	s := elem.Description
+func formatDescriptionElem(elem *MonElement) string {
+	s := formatDescription(elem.Description)
 
+	unit := ""
+	switch elem.Datatype {
+	case ibmmq.MQIAMO_MONITOR_MICROSEC:
+		// Although the qmgr captures in us, we convert when
+		// pushing out to the backend, so this label needs to match
+		unit = "_seconds"
+	}
+	s += unit
+
+	return s
+}
+
+func formatDescription(baseName string) string {
+	s := baseName
 	s = strings.Replace(s, " ", "_", -1)
 	s = strings.Replace(s, "/", "_", -1)
 	s = strings.Replace(s, "-", "_", -1)
@@ -695,16 +713,6 @@ func formatDescription(elem *MonElement) string {
 		s = strings.Replace(s, "_percentage_", "_", -1)
 		s += "_percentage"
 	}
-
-	unit := ""
-	switch elem.Datatype {
-	case ibmmq.MQIAMO_MONITOR_MICROSEC:
-		// Although the qmgr captures in us, we convert when
-		// pushing out to the backend, so this label needs to match
-		unit = "_seconds"
-	}
-
-	s += unit
 
 	return s
 }

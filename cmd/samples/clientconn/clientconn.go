@@ -88,7 +88,7 @@ func main() {
 		csp.AuthenticationType = ibmmq.MQCSP_AUTH_USER_ID_AND_PWD
 		csp.UserId = userId
 
-		fmt.Println("Enter password : ")
+		fmt.Printf("Enter password for qmgr %s: \n", qMgrName)
 		scanner.Scan()
 		csp.Password = scanner.Text()
 

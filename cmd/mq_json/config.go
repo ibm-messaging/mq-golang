@@ -29,7 +29,7 @@ type mqTTYConfig struct {
 	monitoredQueues     string
 	monitoredQueuesFile string
 
-	cc mqmetric.ClientConfig
+	cc mqmetric.ConnectionConfig
 
 	interval string
 

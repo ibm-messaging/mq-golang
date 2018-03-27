@@ -36,7 +36,6 @@ import (
 MQSD is a structure containing the MQ Subscription Descriptor (MQSD)
 */
 type MQSD struct {
-	StrucId string
 	Version int32
 	Options int32
 
@@ -66,7 +65,6 @@ func NewMQSD() *MQSD {
 
 	sd := new(MQSD)
 
-	sd.StrucId = "SD  "
 	sd.Version = int32(C.MQSD_VERSION_1)
 	sd.Options = 0
 
@@ -106,7 +104,7 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 	var i int
 	const vsbufsize = 10240
 
-	setMQIString((*C.char)(&mqsd.StrucId[0]), gosd.StrucId, 4)
+	setMQIString((*C.char)(&mqsd.StrucId[0]), "SD  ", 4)
 	mqsd.Version = C.MQLONG(gosd.Version)
 	mqsd.Options = C.MQLONG(gosd.Options)
 
@@ -179,7 +177,6 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 
 func copySDfromC(mqsd *C.MQSD, gosd *MQSD) {
 	var i int
-	gosd.StrucId = C.GoStringN((*C.char)(&mqsd.StrucId[0]), 4)
 	gosd.Version = int32(mqsd.Version)
 	gosd.Options = int32(mqsd.Options)
 

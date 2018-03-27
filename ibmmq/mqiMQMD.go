@@ -35,7 +35,6 @@ import (
 MQMD is a structure containing the MQ Message Descriptor (MQMD)
 */
 type MQMD struct {
-	StrucId          string
 	Version          int32
 	Report           int32
 	MsgType          int32
@@ -71,7 +70,6 @@ NewMQMD fills in default values for the MQMD structure
 */
 func NewMQMD() *MQMD {
 	md := new(MQMD)
-	md.StrucId = "MD  "
 	md.Version = int32(C.MQMD_VERSION_1)
 	md.Report = int32(C.MQRO_NONE)
 	md.MsgType = int32(C.MQMT_DATAGRAM)
@@ -106,7 +104,7 @@ func NewMQMD() *MQMD {
 
 func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 	var i int
-	setMQIString((*C.char)(&mqmd.StrucId[0]), gomd.StrucId, 4)
+	setMQIString((*C.char)(&mqmd.StrucId[0]), "MD  ", 4)
 	mqmd.Version = C.MQLONG(gomd.Version)
 	mqmd.Report = C.MQLONG(gomd.Report)
 	mqmd.MsgType = C.MQLONG(gomd.MsgType)
@@ -153,7 +151,6 @@ func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 
 func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 	var i int
-	gomd.StrucId = C.GoStringN((*C.char)(&mqmd.StrucId[0]), 4)
 	gomd.Version = int32(mqmd.Version)
 	gomd.Report = int32(mqmd.Report)
 	gomd.MsgType = int32(mqmd.MsgType)

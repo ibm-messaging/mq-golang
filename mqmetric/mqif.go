@@ -32,25 +32,38 @@ var (
 	qMgr      ibmmq.MQQueueManager
 	cmdQObj   ibmmq.MQObject
 	replyQObj ibmmq.MQObject
+	statsQObj ibmmq.MQObject
 	getBuffer = make([]byte, 32768)
 
-	qmgrConnected = false
-	queuesOpened  = false
-	subsOpened    = false
+	qmgrConnected     = false
+	queuesOpened      = false
+	statsQueuesOpened = false
+	subsOpened        = false
 )
 
-type ClientConfig struct {
+type ConnectionConfig struct {
 	ClientMode bool
+	UserId     string
+	Password   string
 }
 
 /*
-InitConnection connects to the queuemanager, and then
+InitConnection connects to the queue manager, and then
 opens both the command queue and a dynamic reply queue
 to be used for all responses including the publications
 */
-func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
+func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error {
+	return InitConnectionStats(qMgrName, replyQ, "", cc)
+}
+
+/*
+InitConnectionStats is the same as InitConnection with the addition
+of a call to open the queue manager statistics queue.
+*/
+func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *ConnectionConfig) error {
 	var err error
 	gocno := ibmmq.NewMQCNO()
+	gocsp := ibmmq.NewMQCSP()
 
 	if cc.ClientMode {
 		gocno.Options = ibmmq.MQCNO_CLIENT_BINDING
@@ -58,6 +71,14 @@ func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 		gocno.Options = ibmmq.MQCNO_LOCAL_BINDING
 	}
 	gocno.Options |= ibmmq.MQCNO_HANDLE_SHARE_BLOCK
+
+	if cc.Password != "" {
+		gocsp.Password = cc.Password
+	}
+	if cc.UserId != "" {
+		gocsp.UserId = cc.UserId
+		gocno.SecurityParms = gocsp
+	}
 
 	qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
@@ -78,6 +99,19 @@ func InitConnection(qMgrName string, replyQ string, cc *ClientConfig) error {
 			log.Infoln("Command queue open ok")
 		}
 
+	}
+
+	// MQOPEN of the statistics queue
+	if err == nil && statsQ != "" {
+		mqod := ibmmq.NewMQOD()
+		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
+		mqod.ObjectType = ibmmq.MQOT_Q
+		mqod.ObjectName = statsQ
+		statsQObj, err = qMgr.Open(mqod, openOptions)
+		if err == nil {
+			statsQueuesOpened = true
+			log.Infoln("Stats queue open ok")
+		}
 	}
 
 	// MQOPEN of a reply queue
@@ -123,6 +157,10 @@ func EndConnection() {
 		replyQObj.Close(0)
 	}
 
+	if statsQueuesOpened {
+		statsQObj.Close(0)
+	}
+
 	// MQDISC regardless of other errors
 	if qmgrConnected {
 		qMgr.Disc()
@@ -141,6 +179,10 @@ A 32K buffer was created at the top of this file, and should always
 be big enough for what we are expecting.
 */
 func getMessage(wait bool) ([]byte, error) {
+	return getMessageWithHObj(wait, replyQObj)
+}
+
+func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 	var err error
 	var datalen int
 	var mqreturn *ibmmq.MQReturn
@@ -158,16 +200,18 @@ func getMessage(wait bool) ([]byte, error) {
 		gmo.WaitInterval = 30 * 1000
 	}
 
-	datalen, err = replyQObj.Get(getmqmd, gmo, getBuffer)
-	mqreturn = err.(*ibmmq.MQReturn)
+	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
+	if err != nil {
+		mqreturn = err.(*ibmmq.MQReturn)
 
-	if mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NOT_AVAILABLE ||
-		mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NAME_ERROR ||
-		mqreturn.MQRC == ibmmq.MQRC_Q_MGR_QUIESCING {
-		log.Fatal("Queue Manager error: ", err)
-	}
-	if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-		log.Error("Get message: ", err)
+		if mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NOT_AVAILABLE ||
+			mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NAME_ERROR ||
+			mqreturn.MQRC == ibmmq.MQRC_Q_MGR_QUIESCING {
+			log.Fatal("Queue Manager error: ", err)
+		}
+		if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+			log.Error("Get message: ", err)
+		}
 	}
 
 	return getBuffer[0:datalen], err

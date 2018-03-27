@@ -32,7 +32,7 @@ type mqTTYConfig struct {
 	hostname            string
 	hostlabel           string // Used in the output string
 
-	cc mqmetric.ClientConfig
+	cc mqmetric.ConnectionConfig
 
 	interval string
 

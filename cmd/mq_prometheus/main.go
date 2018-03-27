@@ -47,7 +47,7 @@ func main() {
 	log.Infoln("Starting IBM MQ metrics exporter for Prometheus monitoring")
 
 	// Connect and open standard queues
-	err = mqmetric.InitConnection(config.qMgrName, config.replyQ, &config.cc)
+	err = mqmetric.InitConnectionStats(config.qMgrName, config.replyQ, config.statisticsQueueName, &config.cc)
 	if err == nil {
 		log.Infoln("Connected to queue manager ", config.qMgrName)
 		defer mqmetric.EndConnection()
@@ -69,6 +69,12 @@ func main() {
 	// created, allocate the Prometheus gauges for each resource
 	if err == nil {
 		allocateGauges()
+	}
+
+	// TODO: continue with the channel stat collection
+	if err == nil && config.statisticsQueueName != "" {
+		mqmetric.InitChlStatistics()
+		//allocateChlGauges()
 	}
 
 	// Go into main loop for handling requests from Prometheus
