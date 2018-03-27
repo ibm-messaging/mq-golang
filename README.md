@@ -122,7 +122,7 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 
 ## History
 
-See [CHANGES](https://github.com/ibm-messaging/mq-golang/CHANGES.md).
+See CHANGES.md in this directory.
 
 ## Health Warning
 
