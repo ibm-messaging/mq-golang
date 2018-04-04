@@ -72,10 +72,10 @@ func main() {
 	}
 
 	// TODO: continue with the channel stat collection
-	if err == nil && config.statisticsQueueName != "" {
-		mqmetric.InitChlStatistics()
-		//allocateChlGauges()
-	}
+	//if err == nil && config.statisticsQueueName != "" {
+	//	mqmetric.InitChlStatistics()
+	//allocateChlGauges()
+	//}
 
 	// Go into main loop for handling requests from Prometheus
 	if err == nil {

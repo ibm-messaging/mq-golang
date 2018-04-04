@@ -122,7 +122,7 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 
 ## History
 
-See CHANGES.md in this directory.
+See [CHANGES](CHANGES.md) in this directory.
 
 ## Health Warning
 
@@ -134,6 +134,6 @@ with any future versions of the package; the API is subject to change based on a
 For feedback and issues relating specifically to this package, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-golang/issues).
 
 Contributions to this package can be accepted under the terms of the IBM Contributor License Agreement,
-found in the file CLA.md of this repository. When submitting a pull request, you must include a statement stating
-you accept the terms in CLA.md.
+found in the [CLA file](CLA.md) of this repository. When submitting a pull request, you must include a statement stating
+you accept the terms in the CLA.
 
