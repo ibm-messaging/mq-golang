@@ -84,7 +84,7 @@ func initConfig() {
 	flag.StringVar(&config.httpMetricPath, "ibmmq.httpMetricPath", "/metrics", "Path to exporter metrics")
 
 	flag.StringVar(&config.logLevel, "log.level", "error", "Log level - debug, info, error")
-	flag.StringVar(&config.namespace, "namespace", defaultNamespace, "Log level - debug, info, error")
+	flag.StringVar(&config.namespace, "namespace", defaultNamespace, "Namespace for metrics")
 
 	flag.Parse()
 
