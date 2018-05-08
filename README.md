@@ -1,6 +1,8 @@
 # mq-golang
 This repository demonstrates how you can call IBM MQ from applications written in the Go language.
 
+> **NOTICE**: Please ensure that you use a dependency management tool such as [dep](https://github.com/golang/dep) or [Glide](http://glide.sh/), and add a specific version dependency.  The current content has been marked as version 1.0.0, and a new version with breaking changes will be released soon.  By using a dependency manager, you can continue to use the old version if you want to.
+
 The repository also includes programs to export MQ statistics to some monitoring
 packages including Prometheus, InfluxDB and OpenTSDB.
 
@@ -8,6 +10,11 @@ A minimum level of MQ V9 is required to build this package.
 The monitoring data published by the queue manager is not available before
 that version; the interface also assumes availability of
 MQI structures from that level of MQ.
+
+## Health Warning
+
+This package is provided as-is with no guarantees of support or updates. There are also no guarantees of compatibility
+with any future versions of the package; the API is subject to change based on any feedback.
 
 ## MQI Description
 
@@ -123,11 +130,6 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 ## History
 
 See [CHANGES](CHANGES.md) in this directory.
-
-## Health Warning
-
-This package is provided as-is with no guarantees of support or updates. There are also no guarantees of compatibility
-with any future versions of the package; the API is subject to change based on any feedback.
 
 ## Issues and Contributions
 
