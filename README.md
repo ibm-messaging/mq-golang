@@ -96,7 +96,7 @@ the Git client, and the C compiler.
 workspace. Use "src" as the destination, to get the directory created
 automatically; this path will then be searched by the Go compiler.
 
-  git clone https://github.com/ibm-messaging/mq-golang.git ${GOPATH}/src/github.com/ibm-messaging/mq-golang
+  git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang
 
 * Use Go to download prerequisite components for any monitors you are interested
 in running. The logrus package is required for all of the monitors; but not
