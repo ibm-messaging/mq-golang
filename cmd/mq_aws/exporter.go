@@ -26,12 +26,13 @@ and update the various data points.
 */
 
 import (
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"mqmetric"
-	"time"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 type client struct {

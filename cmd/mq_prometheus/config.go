@@ -22,8 +22,9 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"mqmetric"
 	"os"
+
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 type mqExporterConfig struct {

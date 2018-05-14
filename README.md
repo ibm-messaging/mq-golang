@@ -96,7 +96,7 @@ the Git client, and the C compiler.
 workspace. Use "src" as the destination, to get the directory created
 automatically; this path will then be searched by the Go compiler.
 
-  git clone http://github.com/ibm-messaging/mq-golang src
+  git clone https://github.com/ibm-messaging/mq-golang.git ${GOPATH}/src/github.com/ibm-messaging/mq-golang
 
 * Use Go to download prerequisite components for any monitors you are interested
 in running. The logrus package is required for all of the monitors; but not
@@ -112,7 +112,7 @@ all of the monitors require further downloads.
 
 * Compile the components you are interested in. For example
 
-  go install ./src/cmd/mq_prometheus
+  go install ./src/github.com/ibm-messaging/mq-golang/cmd/mq_prometheus
 
 At this point, you should have a compiled copy of the code in $GOPATH/bin.
 
@@ -138,4 +138,3 @@ For feedback and issues relating specifically to this package, please use the [G
 Contributions to this package can be accepted under the terms of the IBM Contributor License Agreement,
 found in the [CLA file](CLA.md) of this repository. When submitting a pull request, you must include a statement stating
 you accept the terms in the CLA.
-
