@@ -20,7 +20,8 @@ package main
 
 import (
 	"flag"
-	"mqmetric"
+
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 type mqCloudWatchConfig struct {

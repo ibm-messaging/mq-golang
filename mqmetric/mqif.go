@@ -25,7 +25,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"ibmmq"
+	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
 var (

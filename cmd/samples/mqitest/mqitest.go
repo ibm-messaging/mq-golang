@@ -38,9 +38,10 @@ package main
 
 import (
 	"fmt"
-	"ibmmq"
 	"os"
 	"strings"
+
+	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
 func main() {

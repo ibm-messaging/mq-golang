@@ -39,9 +39,10 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"ibmmq"
 	"os"
 	"time"
+
+	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
 func main() {
