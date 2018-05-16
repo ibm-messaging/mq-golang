@@ -37,7 +37,6 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
@@ -160,7 +159,7 @@ func discoverClasses(metaPrefix string) error {
 				case ibmmq.MQCA_TOPIC_STRING:
 					cl.typesTopic = elem.String[0]
 				default:
-					log.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
+					return fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
 				}
 			}
 			Metrics.Classes[classIndex] = cl
@@ -176,7 +175,6 @@ func discoverTypes(cl *MonClass) error {
 	var sub ibmmq.MQObject
 	var err error
 
-	//log.Infof("Working on class %s", cl.Name)
 	sub, err = subscribe(cl.typesTopic)
 	if err == nil {
 		data, err = getMessage(true)
@@ -210,7 +208,7 @@ func discoverTypes(cl *MonClass) error {
 				case ibmmq.MQCA_TOPIC_STRING:
 					ty.elementTopic = elem.String[0]
 				default:
-					log.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
+					return fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
 				}
 			}
 			cl.Types[typeIndex] = ty
@@ -261,7 +259,7 @@ func discoverElements(ty *MonType) error {
 				case ibmmq.MQCAMO_MONITOR_DESC:
 					elem.Description = e.String[0]
 				default:
-					log.Errorf("Unknown parameter %d in type discovery", e.Parameter)
+					return fmt.Errorf("Unknown parameter %d in type discovery", e.Parameter)
 				}
 			}
 
@@ -303,18 +301,6 @@ func discoverStats(metaPrefix string) error {
 
 	}
 
-	for _, cl := range Metrics.Classes {
-		for _, ty := range cl.Types {
-			for _, elem := range ty.Elements {
-				log.Debugf("DUMP Element: Desc = %s ParentType = %s MetaTopic = %s Real Topic = %s Type = %d",
-					elem.MetricName,
-					elem.Parent.Name,
-					elem.Parent.elementTopic,
-					ty.ObjectTopic, elem.Datatype)
-			}
-		}
-	}
-
 	return err
 }
 
@@ -350,8 +336,7 @@ func discoverQueues(monitoredQueues string) error {
 
 		if strings.Count(pattern, "*") > 1 ||
 			(strings.Count(pattern, "*") == 1 && !strings.HasSuffix(pattern, "*")) {
-			log.Errorf("Queue pattern '%s' is not valid", pattern)
-			continue
+			return fmt.Errorf("Queue pattern '%s' is not valid", pattern)
 		}
 
 		putmqmd := ibmmq.NewMQMD()
@@ -395,7 +380,7 @@ func discoverQueues(monitoredQueues string) error {
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
-			log.Error(err)
+			return err
 		}
 
 		// Now get the response
@@ -414,9 +399,7 @@ func discoverQueues(monitoredQueues string) error {
 		if err == nil {
 			cfh, offset := ibmmq.ReadPCFHeader(buf)
 			if cfh.CompCode != ibmmq.MQCC_OK {
-				log.Errorf("PCF command failed with CC %d RC %d",
-					cfh.CompCode,
-					cfh.Reason)
+				return fmt.Errorf("PCF command failed with CC %d RC %d", cfh.CompCode, cfh.Reason)
 			} else {
 				parmAvail := true
 				bytesRead := 0
@@ -431,7 +414,7 @@ func discoverQueues(monitoredQueues string) error {
 					switch elem.Parameter {
 					case ibmmq.MQCACF_Q_NAMES:
 						if len(elem.String) == 0 {
-							log.Errorf("No queues matching '%s' exist", pattern)
+							return fmt.Errorf("No queues matching '%s' exist", pattern)
 						}
 						for i := 0; i < len(elem.String); i++ {
 							qList = append(qList, strings.TrimSpace(elem.String[i]))
@@ -440,11 +423,9 @@ func discoverQueues(monitoredQueues string) error {
 				}
 			}
 		} else {
-			log.Error(err)
+			return err
 		}
 	}
-
-	log.Infof("Discovered queues = %v", qList)
 
 	return err
 }
@@ -457,7 +438,6 @@ func createSubscriptions() error {
 	var err error
 	var sub ibmmq.MQObject
 
-loop:
 	for _, cl := range Metrics.Classes {
 		for _, ty := range cl.Types {
 
@@ -473,8 +453,7 @@ loop:
 			}
 
 			if err != nil {
-				log.Error("Error subscribing: ", err)
-				break loop
+				return fmt.Errorf("Error subscribing to %s: %v", ty.ObjectTopic, err)
 			}
 		}
 	}
@@ -588,17 +567,8 @@ func ProcessPublications() {
 					elem.Values[objectName] = value
 				}
 			}
-		} else {
-			mqreturn := err.(*ibmmq.MQReturn)
-			// Printing this for 2033 is excessive, even in debug
-			if mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-				log.Debugf("getMessage returned %v", err)
-			}
 		}
-
 	}
-	log.Debugf("Processed %d messages", cnt)
-
 }
 
 /*
@@ -723,12 +693,12 @@ ReadPatterns is called during the initial configuration step to read a file
 containing object name patterns if they are not explicitly given
 on the command line.
 */
-func ReadPatterns(f string) string {
+func ReadPatterns(f string) (string, error) {
 	var s string
 
 	file, err := os.Open(f)
 	if err != nil {
-		log.Fatalf("Opening file %s: %s", f, err)
+		return "", fmt.Errorf("Error Opening file %s: %v", f, err)
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
@@ -739,11 +709,10 @@ func ReadPatterns(f string) string {
 		s += scanner.Text()
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatalf("Reading from %s: %s", f, err)
+		return "", fmt.Errorf("Error Reading from %s: %v", f, err)
 	}
-	log.Infof("Read patterns from %s: '%s'", f, s)
 
-	return s
+	return s, nil
 }
 
 /*
@@ -759,9 +728,6 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 	if f < 0 {
 		f = 0
 	}
-
-	//log.Debugf("Pushing Elem %s [%s] Type %d Value %f",
-	//      elem.MetricName, key, elem.Datatype, f)
 
 	// Convert suitable metrics to base units
 	if elem.Datatype == ibmmq.MQIAMO_MONITOR_PERCENT ||

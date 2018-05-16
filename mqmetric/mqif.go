@@ -24,7 +24,8 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 */
 
 import (
-	log "github.com/Sirupsen/logrus"
+	"fmt"
+
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
@@ -95,9 +96,6 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *Conn
 		mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
 
 		cmdQObj, err = qMgr.Open(mqod, openOptions)
-		if err == nil {
-			log.Infoln("Command queue open ok")
-		}
 
 	}
 
@@ -110,7 +108,6 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *Conn
 		statsQObj, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			statsQueuesOpened = true
-			log.Infoln("Stats queue open ok")
 		}
 	}
 
@@ -123,16 +120,14 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *Conn
 		replyQObj, err = qMgr.Open(mqod, openOptions)
 		if err == nil {
 			queuesOpened = true
-			log.Infoln("Reply queue open ok")
 		}
 	}
 
 	if err != nil {
-		log.Errorf("Cannot access qmgr. Error %s", err)
+		return fmt.Errorf("Cannot access queue manager. Error: %v", err)
 	}
 
 	return err
-
 }
 
 /*
@@ -207,14 +202,14 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 		if mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NOT_AVAILABLE ||
 			mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NAME_ERROR ||
 			mqreturn.MQRC == ibmmq.MQRC_Q_MGR_QUIESCING {
-			log.Fatal("Queue Manager error: ", err)
+			return nil, fmt.Errorf("Queue Manager error: %v", err)
 		}
 		if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-			log.Error("Get message: ", err)
+			return nil, fmt.Errorf("Get message error: %v", err)
 		}
 	}
 
-	return getBuffer[0:datalen], err
+	return getBuffer[0:datalen], nil
 }
 
 /*
@@ -233,11 +228,10 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 
 	mqsd.ObjectString = topic
 
-	log.Infof("Subscribing to topic '%s'", topic)
 	subObj, err := qMgr.Sub(mqsd, &replyQObj)
 	if err != nil {
-		log.Errorf("Error subscribing to topic '%s': %v", topic, err)
+		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v", topic, err)
 	}
-	return subObj, err
 
+	return subObj, err
 }
