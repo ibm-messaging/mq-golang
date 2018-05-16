@@ -72,7 +72,7 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
 * Make sure your PATH includes routes to the Go compiler (`$GOROOT/bin`), the Git client, and the C compiler.
 * Change directory to the workspace you created earlier. (`cd $GOPATH`)
-* Use git to get a copy of the MQ components into a new directory in the workspace. Use "src" as the destination, to get the directory created automatically; this path will then be searched by the Go compiler.
+* Use git to get a copy of the MQ components into a new directory in the workspace.
 
   ```git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang```
 

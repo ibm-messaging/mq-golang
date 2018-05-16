@@ -1,21 +1,21 @@
 # Changelog
 
-## May 2018 - v1.0.0
+## May 2018
 
-* Released v1.0.0 of this repository for use with golang dependency management tools
 * Corrected package imports
 * Formatted go code with `go fmt`
 * Rearranged this file
 * Removed logging from golang package `mqmetric`
 * Moved samples to a separate repository
 
-## March 2018
+## March 2018 - v1.0.0
 
 * Added V9.0.5 constant definitions
 * Changed #cgo directives for Windows now the compiler supports standard path names
 * Added mechanism to set MQ userid and password for Prometheus monitor
+* Released v1.0.0 of this repository for use with golang dependency management tools
 
-##October 2017
+## October 2017
 
 * Added V9.0.4 constant definitions - now generated from original MQ source code
 * Added MQSC script to show how to redefine event queues for pub/sub

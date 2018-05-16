@@ -167,7 +167,7 @@ func discoverClasses(metaPrefix string) error {
 	}
 
 	subsOpened = true
-	return nil
+	return err
 }
 
 func discoverTypes(cl *MonClass) error {
@@ -380,7 +380,7 @@ func discoverQueues(monitoredQueues string) error {
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
-			return fmt.Errorf("%v", err)
+			return err
 		}
 
 		// Now get the response
@@ -423,7 +423,7 @@ func discoverQueues(monitoredQueues string) error {
 				}
 			}
 		} else {
-			return fmt.Errorf("%v", err)
+			return err
 		}
 	}
 
@@ -453,7 +453,7 @@ func createSubscriptions() error {
 			}
 
 			if err != nil {
-				return fmt.Errorf("Error subscribing: %v", err)
+				return fmt.Errorf("Error subscribing to %s: %v", ty.ObjectTopic, err)
 			}
 		}
 	}
@@ -698,7 +698,7 @@ func ReadPatterns(f string) (string, error) {
 
 	file, err := os.Open(f)
 	if err != nil {
-		return "", fmt.Errorf("Opening file %s: %s", f, err)
+		return "", fmt.Errorf("Error Opening file %s: %v", f, err)
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
@@ -709,7 +709,7 @@ func ReadPatterns(f string) (string, error) {
 		s += scanner.Text()
 	}
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("Reading from %s: %s", f, err)
+		return "", fmt.Errorf("Error Reading from %s: %v", f, err)
 	}
 
 	return s, nil

@@ -124,10 +124,10 @@ func InitConnectionStats(qMgrName string, replyQ string, statsQ string, cc *Conn
 	}
 
 	if err != nil {
-		return fmt.Errorf("Cannot access qmgr. Error %s", err)
+		return fmt.Errorf("Cannot access queue manager. Error: %v", err)
 	}
 
-	return nil
+	return err
 }
 
 /*
@@ -202,10 +202,10 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 		if mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NOT_AVAILABLE ||
 			mqreturn.MQRC == ibmmq.MQRC_Q_MGR_NAME_ERROR ||
 			mqreturn.MQRC == ibmmq.MQRC_Q_MGR_QUIESCING {
-			return nil, fmt.Errorf("Queue Manager error: ", err)
+			return nil, fmt.Errorf("Queue Manager error: %v", err)
 		}
 		if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-			return nil, fmt.Errorf("Get message: ", err)
+			return nil, fmt.Errorf("Get message error: %v", err)
 		}
 	}
 
@@ -232,6 +232,6 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 	if err != nil {
 		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v", topic, err)
 	}
-	return subObj, nil
 
+	return subObj, err
 }
