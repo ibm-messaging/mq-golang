@@ -76,16 +76,6 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
   ```git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang```
 
-* Use Go to download prerequisite components for any monitors you are interested in running. The logrus package is required for all of the monitors; but not all of the monitors require further downloads.
-
-  ```go get -u github.com/Sirupsen/logrus```
-
-  ```go get -u github.com/prometheus/client_golang/prometheus```
-
-  ```go get -u github.com/influxdata/influxdb/client/v2```
-
-  ```go get -u github.com/aws/aws-sdk-go/service```
-
 * Compile the `ibmmq` component:
 
   ```go install ./src/github.com/ibm-messaging/mq-golang/ibmmq```
@@ -94,13 +84,7 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
   ```go install ./src/github.com/ibm-messaging/mq-golang/mqmetric```
 
-* Use git to get a get a copy of the MQ samples metric clients in a new directory in the workspace.
-
-  ```git clone https://github.com/ibm-messaging/mq-metric-samples.git src/github.com/ibm-messaging/mq-metric-samples```
-
-* Compile the sample programs you are interested in. For example:
-
-  ```go install ./src/github.com/ibm-messaging/mq-metric-samples/cmd/mq_prometheus```
+* Follow the instructions in the [mq-metric-samples repository](https://github.com/ibm-messaging/mq-metric-samples) to compile the sample programs you are interested in.
 
 At this point, you should have a compiled copy of the code in `$GOPATH/bin`.
 
@@ -118,7 +102,7 @@ There are also no structure handlers for message headers such as MQRFH2 or MQDLH
 
 ## History
 
-See [CHANGES](CHANGES.md) in this directory.
+See [CHANGELOG](CHANGELOG.md) in this directory.
 
 ## Issues and Contributions
 
