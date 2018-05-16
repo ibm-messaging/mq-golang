@@ -4,9 +4,9 @@ This repository demonstrates how you can call IBM MQ from applications written i
 
 > **NOTICE**: Please ensure that you use a dependency management tool such as [dep](https://github.com/golang/dep) or [Glide](http://glide.sh/), and add a specific version dependency.  The current content has been marked as version 1.0.0, and a new version with breaking changes will be released soon.  By using a dependency manager, you can continue to use the old version if you want to.
 
-The repository also includes programs to export MQ statistics to some monitoring packages including Prometheus, InfluxDB and OpenTSDB.
+This repository previously contained sample programs that exported MQ statistics to some monitoring packages. These have now been moved to a new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
-A minimum level of MQ V9 is required to build this package.
+A minimum level of MQ V9 is required to build these packages.
 The monitoring data published by the queue manager is not available before that version; the interface also assumes availability of MQI structures from that level of MQ.
 
 ## Health Warning
@@ -25,7 +25,7 @@ Feedback on the utility of this package, thoughts about whether it should be cha
 
 ## Using the package
 
-To use code in this repository, you will need to be able to build Go applications, and have a copy of MQ installed to build against. It uses cgo to access the MQI C structures and definitions. It assumes that MQ has been installed in the default location on a Linux platform (/opt/mqm) but you can easily change the cgo directives in the source files if necessary.
+To use code in this repository, you will need to be able to build Go applications, and have a copy of MQ installed to build against. It uses cgo to access the MQI C structures and definitions. It assumes that MQ has been installed in the default location on a Linux platform (`/opt/mqm`) but you can easily change the cgo directives in the source files if necessary.
 
 Some Windows capability is also included. This has been tested with Go 1.10 compiler, which now permits standard Windows paths (eg including spaces) so the CGO directives can point at the normal MQ install path.
 
@@ -94,9 +94,13 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
   ```go install ./src/github.com/ibm-messaging/mq-golang/mqmetric```
 
-* Compile the components you are interested in. For example
+* Use git to get a get a copy of the MQ samples metric clients in a new directory in the workspace.
 
-  ```go install ./src/github.com/ibm-messaging/mq-golang/cmd/mq_prometheus```
+  ```git clone https://github.com/ibm-messaging/mq-metric-samples.git src/github.com/ibm-messaging/mq-metric-samples```
+
+* Compile the sample programs you are interested in. For example:
+
+  ```go install ./src/github.com/ibm-messaging/mq-metric-samples/cmd/mq_prometheus```
 
 At this point, you should have a compiled copy of the code in `$GOPATH/bin`.
 
