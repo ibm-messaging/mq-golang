@@ -209,7 +209,7 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 		}
 	}
 
-	return getBuffer[0:datalen], nil
+	return getBuffer[0:datalen], err
 }
 
 /*
