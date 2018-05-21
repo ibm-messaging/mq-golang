@@ -7,6 +7,8 @@
 * Rearranged this file
 * Removed logging from golang package `mqmetric`
 * Moved samples to a separate repository
+* Added build scripts for `ibmmq` and `mqmetric` packages and `ibmmq` samples
+* Added unit tests for `ibmmq` and `mqmetric` packages
 
 ## March 2018 - v1.0.0
 

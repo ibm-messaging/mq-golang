@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016, 2018
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -670,6 +670,7 @@ func formatDescription(baseName string) string {
 
 	if strings.HasSuffix(s, "free_space") {
 		s = s + "_percentage"
+		s = strings.Replace(s, "__", "_", -1)
 	}
 
 	// Make "byte", "file" and "message" units plural
