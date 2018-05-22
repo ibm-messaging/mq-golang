@@ -19,11 +19,12 @@ package main
 */
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/influxdata/influxdb/client/v2"
-	"mqmetric"
 	"os"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
+	client "github.com/influxdata/influxdb/client/v2"
 )
 
 func initLog() {

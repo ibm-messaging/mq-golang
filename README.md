@@ -92,11 +92,13 @@ not include spaces or other special characters, as discussed above.
 * Make sure your PATH includes routes to the Go compiler ($GOROOT/bin),
 the Git client, and the C compiler.
 * Change directory to the workspace you created earlier. (cd $GOPATH)
+* Create the following gopath directory structure `src/github.com/ibm-messaging`
+* Navigate to the directory you just created `$GOPATH/src/github.com/ibm-messaging`
 * Use git to get a copy of the MQ components into a new directory in the
-workspace. Use "src" as the destination, to get the directory created
+workspace. Use "mq-golang" as the destination, to get the directory created
 automatically; this path will then be searched by the Go compiler.
 
-  git clone http://github.com/ibm-messaging/mq-golang src
+  git clone http://github.com/ibm-messaging/mq-golang mq-golang
 
 * Use Go to download prerequisite components for any monitors you are interested
 in running. The logrus package is required for all of the monitors; but not
@@ -112,7 +114,7 @@ all of the monitors require further downloads.
 
 * Compile the components you are interested in. For example
 
-  go install ./src/cmd/mq_prometheus
+  go install ./mq-golang/cmd/mq_prometheus
 
 At this point, you should have a compiled copy of the code in $GOPATH/bin.
 

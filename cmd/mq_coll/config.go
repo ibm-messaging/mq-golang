@@ -20,8 +20,9 @@ package main
 
 import (
 	"flag"
-	"mqmetric"
 	"os"
+
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 type mqTTYConfig struct {

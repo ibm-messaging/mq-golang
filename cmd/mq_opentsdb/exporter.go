@@ -27,12 +27,13 @@ and update the various data points.
 
 import (
 	"bytes"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
-	"mqmetric"
 	"net/http"
 	"net/url"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 type client struct {

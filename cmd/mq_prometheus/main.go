@@ -19,11 +19,12 @@ package main
 */
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/prometheus/client_golang/prometheus"
-	"mqmetric"
 	"net/http"
 	"os"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func initLog() {
