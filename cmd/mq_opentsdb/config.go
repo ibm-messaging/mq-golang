@@ -21,10 +21,11 @@ package main
 import (
 	"bufio"
 	"flag"
-	log "github.com/Sirupsen/logrus"
-	"mqmetric"
 	"os"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 type mqOpenTSDBConfig struct {

@@ -19,10 +19,11 @@ package main
 */
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"mqmetric"
 	"os"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 func initLog() {

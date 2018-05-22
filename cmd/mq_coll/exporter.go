@@ -26,9 +26,10 @@ and update the various data points.
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"mqmetric"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/ibm-messaging/mq-golang/mqmetric"
 )
 
 var (
