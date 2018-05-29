@@ -87,6 +87,40 @@ var Metrics AllMetrics
 
 var qList []string
 
+// Variables for changing language
+var languageLocale = ""
+var langLock = false
+var validLocales = [...]string{"cs_CZ", "de_DE", "en_US", "es_ES", "fr_FR", "hu_HU", "it_IT", "ja_JP", "ko_KR", "pl_PL", "pt_BR", "ru_RU", "zh_CN", "zh_TW"}
+
+/*
+This function can be called to change the language that is used from the
+default queue manager language. Once this language has been set once or used
+once it should not (and cannot) be changed again.
+*/
+func SetLanguage(lang string) error {
+	if langLock {
+		// We can't change the language twice or if it's already been used
+		return fmt.Errorf("Attempted to change language once it had been used.")
+	}
+
+	// Validate the locale requested is valid
+	valid := false
+	for _, e := range validLocales {
+		if e == lang {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return fmt.Errorf("Invalid locale %s", lang)
+	}
+
+	languageLocale = "/" + lang
+	langLock = true
+
+	return nil
+}
+
 /*
 DiscoverAndSubscribe does all the work of finding the
 different resources available from a queue manager and
@@ -94,6 +128,10 @@ issuing the MQSUB calls to collect the data
 */
 func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
 	var err error
+
+	// lock further changes to language (if not already done)
+	langLock = true
+
 	// What metrics can the queue manager provide?
 	if err == nil {
 		err = discoverStats(metaPrefix)
@@ -125,9 +163,9 @@ func discoverClasses(metaPrefix string) error {
 
 	// Have to know the starting point for the topic that tells about classes
 	if metaPrefix == "" {
-		rootTopic = "$SYS/MQ/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
+		rootTopic = "$SYS/MQ/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES" + languageLocale
 	} else {
-		rootTopic = metaPrefix + "/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
+		rootTopic = metaPrefix + "/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES" + languageLocale
 	}
 	sub, err = subscribe(rootTopic)
 	if err == nil {
