@@ -198,3 +198,50 @@ func TestParsePCFResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultLanguagevalue(t *testing.T) {
+	if languageLocale != "" {
+		t.Logf("Expected languageLocale to be default of '' but was '%s", languageLocale)
+		t.Fail()
+	}
+}
+
+func TestSetBadLanguageValues(t *testing.T) {
+	//Give bad values
+	badValues := [...]string{"/en_US", "notAValidLocale", "1234"}
+	for _, e := range badValues {
+		if err := SetLanguage(e); err == nil {
+			t.Logf("Expected bad locale of %s to fail", e)
+			t.Fail()
+		}
+	}
+}
+
+func TestSetGoodLanguageValues(t *testing.T) {
+	goodValues := [...]string{"cs_CZ", "de_DE", "en_US", "es_ES", "fr_FR", "hu_HU", "it_IT", "ja_JP", "ko_KR", "pl_PL", "pt_BR", "ru_RU", "zh_CN", "zh_TW"}
+	for _, e := range goodValues {
+		if err := SetLanguage(e); err != nil {
+			t.Logf("Expected good locale of %s to pass but got error %v", e, err)
+			t.Fail()
+		}
+		if languageLocale != e {
+			t.Logf("Expected languageLocale to be %s but was '%s", e, languageLocale)
+			t.Fail()
+		}
+
+		//Reset lock
+		langLock = false
+	}
+}
+
+func TestSetTwiceFail(t *testing.T) {
+	if err := SetLanguage("en_US"); err != nil {
+		t.Logf("Failed to set valid locale before testing second fail - %v", err)
+		t.FailNow()
+	}
+
+	if err := SetLanguage("en_US"); err == nil {
+		t.Logf("Expected setting language twice to fail but it passed")
+		t.Fail()
+	}
+}
