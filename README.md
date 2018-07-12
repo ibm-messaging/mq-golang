@@ -86,7 +86,7 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
 * Follow the instructions in the [mq-metric-samples repository](https://github.com/ibm-messaging/mq-metric-samples) to compile the sample programs you are interested in.
 
-At this point, you should have a compiled copy of the code in `$GOPATH/bin`.aster
+At this point, you should have a compiled copy of the code in `$GOPATH/bin`.
 
 ## Limitations
 
