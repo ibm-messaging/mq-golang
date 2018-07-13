@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016, 2018
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -35,9 +35,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
@@ -160,7 +160,7 @@ func discoverClasses(metaPrefix string) error {
 				case ibmmq.MQCA_TOPIC_STRING:
 					cl.typesTopic = elem.String[0]
 				default:
-					log.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
+					return fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
 				}
 			}
 			Metrics.Classes[classIndex] = cl
@@ -176,7 +176,6 @@ func discoverTypes(cl *MonClass) error {
 	var sub ibmmq.MQObject
 	var err error
 
-	//log.Infof("Working on class %s", cl.Name)
 	sub, err = subscribe(cl.typesTopic)
 	if err == nil {
 		data, err = getMessage(true)
@@ -210,7 +209,7 @@ func discoverTypes(cl *MonClass) error {
 				case ibmmq.MQCA_TOPIC_STRING:
 					ty.elementTopic = elem.String[0]
 				default:
-					log.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
+					return fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
 				}
 			}
 			cl.Types[typeIndex] = ty
@@ -261,11 +260,11 @@ func discoverElements(ty *MonType) error {
 				case ibmmq.MQCAMO_MONITOR_DESC:
 					elem.Description = e.String[0]
 				default:
-					log.Errorf("Unknown parameter %d in type discovery", e.Parameter)
+					return fmt.Errorf("Unknown parameter %d in type discovery", e.Parameter)
 				}
 			}
 
-			elem.MetricName = formatDescriptionElem(elem)
+			elem.MetricName = formatDescription(elem)
 			ty.Elements[elementIndex] = elem
 		}
 	}
@@ -303,18 +302,6 @@ func discoverStats(metaPrefix string) error {
 
 	}
 
-	for _, cl := range Metrics.Classes {
-		for _, ty := range cl.Types {
-			for _, elem := range ty.Elements {
-				log.Debugf("DUMP Element: Desc = %s ParentType = %s MetaTopic = %s Real Topic = %s Type = %d",
-					elem.MetricName,
-					elem.Parent.Name,
-					elem.Parent.elementTopic,
-					ty.ObjectTopic, elem.Datatype)
-			}
-		}
-	}
-
 	return err
 }
 
@@ -350,8 +337,7 @@ func discoverQueues(monitoredQueues string) error {
 
 		if strings.Count(pattern, "*") > 1 ||
 			(strings.Count(pattern, "*") == 1 && !strings.HasSuffix(pattern, "*")) {
-			log.Errorf("Queue pattern '%s' is not valid", pattern)
-			continue
+			return fmt.Errorf("Queue pattern '%s' is not valid", pattern)
 		}
 
 		putmqmd := ibmmq.NewMQMD()
@@ -395,7 +381,7 @@ func discoverQueues(monitoredQueues string) error {
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
-			log.Error(err)
+			return err
 		}
 
 		// Now get the response
@@ -414,9 +400,7 @@ func discoverQueues(monitoredQueues string) error {
 		if err == nil {
 			cfh, offset := ibmmq.ReadPCFHeader(buf)
 			if cfh.CompCode != ibmmq.MQCC_OK {
-				log.Errorf("PCF command failed with CC %d RC %d",
-					cfh.CompCode,
-					cfh.Reason)
+				return fmt.Errorf("PCF command failed with CC %d RC %d", cfh.CompCode, cfh.Reason)
 			} else {
 				parmAvail := true
 				bytesRead := 0
@@ -431,7 +415,7 @@ func discoverQueues(monitoredQueues string) error {
 					switch elem.Parameter {
 					case ibmmq.MQCACF_Q_NAMES:
 						if len(elem.String) == 0 {
-							log.Errorf("No queues matching '%s' exist", pattern)
+							return fmt.Errorf("No queues matching '%s' exist", pattern)
 						}
 						for i := 0; i < len(elem.String); i++ {
 							qList = append(qList, strings.TrimSpace(elem.String[i]))
@@ -440,11 +424,9 @@ func discoverQueues(monitoredQueues string) error {
 				}
 			}
 		} else {
-			log.Error(err)
+			return err
 		}
 	}
-
-	log.Infof("Discovered queues = %v", qList)
 
 	return err
 }
@@ -457,7 +439,6 @@ func createSubscriptions() error {
 	var err error
 	var sub ibmmq.MQObject
 
-loop:
 	for _, cl := range Metrics.Classes {
 		for _, ty := range cl.Types {
 
@@ -473,8 +454,7 @@ loop:
 			}
 
 			if err != nil {
-				log.Error("Error subscribing: ", err)
-				break loop
+				return fmt.Errorf("Error subscribing to %s: %v", ty.ObjectTopic, err)
 			}
 		}
 	}
@@ -492,7 +472,7 @@ cases where multiple pieces of data have to be collated for the same
 gauge. Conversely, there may be times when this is called but there
 are no metrics to update.
 */
-func ProcessPublications() {
+func ProcessPublications() error {
 	var err error
 	var data []byte
 
@@ -589,16 +569,15 @@ func ProcessPublications() {
 				}
 			}
 		} else {
+			// err != nil
 			mqreturn := err.(*ibmmq.MQReturn)
-			// Printing this for 2033 is excessive, even in debug
-			if mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-				log.Debugf("getMessage returned %v", err)
+
+			if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+				return mqreturn
 			}
 		}
-
 	}
-	log.Debugf("Processed %d messages", cnt)
-
+	return nil
 }
 
 /*
@@ -661,58 +640,49 @@ bytes etc), and organisation of the elements of the name (units last)
 While we can't change the MQ-generated descriptions for its statistics,
 we can reformat most of them heuristically here.
 */
-func formatDescriptionElem(elem *MonElement) string {
-	s := formatDescription(elem.Description)
-
-	unit := ""
-	switch elem.Datatype {
-	case ibmmq.MQIAMO_MONITOR_MICROSEC:
-		// Although the qmgr captures in us, we convert when
-		// pushing out to the backend, so this label needs to match
-		unit = "_seconds"
-	}
-	s += unit
-
-	return s
-}
-
-func formatDescription(baseName string) string {
-	s := baseName
+func formatDescription(elem *MonElement) string {
+	s := elem.Description
 	s = strings.Replace(s, " ", "_", -1)
 	s = strings.Replace(s, "/", "_", -1)
 	s = strings.Replace(s, "-", "_", -1)
 
-	/* common pattern is "xxx - yyy" leading to 3 ugly adjacent underscores */
-	s = strings.Replace(s, "___", "_", -1)
-	s = strings.Replace(s, "__", "_", -1)
+	/* Make sure we don't have multiple underscores */
+	multiunder := regexp.MustCompile("__*")
+	s = multiunder.ReplaceAllLiteralString(s, "_")
 
 	/* make it all lowercase. Not essential, but looks better */
 	s = strings.ToLower(s)
 
-	// Do not use _count
+	/* Remove all cases of bytes, seconds, count or percentage (we add them back in later) */
 	s = strings.Replace(s, "_count", "", -1)
+	s = strings.Replace(s, "_bytes", "", -1)
+	s = strings.Replace(s, "_byte", "", -1)
+	s = strings.Replace(s, "_seconds", "", -1)
+	s = strings.Replace(s, "_second", "", -1)
+	s = strings.Replace(s, "_percentage", "", -1)
 
 	// Switch round a couple of specific names
-	s = strings.Replace(s, "bytes_written", "written_bytes", -1)
-	s = strings.Replace(s, "bytes_max", "max_bytes", -1)
-	s = strings.Replace(s, "bytes_in_use", "in_use_bytes", -1)
 	s = strings.Replace(s, "messages_expired", "expired_messages", -1)
 
-	if strings.HasSuffix(s, "free_space") {
+	// Add the unit at end
+	switch elem.Datatype {
+	case ibmmq.MQIAMO_MONITOR_PERCENT, ibmmq.MQIAMO_MONITOR_HUNDREDTHS:
 		s = s + "_percentage"
-	}
-
-	// Make "byte", "file" and "message" units plural
-	if strings.HasSuffix(s, "byte") ||
-		strings.HasSuffix(s, "message") ||
-		strings.HasSuffix(s, "file") {
-		s = s + "s"
-	}
-
-	// Move % to the end
-	if strings.Contains(s, "_percentage_") {
-		s = strings.Replace(s, "_percentage_", "_", -1)
-		s += "_percentage"
+	case ibmmq.MQIAMO_MONITOR_MB, ibmmq.MQIAMO_MONITOR_GB:
+		s = s + "_bytes"
+	case ibmmq.MQIAMO_MONITOR_MICROSEC:
+		s = s + "_seconds"
+	default:
+		if strings.Contains(s, "_total") {
+			/* If we specify it is a total in description put that at the end */
+			s = strings.Replace(s, "_total", "", -1)
+			s = s + "_total"
+		} else if strings.Contains(s, "log_") {
+			/* Weird case where the log datatype is not MB or GB but should be bytes */
+			s = s + "_bytes"
+		} else {
+			s = s + "_count"
+		}
 	}
 
 	return s
@@ -723,12 +693,12 @@ ReadPatterns is called during the initial configuration step to read a file
 containing object name patterns if they are not explicitly given
 on the command line.
 */
-func ReadPatterns(f string) string {
+func ReadPatterns(f string) (string, error) {
 	var s string
 
 	file, err := os.Open(f)
 	if err != nil {
-		log.Fatalf("Opening file %s: %s", f, err)
+		return "", fmt.Errorf("Error Opening file %s: %v", f, err)
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
@@ -739,11 +709,10 @@ func ReadPatterns(f string) string {
 		s += scanner.Text()
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatalf("Reading from %s: %s", f, err)
+		return "", fmt.Errorf("Error Reading from %s: %v", f, err)
 	}
-	log.Infof("Read patterns from %s: '%s'", f, s)
 
-	return s
+	return s, nil
 }
 
 /*
@@ -759,9 +728,6 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 	if f < 0 {
 		f = 0
 	}
-
-	//log.Debugf("Pushing Elem %s [%s] Type %d Value %f",
-	//      elem.MetricName, key, elem.Datatype, f)
 
 	// Convert suitable metrics to base units
 	if elem.Datatype == ibmmq.MQIAMO_MONITOR_PERCENT ||
