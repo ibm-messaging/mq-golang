@@ -26,6 +26,29 @@ package ibmmq
 #include <cmqc.h>
 #include <cmqxc.h>
 
+void freeCCDTUrl(MQCNO *mqcno) {
+#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION == MQCNO_VERSION_6
+	if (mqcno.CCDTUrlPtr != NULL) {
+		free(mqcno.CCDTUrlPtr);
+	}
+#endif
+}
+
+void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
+#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION == MQCNO_VERSION_6
+	mqcno.CCDTUrlOffset = 0;
+	mqcno.CCDTUrlPtr = NULL;
+	mqcno.CCDTUrlLength = length;
+	if (url != NULL) {
+		mqcno.CCDTUrlPtr = PMQCHAR(url);
+	}
+#else
+	if (url != NULL) {
+		free(url);
+	}
+#endif
+}
+
 */
 import "C"
 import "unsafe"
@@ -152,14 +175,7 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcno.SecurityParmsPtr = nil
 	}
 
-	mqcno.CCDTUrlOffset = 0
-	if len(gocno.CCDTUrl) != 0 {
-		mqcno.CCDTUrlPtr = C.PMQCHAR(unsafe.Pointer(C.CString(gocno.CCDTUrl)))
-		mqcno.CCDTUrlLength = C.MQLONG(len(gocno.CCDTUrl))
-	} else {
-		mqcno.CCDTUrlPtr = nil
-		mqcno.CCDTUrlLength = 0
-	}
+	C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
 	return
 }
 
@@ -187,8 +203,6 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		C.free(unsafe.Pointer(mqcno.SSLConfigPtr))
 	}
 
-	if mqcno.CCDTUrlPtr != nil {
-		C.free(unsafe.Pointer(mqcno.CCDTUrlPtr))
-	}
+	C.freeCCDTUrl(mqcno)
 	return
 }
