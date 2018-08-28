@@ -1,4 +1,7 @@
 # Changelog
+## August 2018
+* Added V9.1 constant definitions
+* Updated build comments
 
 ## May 2018
 
@@ -35,7 +38,8 @@
 
 ## 15 Feb 2017
 
-* API BREAKING CHANGE: The MQI verbs have been changed to return a single error indicator instead of two separate values. See mqitest.go for examples of how MQRC/MQCC codes can now be tested and extracted. This change makes the MQI implementation a bit more natural for Go environments.
+* API BREAKING CHANGE: The MQI verbs have been changed to return a single error indicator instead of two separate values. See mqitest.go for examples of how MQRC/MQCC codes can now be tested and extracted. This change makes the MQI implementation a bit mo
+e natural for Go environments.
 
 ## 10 Jan 2017
 
