@@ -19,7 +19,7 @@ The ibmmq directory contains a Go package, exposing an MQI-like interface.
 
 The intention is to give an API that is more natural for Go programmers than the common procedural MQI. For example, fixed length string arrays from the C API such as MQCHAR48 are represented by the native Go string type. Conversion between these types is handled within the ibmmq package itself, removing the need for Go programmers to know about it.
 
-A short program in the mqitest directory gives an example of using this interface, to put and get messages and to subscribe to a topic.
+A short program in the samples/mqitest directory gives an example of using this interface, to put and get messages and to subscribe to a topic.
 
 Feedback on the utility of this package, thoughts about whether it should be changed or extended are welcomed.
 
@@ -66,7 +66,6 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
 * The `CGO_LDFLAGS_ALLOW` variable is not needed on Windows
 * Install the git client
-* Make sure the MQ include files and libraries are in a path that does not include spaces or other special characters, as discussed above.
 
 ### Common
 

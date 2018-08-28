@@ -1,4 +1,7 @@
 # Changelog
+## August 2018
+* Added V9.1 constant definitions
+* Updated build comments
 
 ## May 2018
 

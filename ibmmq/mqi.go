@@ -14,16 +14,9 @@ type is returned containing the MQCC/MQRC values as
 a formatted string. Use mqreturn:= err(*ibmmq.MQReturn) to access
 the particular MQRC or MQCC values.
 
-The build directives for Windows assume the header and library files have
-been copied to a temporary location, because the default paths are not
-acceptable to Go (it does not like spaces or special characters like ~).
-Note: This problem appears to have been fixed in Go 1.9, and once that
-is fully available, the directives will be changed to a more reasonable
-path in this file. For example
-    cgo windows CFLAGS -I"c:/Program Files/IBM/MQ/tools/c/include" -m64
-
-The build directives for Linux assume the default MQ installation path
-in /opt/mqm. These would need to be changed in this file if you use a
+The build directives assume the default MQ installation path
+which is in /opt/mqm (Linux) and c:\Program Files\IBM\MQ (Windows).
+These would need to be changed in this file if you use a
 non-default path.
 */
 package ibmmq
@@ -40,7 +33,8 @@ package ibmmq
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific
+  See the License for the specific language governing permissions and
+  limitations under the License.
 
    Contributors:
      Mark Taylor - Initial Contribution
@@ -48,8 +42,9 @@ package ibmmq
 
 /*
 #cgo !windows CFLAGS: -I/opt/mqm/inc -D_REENTRANT
-#cgo windows CFLAGS:  -I"C:/Program Files/IBM/MQ/Tools/c/include"
-#cgo !windows LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -Wl,-rpath=/opt/mqm/lib64 -Wl,-rpath=/usr/lib64
+#cgo  windows CFLAGS:  -I"C:/Program Files/IBM/MQ/Tools/c/include"
+#cgo !windows,!darwin LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -Wl,-rpath=/opt/mqm/lib64 -Wl,-rpath=/usr/lib64
+#cgo darwin   LDFLAGS: -L/opt/mqm/lib64 -lmqm_r -Wl,-rpath,/opt/mqm/lib64 -Wl,-rpath=/usr/lib64
 #cgo windows LDFLAGS: -L "C:/Program Files/IBM/MQ/bin64" -lmqm
 
 #include <stdlib.h>

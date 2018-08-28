@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2017
+* Copyright (c) IBM Corporation 1993, 2018
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,13 +25,14 @@ package ibmmq
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific
+* See the License for the specific language governing permissions and
+* limitations under the License.
 *
 ****************************************************************
 *
 *  <BEGIN_BUILDINFO>
-*  Generated on:  04/03/18 12:08
-*  Build Level:   rockall-20180304-120825-MQ90XHDR
+*  Generated on:  30/07/18 13:07
+*  Build Level:   rockall-20180730-130655-MQ9XXHDR
 *  Build Type:    Production
 *  Pointer Size:  64 Bit
 *  <END_BUILDINFO>
@@ -980,7 +981,7 @@ var (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32 = 17
 	MQCMDI_SEC_TIMER_ZERO          int32 = 14
 	MQCMDI_SEC_UPPERCASE           int32 = 21
-	MQCMDL_CURRENT_LEVEL           int32 = 905
+	MQCMDL_CURRENT_LEVEL           int32 = 910
 	MQCMDL_LEVEL_1                 int32 = 100
 	MQCMDL_LEVEL_101               int32 = 101
 	MQCMDL_LEVEL_110               int32 = 110
@@ -1015,6 +1016,7 @@ var (
 	MQCMDL_LEVEL_903               int32 = 903
 	MQCMDL_LEVEL_904               int32 = 904
 	MQCMDL_LEVEL_905               int32 = 905
+	MQCMDL_LEVEL_910               int32 = 910
 	MQCMD_ACCOUNTING_MQI           int32 = 167
 	MQCMD_ACCOUNTING_Q             int32 = 168
 	MQCMD_ACTIVITY_MSG             int32 = 69
@@ -3942,6 +3944,7 @@ var (
 	MQRC_SUBSCRIPTION_REFRESH      int32 = 2582
 	MQRC_SUB_ALREADY_EXISTS        int32 = 2432
 	MQRC_SUB_INHIBITED             int32 = 2503
+	MQRC_SUB_JOIN_NOT_ALTERABLE    int32 = 29440
 	MQRC_SUB_NAME_ERROR            int32 = 2440
 	MQRC_SUB_USER_DATA_ERROR       int32 = 2431
 	MQRC_SUITE_B_ERROR             int32 = 2592
