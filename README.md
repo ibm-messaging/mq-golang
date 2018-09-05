@@ -6,8 +6,9 @@ This repository demonstrates how you can call IBM MQ from applications written i
 
 This repository previously contained sample programs that exported MQ statistics to some monitoring packages. These have now been moved to a new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
-A minimum level of MQ V9 is required to build these packages.
+A minimum level of MQ V9 is required to build these packages (with `-tags MQv8`, v8 may be enough).
 The monitoring data published by the queue manager is not available before that version; the interface also assumes availability of MQI structures from that level of MQ.
+
 
 ## Health Warning
 

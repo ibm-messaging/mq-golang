@@ -80,6 +80,9 @@ func NewMQCSP() *MQCSP {
 	return csp
 }
 
+var copyCCDTUrlToC func(mqcno *C.MQCNO, gocno *MQCNO)
+var copyCCDTUrlFromC func(gocno *MQCNO, mqcno *C.MQCNO)
+
 func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	var i int
 	var mqcsp C.PMQCSP
@@ -152,13 +155,8 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcno.SecurityParmsPtr = nil
 	}
 
-	mqcno.CCDTUrlOffset = 0
-	if len(gocno.CCDTUrl) != 0 {
-		mqcno.CCDTUrlPtr = C.PMQCHAR(unsafe.Pointer(C.CString(gocno.CCDTUrl)))
-		mqcno.CCDTUrlLength = C.MQLONG(len(gocno.CCDTUrl))
-	} else {
-		mqcno.CCDTUrlPtr = nil
-		mqcno.CCDTUrlLength = 0
+	if copyCCDTUrlToC != nil {
+		copyCCDTUrlToC(mqcno, gocno)
 	}
 	return
 }
@@ -187,8 +185,8 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		C.free(unsafe.Pointer(mqcno.SSLConfigPtr))
 	}
 
-	if mqcno.CCDTUrlPtr != nil {
-		C.free(unsafe.Pointer(mqcno.CCDTUrlPtr))
+	if copyCCDTUrlFromC != nil {
+		copyCCDTUrlFromC(gocno, mqcno)
 	}
 	return
 }
