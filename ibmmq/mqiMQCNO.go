@@ -188,7 +188,6 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		// Set memory to 0 for area that held a password
 		if mqcno.SecurityParmsPtr.CSPPasswordPtr != nil {
 			C.memset((unsafe.Pointer)(mqcno.SecurityParmsPtr.CSPPasswordPtr), 0, C.size_t(mqcno.SecurityParmsPtr.CSPPasswordLength))
-			C.free(unsafe.Pointer(mqcno.SecurityParmsPtr.CSPPasswordPtr))
 		}
 		C.free(unsafe.Pointer(mqcno.SecurityParmsPtr))
 	}
