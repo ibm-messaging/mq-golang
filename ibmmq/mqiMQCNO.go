@@ -27,7 +27,7 @@ package ibmmq
 #include <cmqxc.h>
 
 void freeCCDTUrl(MQCNO *mqcno) {
-#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION == MQCNO_VERSION_6
+#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
 	if (mqcno.CCDTUrlPtr != NULL) {
 		free(mqcno.CCDTUrlPtr);
 	}
