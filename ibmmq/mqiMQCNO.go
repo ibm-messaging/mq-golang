@@ -28,19 +28,19 @@ package ibmmq
 
 void freeCCDTUrl(MQCNO *mqcno) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
-	if (mqcno.CCDTUrlPtr != NULL) {
-		free(mqcno.CCDTUrlPtr);
+	if (mqcno->CCDTUrlPtr != NULL) {
+		free(mqcno->CCDTUrlPtr);
 	}
 #endif
 }
 
 void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
-#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION == MQCNO_VERSION_6
-	mqcno.CCDTUrlOffset = 0;
-	mqcno.CCDTUrlPtr = NULL;
-	mqcno.CCDTUrlLength = length;
+#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
+	mqcno->CCDTUrlOffset = 0;
+	mqcno->CCDTUrlPtr = NULL;
+	mqcno->CCDTUrlLength = length;
 	if (url != NULL) {
-		mqcno.CCDTUrlPtr = PMQCHAR(url);
+		mqcno->CCDTUrlPtr = url;
 	}
 #else
 	if (url != NULL) {
