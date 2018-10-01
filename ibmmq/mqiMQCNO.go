@@ -36,6 +36,7 @@ void freeCCDTUrl(MQCNO *mqcno) {
 
 void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
+	mqcno->Version = MQCNO_VERSION_6;
 	mqcno->CCDTUrlOffset = 0;
 	mqcno->CCDTUrlPtr = NULL;
 	mqcno->CCDTUrlLength = length;
@@ -43,6 +44,7 @@ void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 		mqcno->CCDTUrlPtr = url;
 	}
 #else
+	mqcno->Version = MQCNO_CURRENT_VERSION;
 	if (url != NULL) {
 		free(url);
 	}
