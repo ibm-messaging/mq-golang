@@ -681,8 +681,14 @@ func formatDescription(elem *MonElement) string {
 		} else if strings.Contains(s, "log_") {
 			/* Weird case where the log datatype is not MB or GB but should be bytes */
 			s = s + "_bytes"
-		} else {
-			s = s + "_count"
+		}
+
+		// There are some metrics that have both "count" and "byte count" in
+		// the descriptions. They were getting mapped to the same string, so
+		// we have to ensure uniqueness. We do not put "_count" on the
+		// metric name.
+		if (strings.Contains(elem.Description,"byte count")) {
+			s = s + "_bytes"
 		}
 	}
 
