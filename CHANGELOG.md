@@ -1,4 +1,8 @@
 # Changelog
+
+## October 2018
+* Corrected heuristic for generating metric names
+
 ## August 2018
 * Added V9.1 constant definitions
 * Updated build comments
