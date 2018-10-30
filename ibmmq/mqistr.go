@@ -68,6 +68,8 @@ func MQItoString(class string, value int) string {
 
 	case "CC":
 		s = C.GoString(C.MQCC_STR(v))
+	case "CHT":
+		s = C.GoString(C.MQCHT_STR(v))
 	case "CMD":
 		s = C.GoString(C.MQCMD_STR(v))
 

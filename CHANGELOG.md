@@ -1,5 +1,9 @@
 # Changelog
 
+## October 2018 - v3.0.0
+* Added functions to the mqmetric package to assist with collecting channel status
+* Better handle truncated messages when listing the queues that match a pattern
+
 ## October 2018
 * Corrected heuristic for generating metric names
 
@@ -7,7 +11,7 @@
 * Added V9.1 constant definitions
 * Updated build comments
 
-## May 2018
+## July 2018 - v2.0.0
 
 * Corrected package imports
 * Formatted go code with `go fmt`
