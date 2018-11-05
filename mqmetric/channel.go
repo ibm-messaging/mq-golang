@@ -31,6 +31,7 @@ about running MQ channels
 
 import (
 	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"regexp"
 	"strings"
 )
 
@@ -131,7 +132,13 @@ func CollectChannelStatus(patterns string) error {
 		}
 
 		// This would allow us to extract SAVED information too
-		err = collectChannelStatus(pattern, ibmmq.MQOT_CURRENT_CHANNEL)
+		errCurrent := collectChannelStatus(pattern, ibmmq.MQOT_CURRENT_CHANNEL)
+		errSaved := collectChannelStatus(pattern, ibmmq.MQOT_SAVED_CHANNEL)
+		if errCurrent != nil {
+			err = errCurrent
+		} else {
+			err = errSaved
+		}
 
 	}
 
@@ -245,8 +252,10 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 			if cfh.Reason != ibmmq.MQRC_NONE {
 				continue
 			}
-			key := parseData(cfh, replyBuf[offset:datalen])
-			channelsSeen[key] = true
+			key := parseData(instanceType, cfh, replyBuf[offset:datalen])
+			if key != "" {
+				channelsSeen[key] = true
+			}
 		}
 	}
 
@@ -254,7 +263,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
-func parseData(cfh *ibmmq.MQCFH, buf []byte) string {
+func parseData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
 	chlName := ""
@@ -293,7 +302,18 @@ func parseData(cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	// Create a unique key for this channel instance
-	key = chlName + "/" + connName + "/" + jobName
+	key = chlName + "/" + connName + "/" + rqmName + "/" + jobName
+
+	// Look to see if we've already seen a Current channel status that matches
+	// the Saved version. If so, then don't bother with the Saved status
+	if instanceType == ibmmq.MQOT_SAVED_CHANNEL {
+		subKey := chlName + "/" + connName + "/" + rqmName + "/.*"
+		for k, _ := range channelsSeen {
+			if regexp.MatchString(subkey, k) {
+				return ""
+			}
+		}
+	}
 
 	ChannelStatus.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
 	ChannelStatus.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(connName)
