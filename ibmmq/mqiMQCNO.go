@@ -36,7 +36,9 @@ void freeCCDTUrl(MQCNO *mqcno) {
 
 void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
-	mqcno->Version = MQCNO_VERSION_6;
+  if (mqcno->Version < MQCNO_VERSION_6) {
+	  mqcno->Version = MQCNO_VERSION_6;
+	}
 	mqcno->CCDTUrlOffset = 0;
 	mqcno->CCDTUrlPtr = NULL;
 	mqcno->CCDTUrlLength = length;
@@ -44,7 +46,6 @@ void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 		mqcno->CCDTUrlPtr = url;
 	}
 #else
-	mqcno->Version = MQCNO_CURRENT_VERSION;
 	if (url != NULL) {
 		free(url);
 	}
@@ -177,6 +178,9 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcno.SecurityParmsPtr = nil
 	}
 
+	// The CCDT URL option was introduced in MQ V9. To compile against older
+	// versions of MQ, setting of it has been moved to a C function that can use
+	// the pre-processor to decide whether it's needed.
 	C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
 	return
 }
