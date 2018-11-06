@@ -309,7 +309,8 @@ func parseData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	if instanceType == ibmmq.MQOT_SAVED_CHANNEL {
 		subKey := chlName + "/" + connName + "/" + rqmName + "/.*"
 		for k, _ := range channelsSeen {
-			if regexp.MatchString(subkey, k) {
+			re := regexp.MustCompile(subKey)
+			if re.MatchString(k) {
 				return ""
 			}
 		}
