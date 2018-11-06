@@ -83,6 +83,8 @@ type AllMetrics struct {
 // maps that may contain only this single entry
 const QMgrMapKey = "@self"
 
+const maxBufSize = 100 * 1024 * 1024 // 100 MB
+
 // Metrics is the global variable for the tree of data
 var Metrics AllMetrics
 
@@ -104,9 +106,14 @@ func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 	// to explicit names so that subscriptions work.
 	if err == nil {
 		if checkQueueList {
-			discoverQueues(queueList)
+			err = discoverQueues(queueList)
 		} else {
 			qList = strings.Split(queueList, ",")
+		}
+
+		// Make sure the names are reasonably valid
+		for i := 0; i < len(qList); i++ {
+			qList[i] = strings.TrimSpace(qList[i])
 		}
 	}
 
@@ -299,7 +306,26 @@ func discoverStats(metaPrefix string) error {
 				}
 			}
 		}
-		//
+
+		// Validate all discovered metric names are unique
+		// Need to add in if it's qmgr or q level
+		nameSet := make(map[string]struct{})
+		var exists = struct{}{}
+		for _, cl := range Metrics.Classes {
+			for _, ty := range cl.Types {
+				for _, elem := range ty.Elements {
+					name := elem.MetricName
+					if strings.Contains(ty.ObjectTopic, "%s") {
+						name = "object_" + name
+					}
+					if _, ok := nameSet[name]; ok {
+						err = fmt.Errorf("Non-unique metric description '%s'", elem.MetricName)
+					} else {
+						nameSet[name] = exists
+					}
+				}
+			}
+		}
 
 	}
 
@@ -316,29 +342,62 @@ string only.
 If a bad pattern is used, or no queues exist that match the pattern
 then an error is reported but we continue processing other patterns.
 
-An alternative would be to list ALL the queues (though that could be a
-long list, and we would really have to worry about TRUNCATED message retrieval),
-and then use a more general regexp match. Something for a later update
-perhaps.
+An alternative would be to list ALL the queues (though that could be a long list),
+and then use a more general regexp match. Something for a later update perhaps.
 */
 func discoverQueues(monitoredQueues string) error {
 	var err error
+	qList, err = inquireObjects(monitoredQueues, ibmmq.MQOT_Q)
+	if len(qList) > 0 {
+		fmt.Printf("Monitoring Queues: %v\n", qList)
+		if err != nil {
+			// fmt.Printf("Queue Discovery: %v\n", err)
+		}
+		return nil
+	}
+	return err
+}
+
+func inquireObjects(objectPatternsList string, objectType int32) ([]string, error) {
+	var err error
 	var elem *ibmmq.PCFParameter
 	var datalen int
+	var objectList []string
+	var command int32
+	var attribute int32
+	var returnedAttribute int32
+	var missingPatterns string
 
-	if monitoredQueues == "" {
-		return err
+	objectList = make([]string, 0)
+
+	if objectPatternsList == "" {
+		return nil, err
 	}
 
-	queues := strings.Split(monitoredQueues, ",")
-	for i := 0; i < len(queues) && err == nil; i++ {
+	objectPatterns := strings.Split(strings.TrimSpace(objectPatternsList), ",")
+	for i := 0; i < len(objectPatterns) && err == nil; i++ {
 		var buf []byte
-
-		pattern := queues[i]
+		pattern := strings.TrimSpace(objectPatterns[i])
+		if len(pattern) == 0 {
+			continue
+		}
 
 		if strings.Count(pattern, "*") > 1 ||
 			(strings.Count(pattern, "*") == 1 && !strings.HasSuffix(pattern, "*")) {
-			return fmt.Errorf("Queue pattern '%s' is not valid", pattern)
+			return nil, fmt.Errorf("Object pattern '%s' is not valid", pattern)
+		}
+
+		switch objectType {
+		case ibmmq.MQOT_Q:
+			command = ibmmq.MQCMD_INQUIRE_Q_NAMES
+			attribute = ibmmq.MQCA_Q_NAME
+			returnedAttribute = ibmmq.MQCACF_Q_NAMES
+		case ibmmq.MQOT_CHANNEL:
+			command = ibmmq.MQCMD_INQUIRE_CHANNEL_NAMES
+			attribute = ibmmq.MQCACH_CHANNEL_NAME
+			returnedAttribute = ibmmq.MQCACH_CHANNEL_NAMES
+		default:
+			return nil, fmt.Errorf("Object type %d is not valid", objectType)
 		}
 
 		putmqmd := ibmmq.NewMQMD()
@@ -357,23 +416,24 @@ func discoverQueues(monitoredQueues string) error {
 		cfh := ibmmq.NewMQCFH()
 
 		// Can allow all the other fields to default
-		cfh.Command = ibmmq.MQCMD_INQUIRE_Q_NAMES
+		cfh.Command = command
 
 		// Add the parameters one at a time into a buffer
 		pcfparm := new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_STRING
-		pcfparm.Parameter = ibmmq.MQCA_Q_NAME
+		pcfparm.Parameter = attribute
 		pcfparm.String = []string{pattern}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
-		pcfparm = new(ibmmq.PCFParameter)
-		pcfparm.Type = ibmmq.MQCFT_INTEGER
-		pcfparm.Parameter = ibmmq.MQIA_Q_TYPE
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQQT_LOCAL)}
-		cfh.ParameterCount++
-		buf = append(buf, pcfparm.Bytes()...)
-
+		if command == ibmmq.MQCMD_INQUIRE_Q_NAMES {
+			pcfparm = new(ibmmq.PCFParameter)
+			pcfparm.Type = ibmmq.MQCFT_INTEGER
+			pcfparm.Parameter = ibmmq.MQIA_Q_TYPE
+			pcfparm.Int64Value = []int64{int64(ibmmq.MQQT_LOCAL)}
+			cfh.ParameterCount++
+			buf = append(buf, pcfparm.Bytes()...)
+		}
 		// Once we know the total number of parameters, put the
 		// CFH header on the front of the buffer.
 		buf = append(cfh.Bytes(), buf...)
@@ -382,7 +442,7 @@ func discoverQueues(monitoredQueues string) error {
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
-			return err
+			return objectList, err
 		}
 
 		// Now get the response
@@ -394,42 +454,65 @@ func discoverQueues(monitoredQueues string) error {
 		gmo.Options |= ibmmq.MQGMO_CONVERT
 		gmo.WaitInterval = 30 * 1000
 
-		// Ought to add a loop here in case we get truncated data
-		buf = make([]byte, 32768)
+		// Pick a default buffer size but allow it to double on retries to cope with
+		// truncated messages.
+		bufSize := 32768
 
-		datalen, err = replyQObj.Get(getmqmd, gmo, buf)
-		if err == nil {
-			cfh, offset := ibmmq.ReadPCFHeader(buf)
-			if cfh.CompCode != ibmmq.MQCC_OK {
-				return fmt.Errorf("PCF command failed with CC %d RC %d", cfh.CompCode, cfh.Reason)
-			} else {
-				parmAvail := true
-				bytesRead := 0
-				for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
-					elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
-					offset += bytesRead
-					// Have we now reached the end of the message
-					if offset >= datalen {
+		for truncation := true; truncation; {
+			buf = make([]byte, bufSize)
+
+			datalen, err = replyQObj.Get(getmqmd, gmo, buf)
+			if err == nil {
+				truncation = false
+				cfh, offset := ibmmq.ReadPCFHeader(buf)
+				if cfh.CompCode != ibmmq.MQCC_OK {
+					return objectList, fmt.Errorf("PCF command failed with CC %d RC %d", cfh.CompCode, cfh.Reason)
+				} else {
+					parmAvail := true
+					bytesRead := 0
+					if cfh.ParameterCount == 0 {
 						parmAvail = false
+						missingPatterns = missingPatterns + " " + pattern
 					}
 
-					switch elem.Parameter {
-					case ibmmq.MQCACF_Q_NAMES:
-						if len(elem.String) == 0 {
-							return fmt.Errorf("No queues matching '%s' exist", pattern)
+					for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+						elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+						offset += bytesRead
+						// Have we now reached the end of the message
+						if offset >= datalen {
+							parmAvail = false
 						}
-						for i := 0; i < len(elem.String); i++ {
-							qList = append(qList, strings.TrimSpace(elem.String[i]))
+
+						switch elem.Parameter {
+						case returnedAttribute:
+							if len(elem.String) == 0 {
+								missingPatterns = missingPatterns + " " + pattern
+							}
+							for i := 0; i < len(elem.String); i++ {
+								objectList = append(objectList, strings.TrimSpace(elem.String[i]))
+							}
 						}
 					}
 				}
+			} else {
+				mqreturn := err.(*ibmmq.MQReturn)
+				if mqreturn.MQCC != ibmmq.MQCC_OK && mqreturn.MQRC == ibmmq.MQRC_TRUNCATED_MSG_FAILED && bufSize <= maxBufSize {
+					truncation = true
+					bufSize *= 2
+					if bufSize > maxBufSize {
+						bufSize = maxBufSize
+					}
+				} else {
+					return objectList, err
+				}
 			}
-		} else {
-			return err
 		}
 	}
 
-	return err
+	if len(missingPatterns) > 0 && err == nil {
+		err = fmt.Errorf("No objects matching %s of type %d exist", missingPatterns, objectType)
+	}
+	return objectList, err
 }
 
 /*
@@ -439,12 +522,14 @@ create all the subscriptions.
 func createSubscriptions() error {
 	var err error
 	var sub ibmmq.MQObject
-
 	for _, cl := range Metrics.Classes {
 		for _, ty := range cl.Types {
 
 			if strings.Contains(ty.ObjectTopic, "%s") {
 				for i := 0; i < len(qList); i++ {
+					if len(qList[i]) == 0 {
+						continue
+					}
 					topic := fmt.Sprintf(ty.ObjectTopic, qList[i])
 					sub, err = subscribe(topic)
 					ty.subHobj[qList[i]] = sub
@@ -687,7 +772,7 @@ func formatDescription(elem *MonElement) string {
 		// the descriptions. They were getting mapped to the same string, so
 		// we have to ensure uniqueness. We do not put "_count" on the
 		// metric name.
-		if (strings.Contains(elem.Description,"byte count")) {
+		if strings.Contains(elem.Description, "byte count") {
 			s = s + "_bytes"
 		}
 	}
@@ -750,4 +835,21 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 	}
 
 	return f
+}
+
+func VerifyPatterns(patternList string) error {
+	var err error
+	objectPatterns := strings.Split(patternList, ",")
+	for i := 0; i < len(objectPatterns) && err == nil; i++ {
+
+		pattern := strings.TrimSpace(objectPatterns[i])
+		if pattern == "" {
+			continue
+		}
+		if strings.Count(pattern, "*") > 1 ||
+			(strings.Count(pattern, "*") == 1 && !strings.HasSuffix(pattern, "*")) {
+			err = fmt.Errorf("Object pattern '%s' is not valid", pattern)
+		}
+	}
+	return err
 }

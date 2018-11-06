@@ -2,7 +2,7 @@
 
 This repository demonstrates how you can call IBM MQ from applications written in the Go language.
 
-> **NOTICE**: Please ensure that you use a dependency management tool such as [dep](https://github.com/golang/dep) or [Glide](http://glide.sh/), and add a specific version dependency.  The current content has been marked as version 1.0.0, and a new version with breaking changes will be released soon.  By using a dependency manager, you can continue to use the old version if you want to.
+> **NOTICE**: Please ensure that you use a dependency management tool such as [dep](https://github.com/golang/dep) or [Glide](http://glide.sh/), and add a specific version dependency.
 
 This repository previously contained sample programs that exported MQ statistics to some monitoring packages. These have now been moved to a new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
@@ -20,6 +20,9 @@ The ibmmq directory contains a Go package, exposing an MQI-like interface.
 The intention is to give an API that is more natural for Go programmers than the common procedural MQI. For example, fixed length string arrays from the C API such as MQCHAR48 are represented by the native Go string type. Conversion between these types is handled within the ibmmq package itself, removing the need for Go programmers to know about it.
 
 A short program in the samples/mqitest directory gives an example of using this interface, to put and get messages and to subscribe to a topic.
+
+The mqmetric directory contains functions to help monitoring programs access MQ status and
+statistics. This package is not needed for general application programs.
 
 Feedback on the utility of this package, thoughts about whether it should be changed or extended are welcomed.
 
@@ -41,13 +44,16 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
 * Set environment variables. Based on the previous lines,
 
-  ```export GOROOT=/usr/lib/golang```
-
-  ```export GOPATH=$HOME/gowork```
+```
+  export GOROOT=/usr/lib/golang
+  export GOPATH=$HOME/gowork
+```
 
 * If using a version of Go from after 2017, you must set environment variables to permit some compile/link flags. This is due to a security fix in the compiler.
 
-  ```export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"```
+```
+export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
+```
 
 * Install the git client
 
@@ -55,14 +61,14 @@ If you are unfamiliar with Go, the following steps can help create a working env
 
 * Install the Go runtime and compiler. On Windows, the common directory is `c:\Go`
 * Ensure you have a gcc-based compiler, for example from the Cygwin distribution. I use the mingw variation, to ensure compiled code can be used on systems without Cygwin installed
-* Create a working directory. For example, ```mkdir c:\Gowork```
+* Create a working directory. For example, `mkdir c:\Gowork`
 * Set environment variables. Based on the previous lines,
 
-  ```set GOROOT=c:\Go```
-
-  ```set GOPATH=c:\Gowork```
-
-  ```set CC=x86_64-w64-mingw32-gcc.exe```
+```
+set GOROOT=c:\Go
+set GOPATH=c:\Gowork
+set CC=x86_64-w64-mingw32-gcc.exe
+```
 
 * The `CGO_LDFLAGS_ALLOW` variable is not needed on Windows
 * Install the git client
@@ -73,15 +79,15 @@ If you are unfamiliar with Go, the following steps can help create a working env
 * Change directory to the workspace you created earlier. (`cd $GOPATH`)
 * Use git to get a copy of the MQ components into a new directory in the workspace.
 
-  ```git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang```
+  `git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang`
 
 * Compile the `ibmmq` component:
 
-  ```go install ./src/github.com/ibm-messaging/mq-golang/ibmmq```
+  `go install ./src/github.com/ibm-messaging/mq-golang/ibmmq`
 
-* Compile the `mqmetric` component:
+* If you plan to use monitoring functions, then compile the `mqmetric` component:
 
-  ```go install ./src/github.com/ibm-messaging/mq-golang/mqmetric```
+  `go install ./src/github.com/ibm-messaging/mq-golang/mqmetric`
 
 * Follow the instructions in the [mq-metric-samples repository](https://github.com/ibm-messaging/mq-metric-samples) to compile the sample programs you are interested in.
 
