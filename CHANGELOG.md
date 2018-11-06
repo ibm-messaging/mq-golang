@@ -1,5 +1,9 @@
 # Changelog
 
+=======
+### October 2018
+* Allow compilation against MQ v8
+
 ## October 2018 - v3.0.0
 * Added functions to the mqmetric package to assist with collecting channel status
 * Better handle truncated messages when listing the queues that match a pattern

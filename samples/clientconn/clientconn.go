@@ -77,8 +77,15 @@ func main() {
 	// Reference the CD structure from the CNO
 	// and indicate that we want to use the client
 	// connection method.
-	cno.ClientConn = cd
+	if true {
+	  cno.ClientConn = cd
+  } else {
+		// This is how you might reference a remote CCDT instead of
+		// explicitly putting in the CD structure.
+	  cno.CCDTUrl = "http://localhost:3030"
+	}
 	cno.Options = ibmmq.MQCNO_CLIENT_BINDING
+
 
 	// Also fill in the userid and password if the MQSAMP_USER_ID
 	// environment variable is set. This is the same as the C
