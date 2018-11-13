@@ -1,6 +1,9 @@
 # Changelog
 
 =======
+### November 2018
+* Added functions to mqmetric to issue DISPLAY QSTATUS for additional stats
+
 ### October 2018
 * Allow compilation against MQ v8
 

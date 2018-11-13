@@ -35,6 +35,7 @@ type StatusAttribute struct {
 	pcfAttr     int32
 	squash      bool
 	delta       bool
+	index       int
 	Values      map[string]*StatusValue
 	prevValues  map[string]int64
 }
@@ -59,6 +60,7 @@ func newStatusAttribute(n string, d string, p int32) *StatusAttribute {
 	s.pcfAttr = p
 	s.squash = false
 	s.delta = false
+	s.index = -1
 	s.Values = make(map[string]*StatusValue)
 	s.prevValues = make(map[string]int64)
 	return s

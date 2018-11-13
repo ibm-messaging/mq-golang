@@ -4,41 +4,58 @@ This repository demonstrates how you can call IBM MQ from applications written i
 
 > **NOTICE**: Please ensure that you use a dependency management tool such as [dep](https://github.com/golang/dep) or [Glide](http://glide.sh/), and add a specific version dependency.
 
-This repository previously contained sample programs that exported MQ statistics to some monitoring packages. These have now been moved to a new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
+This repository previously contained sample programs that exported MQ statistics to
+some monitoring packages. These have now been moved to a
+new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
-A minimum level of MQ V8 is required to build these packages.
-However, note that the monitoring data published by the queue manager is not available before MQ V9.
+A minimum level of MQ V8 is required to build these packages. However, note that
+the monitoring data published by the queue manager is not available before MQ V9.
 
 ## Health Warning
 
-This package is provided as-is with no guarantees of support or updates. There are also no guarantees of compatibility with any future versions of the package; the API is subject to change based on any feedback.
+This package is provided as-is with no guarantees of support or updates. There are
+also no guarantees of compatibility with any future versions of the package; the API
+is subject to change based on any feedback. Versioned releases are made in this repository
+to assist with using stable APIs.
 
 ## MQI Description
 
 The ibmmq directory contains a Go package, exposing an MQI-like interface.
 
-The intention is to give an API that is more natural for Go programmers than the common procedural MQI. For example, fixed length string arrays from the C API such as MQCHAR48 are represented by the native Go string type. Conversion between these types is handled within the ibmmq package itself, removing the need for Go programmers to know about it.
+The intention is to give an API that is more natural for Go programmers than the
+common procedural MQI. For example, fixed length string arrays from the C API such
+as MQCHAR48 are represented by the native Go string type. Conversion between these
+types is handled within the ibmmq package itself, removing the need for Go programmers
+to know about it.
 
-A short program in the samples/mqitest directory gives an example of using this interface, to put and get messages and to subscribe to a topic.
+A short program in the samples/mqitest directory gives an example of using this interface,
+to put and get messages and to subscribe to a topic.
 
 The mqmetric directory contains functions to help monitoring programs access MQ status and
 statistics. This package is not needed for general application programs.
 
-Feedback on the utility of this package, thoughts about whether it should be changed or extended are welcomed.
-
 ## Using the package
 
-To use code in this repository, you will need to be able to build Go applications, and have a copy of MQ installed to build against. It uses cgo to access the MQI C structures and definitions. It assumes that MQ has been installed in the default location on a Linux platform (`/opt/mqm`) but you can easily change the cgo directives in the source files if necessary.
+To use code in this repository, you will need to be able to build Go applications, and
+have a copy of MQ installed to build against. It uses cgo to access the MQI C
+structures and definitions. It assumes that MQ has been installed in the default
+location (on a Linux platform this would be `/opt/mqm`) but this can be changed
+with environment variables if necessary.
 
-Some Windows capability is also included. This has been tested with Go 1.10 compiler, which now permits standard Windows paths (eg including spaces) so the CGO directives can point at the normal MQ install path.
+Windows compatibility is also included. This has been tested with Go 1.10 compiler,
+which now permits standard Windows paths (eg including spaces) so the CGO directives
+can point at the normal MQ install path.
 
 ## Getting started
 
-If you are unfamiliar with Go, the following steps can help create a working environment with source code in a suitable tree. Initial setup tends to be platform-specific, but subsequent steps are independent of the platform.
+If you are unfamiliar with Go, the following steps can help create a working environment
+with source code in a suitable tree. Initial setup tends to be platform-specific,
+but subsequent steps are independent of the platform.
 
 ### Linux
 
-* Install the Go runtime and compiler. On Linux, the packaging may vary but a typical directory for the code is `/usr/lib/golang`.
+* Install the Go runtime and compiler. On Linux, the packaging may vary but a typical
+directory for the code is `/usr/lib/golang`.
 
 * Create a working directory. For example, ```mkdir $HOME/gowork```
 
@@ -81,6 +98,14 @@ set CC=x86_64-w64-mingw32-gcc.exe
 
   `git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang`
 
+* If you have not installed MQ libraries into the default location, then set environment variables
+for the C compiler to recognise those directories. For example,
+
+```
+   export CGO_CFLAGS="-I/my/mq/dir/inc"
+   export CGO_LDFLAGS="-I/my/mq/dir/lib64"
+```
+
 * Compile the `ibmmq` component:
 
   `go install ./src/github.com/ibm-messaging/mq-golang/ibmmq`
@@ -89,9 +114,11 @@ set CC=x86_64-w64-mingw32-gcc.exe
 
   `go install ./src/github.com/ibm-messaging/mq-golang/mqmetric`
 
-* Follow the instructions in the [mq-metric-samples repository](https://github.com/ibm-messaging/mq-metric-samples) to compile the sample programs you are interested in.
+* Sample programs can be compiled in this way
 
-At this point, you should have a compiled copy of the code in `$GOPATH/bin`.
+  `go build -o bin/mqitest ./src/github.com/ibm-messaging/mq-golang/samples/mqitest/*.go`
+
+At this point, you should have a compiled copy of the program in `$GOPATH/bin`.
 
 ## Limitations
 
@@ -111,11 +138,16 @@ See [CHANGELOG](CHANGELOG.md) in this directory.
 
 ## Issues and Contributions
 
-For feedback and issues relating specifically to this package, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-golang/issues).
+Feedback on the utility of this package, thoughts about whether it should be changed
+or extended are welcomed.
 
-Contributions to this package can be accepted under the terms of the IBM Contributor License Agreement,
-found in the [CLA file](CLA.md) of this repository. When submitting a pull request, you must include a statement stating
-you accept the terms in the CLA.
+For feedback and issues relating specifically to this package, please use
+the [GitHub issue tracker](https://github.com/ibm-messaging/mq-golang/issues).
+
+Contributions to this package can be accepted under the terms of the IBM Contributor
+License Agreement, found in the [CLA file](CLA.md) of this repository. When
+submitting a pull request, you must include a statement stating you accept the terms
+in the CLA.
 
 ## Copyright
 

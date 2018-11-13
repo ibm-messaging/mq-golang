@@ -90,6 +90,10 @@ var Metrics AllMetrics
 
 var qList []string
 
+func GetDiscoveredQueues() []string {
+	return qList
+}
+
 /*
 DiscoverAndSubscribe does all the work of finding the
 different resources available from a queue manager and
@@ -349,7 +353,7 @@ func discoverQueues(monitoredQueues string) error {
 	var err error
 	qList, err = inquireObjects(monitoredQueues, ibmmq.MQOT_Q)
 	if len(qList) > 0 {
-		fmt.Printf("Monitoring Queues: %v\n", qList)
+		//fmt.Printf("Monitoring Queues: %v\n", qList)
 		if err != nil {
 			// fmt.Printf("Queue Discovery: %v\n", err)
 		}
