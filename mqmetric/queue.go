@@ -41,6 +41,7 @@ const (
 	ATTR_Q_OPPROCS     = "output_handles"
 	ATTR_Q_QTIME_SHORT = "qtime_short"
 	ATTR_Q_QTIME_LONG  = "qtime_long"
+	ATTR_Q_DEPTH       = "depth"
 )
 
 var QueueStatus StatusSet
@@ -70,6 +71,11 @@ func QueueInitAttributes() {
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
 	attr = ATTR_Q_OPPROCS
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response
+	if platform == ibmmq.MQPL_ZOS {
+		attr = ATTR_Q_DEPTH
+		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
+	}
 
 	attr = ATTR_Q_QTIME_SHORT
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
@@ -156,6 +162,8 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 	buf = make([]byte, 0)
 
 	cfh := ibmmq.NewMQCFH()
+	cfh.Version = ibmmq.MQCFH_VERSION_3
+	cfh.Type = ibmmq.MQCFT_COMMAND_XR
 
 	// Can allow all the other fields to default
 	cfh.Command = ibmmq.MQCMD_INQUIRE_Q_STATUS

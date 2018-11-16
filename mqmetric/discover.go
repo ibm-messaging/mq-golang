@@ -137,9 +137,9 @@ func discoverClasses(metaPrefix string) error {
 
 	// Have to know the starting point for the topic that tells about classes
 	if metaPrefix == "" {
-		rootTopic = "$SYS/MQ/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
+		rootTopic = "$SYS/MQ/INFO/QMGR/" + resolvedQMgrName + "/Monitor/METADATA/CLASSES"
 	} else {
-		rootTopic = metaPrefix + "/INFO/QMGR/" + qMgr.Name + "/Monitor/METADATA/CLASSES"
+		rootTopic = metaPrefix + "/INFO/QMGR/" + resolvedQMgrName + "/Monitor/METADATA/CLASSES"
 	}
 	sub, err = subscribe(rootTopic)
 	if err == nil {
@@ -296,6 +296,11 @@ func discoverStats(metaPrefix string) error {
 	// Start with an empty set of information about the available stats
 	Metrics.Classes = make(map[int]*MonClass)
 
+	// Allow us to proceed on z/OS even though it does not support pub/sub resources
+	if metaPrefix == "" && platform == ibmmq.MQPL_ZOS {
+		return nil
+	}
+
 	// Then get the list of CLASSES
 	err = discoverClasses(metaPrefix)
 
@@ -418,6 +423,8 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
 		cfh := ibmmq.NewMQCFH()
+		cfh.Version = ibmmq.MQCFH_VERSION_3
+		cfh.Type = ibmmq.MQCFT_COMMAND_XR
 
 		// Can allow all the other fields to default
 		cfh.Command = command
@@ -571,6 +578,10 @@ func ProcessPublications() error {
 	var typeidx int
 	var elementidx int
 	var value int64
+
+	if platform == ibmmq.MQPL_ZOS {
+		return nil
+	}
 
 	// Keep reading all available messages until queue is empty. Don't
 	// do a GET-WAIT; just immediate removals.

@@ -199,6 +199,8 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	buf = make([]byte, 0)
 
 	cfh := ibmmq.NewMQCFH()
+	cfh.Version = ibmmq.MQCFH_VERSION_3
+	cfh.Type = ibmmq.MQCFT_COMMAND_XR
 
 	// Can allow all the other fields to default
 	cfh.Command = ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS

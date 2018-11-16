@@ -252,6 +252,15 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 	case C.MQCFT_GROUP:
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &pcfParm.ParameterCount)
+
+	case C.MQCFT_BYTE_STRING:
+		// For now, the data is not actually stored anywhere as we don't need it
+		// But we do need to know how to step over the field
+		offset := int32(C.MQCFBS_STRUC_LENGTH_FIXED)
+		binary.Read(p, endian, &pcfParm.Parameter)
+		binary.Read(p, endian, &pcfParm.stringLength)
+		p.Next(int(pcfParm.strucLength - offset))
+
 	default:
 		fmt.Println("mqiPCF.go: Unknown PCF type ", pcfParm.Type)
 		// Skip the remains of this structure, assuming it really is

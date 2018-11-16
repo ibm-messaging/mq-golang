@@ -3,6 +3,7 @@
 =======
 ### November 2018
 * Added functions to mqmetric to issue DISPLAY QSTATUS for additional stats
+* Added z/OS capability for minimal status
 
 ### October 2018
 * Allow compilation against MQ v8
