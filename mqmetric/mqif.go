@@ -28,14 +28,17 @@ import (
 	"fmt"
 
 	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"strings"
 )
 
 var (
-	qMgr            ibmmq.MQQueueManager
-	cmdQObj         ibmmq.MQObject
-	replyQObj       ibmmq.MQObject
-	statusReplyQObj ibmmq.MQObject
-	getBuffer       = make([]byte, 32768)
+	qMgr             ibmmq.MQQueueManager
+	cmdQObj          ibmmq.MQObject
+	replyQObj        ibmmq.MQObject
+	statusReplyQObj  ibmmq.MQObject
+	getBuffer        = make([]byte, 32768)
+	platform         int32
+	resolvedQMgrName string
 
 	qmgrConnected = false
 	queuesOpened  = false
@@ -76,6 +79,31 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
+	}
+
+	if err == nil {
+		mqod := ibmmq.NewMQOD()
+		openOptions := ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
+
+		mqod.ObjectType = ibmmq.MQOT_Q_MGR
+		mqod.ObjectName = ""
+
+		qMgrObject, err := qMgr.Open(mqod, openOptions)
+
+		if err == nil {
+			selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
+				ibmmq.MQIA_PLATFORM}
+
+			intAttrs, charAttrs, err := qMgrObject.Inq(selectors, 1, 48)
+
+			if err == nil {
+				resolvedQMgrName = strings.TrimSpace(string(charAttrs[0:48]))
+				platform = intAttrs[0]
+			}
+			// Don't need the qMgrObject any more
+			qMgrObject.Close(0)
+
+		}
 	}
 
 	// MQOPEN of the COMMAND QUEUE

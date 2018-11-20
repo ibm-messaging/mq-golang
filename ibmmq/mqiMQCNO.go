@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016,2018
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 	mqcno->CCDTUrlOffset = 0;
 	mqcno->CCDTUrlPtr = NULL;
 	mqcno->CCDTUrlLength = length;
-	if (url != NULL) {
+	if (url != NULL && length > 0) {
 		mqcno->CCDTUrlPtr = url;
 	}
 #else
@@ -181,7 +181,9 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	// The CCDT URL option was introduced in MQ V9. To compile against older
 	// versions of MQ, setting of it has been moved to a C function that can use
 	// the pre-processor to decide whether it's needed.
-	C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
+	if gocno.CCDTUrl != "" {
+		C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
+	}
 	return
 }
 

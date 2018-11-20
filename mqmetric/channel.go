@@ -53,7 +53,7 @@ const (
 )
 
 var ChannelStatus StatusSet
-var attrsInit = false
+var chlAttrsInit = false
 var channelsSeen map[string]bool
 
 /*
@@ -65,7 +65,7 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func ChannelInitAttributes() {
-	if attrsInit {
+	if chlAttrsInit {
 		return
 	}
 	ChannelStatus.Attributes = make(map[string]*StatusAttribute)
@@ -98,7 +98,7 @@ func ChannelInitAttributes() {
 	attr = ATTR_CHL_STATUS_SQUASH
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
 	ChannelStatus.Attributes[attr].squash = true
-	attrsInit = true
+	chlAttrsInit = true
 }
 
 // If we need to list the channels that match a pattern. Not needed for
@@ -199,6 +199,8 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	buf = make([]byte, 0)
 
 	cfh := ibmmq.NewMQCFH()
+	cfh.Version = ibmmq.MQCFH_VERSION_3
+	cfh.Type = ibmmq.MQCFT_COMMAND_XR
 
 	// Can allow all the other fields to default
 	cfh.Command = ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS
@@ -252,7 +254,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 			if cfh.Reason != ibmmq.MQRC_NONE {
 				continue
 			}
-			key := parseData(instanceType, cfh, replyBuf[offset:datalen])
+			key := parseChlData(instanceType, cfh, replyBuf[offset:datalen])
 			if key != "" {
 				channelsSeen[key] = true
 			}
@@ -263,7 +265,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
-func parseData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
+func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
 	chlName := ""

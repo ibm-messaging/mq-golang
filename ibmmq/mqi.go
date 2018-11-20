@@ -16,13 +16,14 @@ the particular MQRC or MQCC values.
 
 The build directives assume the default MQ installation path
 which is in /opt/mqm (Linux) and c:\Program Files\IBM\MQ (Windows).
-These would need to be changed in this file if you use a
-non-default path.
+If you use a non-default path for the installation, you can set
+environment variables CGO_CFLAGS and CGO_LDFLAGS to reference those
+directories.
 */
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016, 2018
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
