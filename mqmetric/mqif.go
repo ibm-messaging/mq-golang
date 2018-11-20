@@ -100,6 +100,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				resolvedQMgrName = strings.TrimSpace(string(charAttrs[0:48]))
 				platform = intAttrs[0]
 			}
+			// Don't need the qMgrObject any more
+			qMgrObject.Close(0)
 
 		}
 	}
