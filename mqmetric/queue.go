@@ -89,7 +89,7 @@ func QueueInitAttributes() {
 
 // If we need to list the queues that match a pattern. Not needed for
 // the status queries as they (unlike the pub/sub resource stats) accept
-// patterns in the
+// patterns in the PCF command
 func InquireQueues(patterns string) ([]string, error) {
 	QueueInitAttributes()
 	return inquireObjects(patterns, ibmmq.MQOT_Q)

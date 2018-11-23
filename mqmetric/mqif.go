@@ -81,6 +81,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		qmgrConnected = true
 	}
 
+	// Discover important information about the qmgr - its real name
+	// and the platform type
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
@@ -235,4 +237,12 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 	}
 
 	return subObj, err
+}
+
+/*
+Return the current platform - the MQPL_* definition value. It
+can be turned into a string if necessary via ibmmq.MQItoString("PL"...)
+*/
+func GetPlatform() int32 {
+	return platform
 }

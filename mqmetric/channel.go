@@ -44,6 +44,7 @@ const (
 	ATTR_CHL_MESSAGES      = "messages"
 	ATTR_CHL_STATUS        = "status"
 	ATTR_CHL_STATUS_SQUASH = ATTR_CHL_STATUS + "_squash"
+	ATTR_CHL_SUBSTATE      = "substate"
 	ATTR_CHL_TYPE          = "type"
 	ATTR_CHL_INSTANCE_TYPE = "instance_type"
 
@@ -86,8 +87,12 @@ func ChannelInitAttributes() {
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
 	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 
+	// This is decoded by MQCHS_* values
 	attr = ATTR_CHL_STATUS
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
+	// The next value can be decoded from the MQCHSSTATE_* values
+	attr = ATTR_CHL_SUBSTATE
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Substate", ibmmq.MQIACH_CHANNEL_SUBSTATE)
 	attr = ATTR_CHL_TYPE
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Type", ibmmq.MQIACH_CHANNEL_TYPE)
 	attr = ATTR_CHL_INSTANCE_TYPE
@@ -103,7 +108,7 @@ func ChannelInitAttributes() {
 
 // If we need to list the channels that match a pattern. Not needed for
 // the status queries as they (unlike the pub/sub resource stats) accept
-// patterns in the
+// patterns in the PCF command
 func InquireChannels(patterns string) ([]string, error) {
 	ChannelInitAttributes()
 	return inquireObjects(patterns, ibmmq.MQOT_CHANNEL)
