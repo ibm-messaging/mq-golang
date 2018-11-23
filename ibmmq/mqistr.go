@@ -91,6 +91,9 @@ func MQItoString(class string, value int) string {
 	case "OT":
 		s = C.GoString(C.MQOT_STR(v))
 
+	case "PL":
+		s = C.GoString(C.MQPL_STR(v))
+
 	case "RC":
 		s = C.GoString(C.MQRC_STR(v))
 		if s == "" {

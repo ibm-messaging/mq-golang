@@ -126,8 +126,8 @@ func copyPMOfromC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 	gopmo.UnknownDestCount = int32(mqpmo.UnknownDestCount)
 	gopmo.InvalidDestCount = int32(mqpmo.InvalidDestCount)
 
-	gopmo.ResolvedQName = C.GoStringN((*C.char)(&mqpmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	gopmo.ResolvedQMgrName = C.GoStringN((*C.char)(&mqpmo.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	gopmo.ResolvedQName = trimStringN((*C.char)(&mqpmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	gopmo.ResolvedQMgrName = trimStringN((*C.char)(&mqpmo.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
 
 	gopmo.RecsPresent = int32(mqpmo.RecsPresent)
 	gopmo.PutMsgRecFields = int32(mqpmo.PutMsgRecFields)

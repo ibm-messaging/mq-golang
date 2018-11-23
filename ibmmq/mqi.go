@@ -57,6 +57,7 @@ import "C"
 
 import (
 	"encoding/binary"
+	"strings"
 	"unsafe"
 )
 
@@ -110,10 +111,11 @@ func (e *MQReturn) Error() string {
 }
 
 /*
- * Copy a Go string into a fixed-size C char array such as MQCHAR12
+ * Copy a Go string in	"strings"
+to a fixed-size C char array such as MQCHAR12
  * Once the string has been copied, it can be immediately freed
  * Empty strings have first char set to 0 in MQI structures
- */
+*/
 func setMQIString(a *C.char, v string, l int) {
 	if len(v) > 0 {
 		p := C.CString(v)
@@ -122,6 +124,23 @@ func setMQIString(a *C.char, v string, l int) {
 	} else {
 		*a = 0
 	}
+}
+
+/*
+ * The C,GoStringN function can return strings that include
+ * NUL characters (which is not really what is expected for a C string-related
+ * function). So we have a utility function to remove any trailing nulls
+ */
+func trimStringN(c *C.char, l C.int) string {
+	var rc string
+	s := C.GoStringN(c, l)
+	i := strings.IndexByte(s, 0)
+	if i == -1 {
+		rc = s
+	} else {
+		rc = s[0:i]
+	}
+	return rc
 }
 
 /*
@@ -242,6 +261,9 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 
 	// ObjectName may have changed because it's a model queue
 	object.Name = good.ObjectName
+	if good.ObjectType == C.MQOT_TOPIC {
+		object.Name = good.ObjectString
+	}
 
 	return object, nil
 

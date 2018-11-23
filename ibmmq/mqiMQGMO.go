@@ -107,7 +107,7 @@ func copyGMOfromC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	gogmo.WaitInterval = int32(mqgmo.WaitInterval)
 	gogmo.Signal1 = int32(mqgmo.Signal1)
 	gogmo.Signal2 = int32(mqgmo.Signal2)
-	gogmo.ResolvedQName = C.GoStringN((*C.char)(&mqgmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	gogmo.ResolvedQName = trimStringN((*C.char)(&mqgmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	gogmo.MatchOptions = int32(mqgmo.MatchOptions)
 	gogmo.GroupStatus = rune(mqgmo.GroupStatus)
 	gogmo.SegmentStatus = rune(mqgmo.SegmentStatus)

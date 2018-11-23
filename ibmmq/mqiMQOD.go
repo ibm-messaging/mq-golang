@@ -179,10 +179,11 @@ func copyODfromC(mqod *C.MQOD, good *MQOD) {
 
 	good.Version = int32(mqod.Version)
 	good.ObjectType = int32(mqod.ObjectType)
-	good.ObjectName = C.GoStringN((*C.char)(&mqod.ObjectName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	good.ObjectQMgrName = C.GoStringN((*C.char)(&mqod.ObjectQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	good.DynamicQName = C.GoStringN((*C.char)(&mqod.DynamicQName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	good.AlternateUserId = C.GoStringN((*C.char)(&mqod.AlternateUserId[0]), C.MQ_USER_ID_LENGTH)
+	good.ObjectName = trimStringN((*C.char)(&mqod.ObjectName[0]), C.MQ_OBJECT_NAME_LENGTH)
+
+	good.ObjectQMgrName = trimStringN((*C.char)(&mqod.ObjectQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	good.DynamicQName = trimStringN((*C.char)(&mqod.DynamicQName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	good.AlternateUserId = trimStringN((*C.char)(&mqod.AlternateUserId[0]), C.MQ_USER_ID_LENGTH)
 
 	good.RecsPresent = int32(mqod.RecsPresent)
 	good.KnownDestCount = int32(mqod.KnownDestCount)
@@ -198,14 +199,14 @@ func copyODfromC(mqod *C.MQOD, good *MQOD) {
 		good.AlternateSecurityId[i] = (byte)(mqod.AlternateSecurityId[i])
 	}
 
-	good.ResolvedQName = C.GoStringN((*C.char)(&mqod.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	good.ResolvedQMgrName = C.GoStringN((*C.char)(&mqod.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	good.ResolvedQName = trimStringN((*C.char)(&mqod.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	good.ResolvedQMgrName = trimStringN((*C.char)(&mqod.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
 
-	good.ObjectString = C.GoStringN((*C.char)(mqod.ObjectString.VSPtr), (C.int)(mqod.ObjectString.VSLength))
+	good.ObjectString = trimStringN((*C.char)(mqod.ObjectString.VSPtr), (C.int)(mqod.ObjectString.VSLength))
 	C.free(unsafe.Pointer(mqod.ObjectString.VSPtr))
-	good.SelectionString = C.GoStringN((*C.char)(mqod.SelectionString.VSPtr), (C.int)(mqod.SelectionString.VSLength))
+	good.SelectionString = trimStringN((*C.char)(mqod.SelectionString.VSPtr), (C.int)(mqod.SelectionString.VSLength))
 	C.free(unsafe.Pointer(mqod.SelectionString.VSPtr))
-	good.ResObjectString = C.GoStringN((*C.char)(mqod.ResObjectString.VSPtr), (C.int)(mqod.ResObjectString.VSLength))
+	good.ResObjectString = trimStringN((*C.char)(mqod.ResObjectString.VSPtr), (C.int)(mqod.ResObjectString.VSLength))
 	C.free(unsafe.Pointer(mqod.ResObjectString.VSPtr))
 	good.ResolvedType = int32(mqod.ResolvedType)
 
