@@ -1,13 +1,12 @@
 /*
-Package ibmmq provides a wrapper to a subset of the IBM MQ
-procedural interface (the MQI).
-
-In this initial implementation not all the MQI verbs are
-included, but it does have the core operations required to
-put and get messages and work with topics.
+Package ibmmq provides a wrapper to a the IBM MQ procedural interface (the MQI).
 
 The verbs are given mixed case names without MQ - Open instead
 of MQOPEN etc.
+
+For more information on the MQI, including detailed descriptions of the functions,
+constants and structures, see the MQ Knowledge Center
+at https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.dev.doc/q023720_.htm#q023720_
 
 If an MQI call returns MQCC_FAILED or MQCC_WARNING, a custom error
 type is returned containing the MQCC/MQRC values as
@@ -95,6 +94,16 @@ type MQObject struct {
 }
 
 /*
+ * MQMessageHandle is a wrapper for the C message handle
+ * type. Unlike the C MQI, a valid hConn is required to create
+ * the message handle.
+ */
+type MQMessageHandle struct {
+	hMsg C.MQHMSG
+	qMgr *MQQueueManager
+}
+
+/*
 MQReturn holds the MQRC and MQCC values returned from an MQI verb. It
 implements the Error() function so is returned as the specific error
 from the verbs. See the sample programs for how to access the
@@ -111,11 +120,11 @@ func (e *MQReturn) Error() string {
 }
 
 /*
- * Copy a Go string in	"strings"
-to a fixed-size C char array such as MQCHAR12
+ * Copy a Go string in "strings"
+ * to a fixed-size C char array such as MQCHAR12
  * Once the string has been copied, it can be immediately freed
  * Empty strings have first char set to 0 in MQI structures
-*/
+ */
 func setMQIString(a *C.char, v string, l int) {
 	if len(v) > 0 {
 		p := C.CString(v)
@@ -127,7 +136,7 @@ func setMQIString(a *C.char, v string, l int) {
 }
 
 /*
- * The C,GoStringN function can return strings that include
+ * The C.GoStringN function can return strings that include
  * NUL characters (which is not really what is expected for a C string-related
  * function). So we have a utility function to remove any trailing nulls
  */
@@ -334,6 +343,37 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 }
 
 /*
+Subrq is the function to request retained publications
+*/
+func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+	var mqsro C.MQSRO
+
+	copySROtoC(&mqsro, gosro)
+
+	C.MQSUBRQ(subObject.qMgr.hConn,
+		subObject.hObj,
+		C.MQLONG(action),
+		(C.PMQVOID)(unsafe.Pointer(&mqsro)),
+		&mqcc,
+		&mqrc)
+
+	copySROfromC(&mqsro, gosro)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQSUBRQ",
+	}
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
+}
+
+/*
 Cmit is the function to commit an in-flight transaction
 */
 func (x *MQQueueManager) Cmit() error {
@@ -368,6 +408,35 @@ func (x *MQQueueManager) Back() error {
 		MQRC: int32(mqrc),
 		verb: "MQBACK",
 	}
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
+
+}
+
+/*
+Stat is the function to check the status after using the asynchronous put
+across a client channel
+*/
+func (x *MQQueueManager) Stat(statusType int32, gosts *MQSTS) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var mqsts C.MQSTS
+
+	copySTStoC(&mqsts, gosts)
+
+	C.MQSTAT(x.hConn, C.MQLONG(statusType), (C.PMQVOID)(unsafe.Pointer(&mqsts)), &mqcc, &mqrc)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQSTAT",
+	}
+
+	copySTSfromC(&mqsts, gosts)
 
 	if mqcc != C.MQCC_OK {
 		return &mqreturn
@@ -575,4 +644,362 @@ func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen in
 	}
 
 	return goIntAttrs, goCharAttrs, nil
+}
+
+/*********** Message Handles and Properties  ****************/
+
+/*
+CrtMH is the function to create a message handle for holding properties
+*/
+func (x *MQQueueManager) CrtMH(gocmho *MQCMHO) (MQMessageHandle, error) {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var mqcmho C.MQCMHO
+	var mqhmsg C.MQHMSG
+
+	copyCMHOtoC(&mqcmho, gocmho)
+
+	C.MQCRTMH(x.hConn,
+		(C.PMQVOID)(unsafe.Pointer(&mqcmho)),
+		(C.PMQHMSG)(unsafe.Pointer(&mqhmsg)),
+		&mqcc,
+		&mqrc)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQCRTMH",
+	}
+
+	copyCMHOfromC(&mqcmho, gocmho)
+	msgHandle := MQMessageHandle{hMsg: mqhmsg, qMgr: x}
+
+	if mqcc != C.MQCC_OK {
+		return msgHandle, &mqreturn
+	}
+
+	return msgHandle, nil
+
+}
+
+/*
+DltMH is the function to delete a message handle holding properties
+*/
+func (handle *MQMessageHandle) DltMH(godmho *MQDMHO) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var mqdmho C.MQDMHO
+
+	copyDMHOtoC(&mqdmho, godmho)
+
+	C.MQDLTMH(handle.qMgr.hConn,
+		(C.PMQHMSG)(unsafe.Pointer(&handle.hMsg)),
+		(C.PMQVOID)(unsafe.Pointer(&mqdmho)),
+		&mqcc,
+		&mqrc)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQDLTMH",
+	}
+
+	copyDMHOfromC(&mqdmho, godmho)
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	handle.hMsg = C.MQHM_NONE
+	return nil
+}
+
+/*
+SetMP is the function to set a message property. This function allows the
+property value to be (almost) any basic datatype - string, int32, int64, []byte
+and converts it into the appropriate format for the C MQI.
+*/
+func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, value interface{}) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var mqsmpo C.MQSMPO
+	var mqpd C.MQPD
+	var mqName C.MQCHARV
+
+	var propertyLength C.MQLONG
+	var propertyType C.MQLONG
+	var propertyPtr C.PMQVOID
+
+	var propertyInt32 C.MQLONG
+	var propertyInt64 C.MQINT64
+	var propertyBool C.MQLONG
+	var propertyInt8 C.MQINT8
+	var propertyInt16 C.MQINT16
+	var propertyFloat32 C.MQFLOAT32
+	var propertyFloat64 C.MQFLOAT64
+
+	mqName.VSLength = (C.MQLONG)(len(name))
+	mqName.VSCCSID = C.MQCCSI_APPL
+	if mqName.VSLength > 0 {
+		mqName.VSPtr = (C.MQPTR)(C.CString(name))
+		mqName.VSBufSize = mqName.VSLength
+	}
+
+	propertyType = -1
+	if v, ok := value.(int32); ok {
+		propertyInt32 = (C.MQLONG)(v)
+		propertyType = C.MQTYPE_INT32
+		propertyLength = 4
+		propertyPtr = (C.PMQVOID)(&propertyInt32)
+	} else if v, ok := value.(int64); ok {
+		propertyInt64 = (C.MQINT64)(v)
+		propertyType = C.MQTYPE_INT64
+		propertyLength = 8
+		propertyPtr = (C.PMQVOID)(&propertyInt64)
+	} else if v, ok := value.(int); ok {
+		propertyInt64 = (C.MQINT64)(v)
+		propertyType = C.MQTYPE_INT64
+		propertyLength = 8
+		propertyPtr = (C.PMQVOID)(&propertyInt64)
+	} else if v, ok := value.(int8); ok {
+		propertyInt8 = (C.MQINT8)(v)
+		propertyType = C.MQTYPE_INT8
+		propertyLength = 1
+		propertyPtr = (C.PMQVOID)(&propertyInt8)
+	} else if v, ok := value.(byte); ok { // Separate for int8 and byte (alias uint8)
+		propertyInt8 = (C.MQINT8)(v)
+		propertyType = C.MQTYPE_INT8
+		propertyLength = 1
+		propertyPtr = (C.PMQVOID)(&propertyInt8)
+	} else if v, ok := value.(int16); ok {
+		propertyInt16 = (C.MQINT16)(v)
+		propertyType = C.MQTYPE_INT16
+		propertyLength = 2
+		propertyPtr = (C.PMQVOID)(&propertyInt16)
+	} else if v, ok := value.(float32); ok {
+		propertyFloat32 = (C.MQFLOAT32)(v)
+		propertyType = C.MQTYPE_FLOAT32
+		propertyLength = C.sizeof_MQFLOAT32
+		propertyPtr = (C.PMQVOID)(&propertyFloat32)
+	} else if v, ok := value.(float64); ok {
+		propertyFloat64 = (C.MQFLOAT64)(v)
+		propertyType = C.MQTYPE_FLOAT64
+		propertyLength = C.sizeof_MQFLOAT64
+		propertyPtr = (C.PMQVOID)(&propertyFloat64)
+	} else if v, ok := value.(string); ok {
+		propertyType = C.MQTYPE_STRING
+		propertyLength = (C.MQLONG)(len(v))
+		propertyPtr = (C.PMQVOID)(C.CString(v))
+	} else if v, ok := value.(bool); ok {
+		propertyType = C.MQTYPE_BOOLEAN
+		propertyLength = 4
+		if v {
+			propertyBool = 1
+		} else {
+			propertyBool = 0
+		}
+		propertyPtr = (C.PMQVOID)(&propertyBool)
+	} else if v, ok := value.([]byte); ok {
+		propertyType = C.MQTYPE_BYTE_STRING
+		propertyLength = (C.MQLONG)(len(v))
+		propertyPtr = (C.PMQVOID)(C.malloc(C.size_t(len(v))))
+		copy((*[1 << 31]byte)(propertyPtr)[0:len(v)], v)
+	} else if v == nil {
+		propertyType = C.MQTYPE_NULL
+		propertyLength = 0
+		propertyPtr = (C.PMQVOID)(C.NULL)
+	} else {
+		// Unknown datatype - return an error immediately
+		mqreturn := MQReturn{MQCC: C.MQCC_FAILED,
+			MQRC: C.MQRC_PROPERTY_TYPE_ERROR,
+			verb: "MQSETMP",
+		}
+		return &mqreturn
+	}
+
+	copySMPOtoC(&mqsmpo, gosmpo)
+	copyPDtoC(&mqpd, gopd)
+
+	C.MQSETMP(handle.qMgr.hConn,
+		handle.hMsg,
+		(C.PMQVOID)(unsafe.Pointer(&mqsmpo)),
+		(C.PMQVOID)(unsafe.Pointer(&mqName)),
+		(C.PMQVOID)(unsafe.Pointer(&mqpd)),
+		propertyType,
+		propertyLength,
+		propertyPtr,
+		&mqcc,
+		&mqrc)
+
+	if len(name) > 0 {
+		C.free(unsafe.Pointer(mqName.VSPtr))
+	}
+
+	if propertyType == C.MQTYPE_STRING || propertyType == C.MQTYPE_BYTE_STRING {
+		C.free(unsafe.Pointer(propertyPtr))
+	}
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQSETMP",
+	}
+
+	copySMPOfromC(&mqsmpo, gosmpo)
+	copyPDfromC(&mqpd, gopd)
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
+}
+
+/*
+DltMP is the function to remove a message property.
+*/
+func (handle *MQMessageHandle) DltMP(godmpo *MQDMPO, name string) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var mqdmpo C.MQDMPO
+	var mqName C.MQCHARV
+
+	mqName.VSLength = (C.MQLONG)(len(name))
+	mqName.VSCCSID = C.MQCCSI_APPL
+	if mqName.VSLength > 0 {
+		mqName.VSPtr = (C.MQPTR)(C.CString(name))
+		mqName.VSBufSize = mqName.VSLength
+	}
+
+	copyDMPOtoC(&mqdmpo, godmpo)
+
+	C.MQDLTMP(handle.qMgr.hConn,
+		handle.hMsg,
+		(C.PMQVOID)(unsafe.Pointer(&mqdmpo)),
+		(C.PMQVOID)(unsafe.Pointer(&mqName)),
+		&mqcc,
+		&mqrc)
+
+	if len(name) > 0 {
+		C.free(unsafe.Pointer(mqName.VSPtr))
+	}
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQDLTMP",
+	}
+
+	copyDMPOfromC(&mqdmpo, godmpo)
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
+}
+
+/*
+InqMP is the function to inquire about the value of a message property.
+*/
+
+func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (string, interface{}, error) {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var mqimpo C.MQIMPO
+	var mqpd C.MQPD
+	var mqName C.MQCHARV
+
+	var propertyLength C.MQLONG
+	var propertyType C.MQLONG
+	var propertyPtr C.PMQVOID
+	var propertyValue interface{}
+
+	const namebufsize = 1024
+	const propbufsize = 10240
+
+	mqName.VSLength = (C.MQLONG)(len(name))
+	mqName.VSCCSID = C.MQCCSI_APPL
+	if mqName.VSLength > 0 {
+		mqName.VSPtr = (C.MQPTR)(C.CString(name))
+		mqName.VSBufSize = mqName.VSLength
+	} else {
+		mqName.VSPtr = (C.MQPTR)(C.malloc(namebufsize))
+		mqName.VSBufSize = namebufsize
+	}
+
+	copyIMPOtoC(&mqimpo, goimpo)
+	copyPDtoC(&mqpd, gopd)
+
+	propertyPtr = C.PMQVOID(C.malloc(propbufsize))
+	bufferLength := C.MQLONG(namebufsize)
+
+	C.MQINQMP(handle.qMgr.hConn,
+		handle.hMsg,
+		(C.PMQVOID)(unsafe.Pointer(&mqimpo)),
+		(C.PMQVOID)(unsafe.Pointer(&mqName)),
+		(C.PMQVOID)(unsafe.Pointer(&mqpd)),
+		(C.PMQLONG)(unsafe.Pointer(&propertyType)),
+		bufferLength,
+		propertyPtr,
+		(C.PMQLONG)(unsafe.Pointer(&propertyLength)),
+		&mqcc,
+		&mqrc)
+
+	if len(name) > 0 {
+		C.free(unsafe.Pointer(mqName.VSPtr))
+	}
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQINQMP",
+	}
+
+	copyIMPOfromC(&mqimpo, goimpo)
+	copyPDfromC(&mqpd, gopd)
+
+	if mqcc != C.MQCC_OK {
+		return "", nil, &mqreturn
+	}
+
+	switch propertyType {
+	case C.MQTYPE_INT8:
+		p := (*C.MQBYTE)(propertyPtr)
+		propertyValue = (int8)(*p)
+	case C.MQTYPE_INT16:
+		p := (*C.MQBYTE)(propertyPtr)
+		propertyValue = (int16)(*p)
+	case C.MQTYPE_INT32:
+		p := (*C.MQINT16)(propertyPtr)
+		propertyValue = (int16)(*p)
+	case C.MQTYPE_INT64:
+		p := (*C.MQINT64)(propertyPtr)
+		propertyValue = (int64)(*p)
+	case C.MQTYPE_FLOAT32:
+		p := (*C.MQFLOAT32)(propertyPtr)
+		propertyValue = (float32)(*p)
+	case C.MQTYPE_FLOAT64:
+		p := (*C.MQFLOAT64)(propertyPtr)
+		propertyValue = (float64)(*p)
+	case C.MQTYPE_BOOLEAN:
+		p := (*C.MQLONG)(propertyPtr)
+		b := (int32)(*p)
+		if b == 0 {
+			propertyValue = false
+		} else {
+			propertyValue = true
+		}
+	case C.MQTYPE_STRING:
+		propertyValue = C.GoStringN((*C.char)(propertyPtr), propertyLength)
+	case C.MQTYPE_BYTE_STRING:
+		ba := make([]byte, propertyLength)
+		p := (*C.MQBYTE)(propertyPtr)
+		copy(ba[:], C.GoBytes(unsafe.Pointer(p), propertyLength))
+		propertyValue = ba
+	case C.MQTYPE_NULL:
+		propertyValue = nil
+	}
+
+	return goimpo.ReturnedName, propertyValue, nil
 }

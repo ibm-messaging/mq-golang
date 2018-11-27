@@ -113,7 +113,7 @@ func main() {
 		pmo.Options = ibmmq.MQPMO_NO_SYNCPOINT | ibmmq.MQPMO_FAIL_IF_QUIESCING
 
 		// Tell MQ what the message body format is. In this case, a text string
-		putmqmd.Format = "MQSTR"
+		putmqmd.Format = ibmmq.MQFMT_STRING
 
 		// And create the contents to include a timestamp just to prove when it was created
 		msgData := "Hello from Go at " + time.Now().Format(time.RFC3339)

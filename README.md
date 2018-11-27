@@ -128,7 +128,6 @@ implementation concentrates on the core API calls needed to put and get messages
 Currently unavailable verbs include:
 
 * MQSET
-* All of the message property manipulators
 * MQCB
 
 There are also no structure handlers for message headers such as MQRFH2 or MQDLH.

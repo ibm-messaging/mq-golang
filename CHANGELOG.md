@@ -5,6 +5,8 @@
 * Added sample programs demonstrating specific operations such as put/get of message
 * Fixed conversion of some C strings into Go strings
 * Update MQI header files for MQ V9.1.1 and give more platform variations
+* Add support for MQSTAT and MQSUBRQ functions
+* Add support and sample for Message Property functions
 
 ## November 2018 - v3.1.0
 * Added functions to mqmetric to issue DISPLAY QSTATUS for additional stats
