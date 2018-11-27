@@ -7,6 +7,7 @@
 * Update MQI header files for MQ V9.1.1 and give more platform variations
 * Add support for MQSTAT and MQSUBRQ functions
 * Add support and sample for Message Property functions
+* Add InqMap as alternative (simpler) MQINQ operation
 
 ## November 2018 - v3.1.0
 * Added functions to mqmetric to issue DISPLAY QSTATUS for additional stats

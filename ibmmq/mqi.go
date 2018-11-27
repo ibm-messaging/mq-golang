@@ -597,6 +597,10 @@ how long each field in that buffer will be.
 
 The caller passes in how many integer selectors are expected to be
 returned, as well as the maximum length of the char buffer to be returned
+
+This function is a direct mapping of the MQI C function. It should be considered
+deprecated. In preference, use the InqMap function which provides a more convenient
+API.
 */
 func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen int) ([]int32,
 	[]byte, error) {
@@ -644,6 +648,121 @@ func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen in
 	}
 
 	return goIntAttrs, goCharAttrs, nil
+}
+
+/*
+ * InqMap should be considered the replacement for the Inq() function as it
+ * has a much simpler API. Simply pass in the list of selectors for the object
+ * and the return value consists of a map whose elements are
+ * a) accessed via the selector
+ * b) varying datatype (integer, string, string array) based on the selector
+ */
+func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error) {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+	var mqCharAttrs C.PMQCHAR
+	var goCharAttrs []byte
+	var goIntAttrs []int32
+	var ptr C.PMQLONG
+	var charOffset int
+	var charLength int
+
+	intAttrCount, _, charAttrLen := getAttrInfo(goSelectors)
+
+	if intAttrCount > 0 {
+		goIntAttrs = make([]int32, intAttrCount)
+		ptr = (C.PMQLONG)(unsafe.Pointer(&goIntAttrs[0]))
+	} else {
+		ptr = nil
+	}
+	if charAttrLen > 0 {
+		mqCharAttrs = (C.PMQCHAR)(C.malloc(C.size_t(charAttrLen)))
+		defer C.free(unsafe.Pointer(mqCharAttrs))
+	} else {
+		mqCharAttrs = nil
+	}
+
+	// Pass in the selectors
+	C.MQINQ(object.qMgr.hConn, object.hObj,
+		C.MQLONG(len(goSelectors)),
+		C.PMQLONG(unsafe.Pointer(&goSelectors[0])),
+		C.MQLONG(intAttrCount),
+		ptr,
+		C.MQLONG(charAttrLen),
+		mqCharAttrs,
+		&mqcc, &mqrc)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQINQ",
+	}
+
+	if mqcc != C.MQCC_OK {
+		return nil, &mqreturn
+	}
+
+  // Create a map of the selectors to the returned values
+	returnedMap := make(map[int32]interface{})
+
+	// Get access to the returned character data
+	if charAttrLen > 0 {
+		goCharAttrs = C.GoBytes(unsafe.Pointer(mqCharAttrs), C.int(charAttrLen))
+	}
+
+	// Walk through the returned data to build a map of responses. Go through
+	// the integers first to ensure that the map includes MQIA_NAME_COUNT if that
+	// had been requested
+	intAttr := 0
+	for i := 0; i < len(goSelectors); i++ {
+		s := goSelectors[i]
+		if s >= C.MQIA_FIRST && s <= C.MQIA_LAST {
+			returnedMap[s] = goIntAttrs[intAttr]
+			intAttr++
+		}
+	}
+
+	// Now we can walk through the list again for the character attributes
+	// and build the map entries. Getting the list of NAMES from a NAMELIST
+	// is a bit complicated ...
+	charLength = 0
+	charOffset = 0
+	for i := 0; i < len(goSelectors); i++ {
+		s := goSelectors[i]
+		if s >= C.MQCA_FIRST && s <= C.MQCA_LAST {
+			if s == C.MQCA_NAMES {
+				count, ok := returnedMap[C.MQIA_NAME_COUNT]
+				if ok {
+					c := int(count.(int32))
+					charLength = C.MQ_OBJECT_NAME_LENGTH
+					names := make([]string, c)
+					for j := 0; j < c; j++ {
+						name := string(goCharAttrs[charOffset:charOffset+charLength])
+						idx := strings.IndexByte(name, 0)
+						if idx != -1 {
+							name = name[0:idx]
+						}
+						names[j] = strings.TrimSpace(name)
+						charOffset += charLength
+					}
+					returnedMap[s] = names
+				} else {
+					charLength = 0
+				}
+			} else {
+				charLength = getAttrLength(s)
+				name := string(goCharAttrs[charOffset:charOffset+charLength])
+				idx := strings.IndexByte(name, 0)
+				if idx != -1 {
+					name = name[0:idx]
+				}
+
+				returnedMap[s] = strings.TrimSpace(name)
+				charOffset += charLength
+			}
+		}
+	}
+
+	return returnedMap, nil
 }
 
 /*********** Message Handles and Properties  ****************/

@@ -24,6 +24,8 @@ Current samples in this directory include
 * amqssub.go : Subscribe to a topic and receive publications
 * amqsconn.go: How to programmatically connect as an MQ client to a remote queue manager.
 Allow use of a userid/password for authentication. There are no default values for this sample.
+* amqsprop.go: Set and extract message properties
+* amqsinq.go : Demonstrate the new InqMap API for inquiring object attributes
 
 Some trivial scripts run the sample programs in matching pairs:
 * putget.sh  : Run amqsput and then use the generated MsgId to get the same message
