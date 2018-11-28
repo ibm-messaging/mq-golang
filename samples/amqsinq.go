@@ -51,11 +51,11 @@ func inquire(obj ibmmq.MQObject, selectors []int32) {
 		fmt.Printf("----------- %s ----------\n", obj.Name)
 		for s, v := range values {
 			// Having got the values, print the selector number and name, along with the value
-			ss := ibmmq.MQItoString("CA",int(s))
+			ss := ibmmq.MQItoString("CA", int(s))
 			if ss == "" {
-				ss = ibmmq.MQItoString("IA",int(s))
+				ss = ibmmq.MQItoString("IA", int(s))
 			}
-			fmt.Printf("%-4d %-32.32s\t'%v'\n", s, ss,v)
+			fmt.Printf("%-4d %-32.32s\t'%v'\n", s, ss, v)
 		}
 	}
 }
@@ -141,7 +141,6 @@ func main() {
 			object.Close(0)
 		}
 	}
-
 
 	// Open of another object - a namelist. This has the ability to extract
 	// the list of queues it refers to.

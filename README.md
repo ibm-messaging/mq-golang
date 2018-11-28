@@ -123,12 +123,10 @@ At this point, you should have a compiled copy of the program in `$GOPATH/bin`. 
 
 ## Limitations
 
-Not all of the MQI verbs are available through the `ibmmq` package. This
-implementation concentrates on the core API calls needed to put and get messages.
+Almost all of the MQI verbs are now available through the `ibmmq` package.
 Currently unavailable verbs include:
 
-* MQSET
-* MQCB
+* MQCB/MQCTL
 
 There are also no structure handlers for message headers such as MQRFH2 or MQDLH.
 

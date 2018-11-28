@@ -64,7 +64,7 @@ var mqInqLength = map[int32]int32{
 	C.MQCA_LU_NAME:               C.MQ_LU_NAME_LENGTH,
 	C.MQCA_NAMELIST_DESC:         C.MQ_NAMELIST_DESC_LENGTH,
 	C.MQCA_NAMELIST_NAME:         C.MQ_NAMELIST_NAME_LENGTH,
-	C.MQCA_NAMES:                 C.MQ_OBJECT_NAME_LENGTH * 256, // TODO: split these out
+	C.MQCA_NAMES:                 C.MQ_OBJECT_NAME_LENGTH * 256, // Maximum length to allocate
 	C.MQCA_PARENT:                C.MQ_Q_MGR_NAME_LENGTH,
 	C.MQCA_PROCESS_DESC:          C.MQ_PROCESS_DESC_LENGTH,
 	C.MQCA_PROCESS_NAME:          C.MQ_PROCESS_NAME_LENGTH,

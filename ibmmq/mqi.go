@@ -598,9 +598,9 @@ how long each field in that buffer will be.
 The caller passes in how many integer selectors are expected to be
 returned, as well as the maximum length of the char buffer to be returned
 
-This function is a direct mapping of the MQI C function. It should be considered
+Deprecated: This function is a direct mapping of the MQI C function. It should be considered
 deprecated. In preference, use the InqMap function which provides a more convenient
-API.
+API. In a future version of this package, Inq will be replaced by InqMap
 */
 func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen int) ([]int32,
 	[]byte, error) {
@@ -656,6 +656,8 @@ func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen in
  * and the return value consists of a map whose elements are
  * a) accessed via the selector
  * b) varying datatype (integer, string, string array) based on the selector
+ * In a future breaking update, this function will become the default Inq()
+ * implementation.
  */
 func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error) {
 	var mqrc C.MQLONG
@@ -701,7 +703,7 @@ func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error
 		return nil, &mqreturn
 	}
 
-  // Create a map of the selectors to the returned values
+	// Create a map of the selectors to the returned values
 	returnedMap := make(map[int32]interface{})
 
 	// Get access to the returned character data
@@ -736,7 +738,7 @@ func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error
 					charLength = C.MQ_OBJECT_NAME_LENGTH
 					names := make([]string, c)
 					for j := 0; j < c; j++ {
-						name := string(goCharAttrs[charOffset:charOffset+charLength])
+						name := string(goCharAttrs[charOffset : charOffset+charLength])
 						idx := strings.IndexByte(name, 0)
 						if idx != -1 {
 							name = name[0:idx]
@@ -750,7 +752,7 @@ func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error
 				}
 			} else {
 				charLength = getAttrLength(s)
-				name := string(goCharAttrs[charOffset:charOffset+charLength])
+				name := string(goCharAttrs[charOffset : charOffset+charLength])
 				idx := strings.IndexByte(name, 0)
 				if idx != -1 {
 					name = name[0:idx]
@@ -763,6 +765,108 @@ func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error
 	}
 
 	return returnedMap, nil
+}
+
+/*
+ * Set is the function that wraps MQSET. The single parameter is a map whose
+ * elements contain an MQIA/MQCA selector with either a string or an int32 for
+ * the value.
+ */
+func (object MQObject) Set(goSelectors map[int32]interface{}) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+
+	var charAttrs []byte
+	var charAttrsPtr C.PMQCHAR
+	var intAttrs []int32
+	var intAttrsPtr C.PMQLONG
+	var charOffset int
+	var charLength int
+
+	// Pass through the map twice. First time lets us
+	// create an array of selector names from map keys which is then
+	// used to calculate the character buffer that's needed
+	selectors := make([]int32, len(goSelectors))
+	i := 0
+	for k, _ := range goSelectors {
+		selectors[i] = k
+		i++
+	}
+
+	intAttrCount, _, charAttrLen := getAttrInfo(selectors)
+
+	// Create the areas to be used for the separate char and int values
+	if intAttrCount > 0 {
+		intAttrs = make([]int32, intAttrCount)
+		intAttrsPtr = (C.PMQLONG)(unsafe.Pointer(&intAttrs[0]))
+	} else {
+		intAttrsPtr = nil
+	}
+
+	if charAttrLen > 0 {
+		charAttrs = make([]byte, charAttrLen)
+		charAttrsPtr = (C.PMQCHAR)(unsafe.Pointer(&charAttrs[0]))
+	} else {
+		charAttrsPtr = nil
+	}
+
+	// Walk through the map a second time
+	charOffset = 0
+	intAttr := 0
+	for i := 0; i < len(selectors); i++ {
+		s := selectors[i]
+		if s >= C.MQCA_FIRST && s <= C.MQCA_LAST {
+			// The character processing is a bit OTT since there is in reality
+			// only a single attribute that can ever be SET. But a general purpose
+			// function looks more like the MQINQ operation
+			v := goSelectors[s].(string)
+			charLength = getAttrLength(s)
+			vBytes := []byte(v)
+			b := byte(0)
+			for j := 0; j < charLength; j++ {
+				if j < len(vBytes) {
+					b = vBytes[j]
+				} else {
+					b = 0
+				}
+				charAttrs[charOffset+j] = b
+			}
+			charOffset += charLength
+		} else if s >= C.MQIA_FIRST && s <= C.MQIA_LAST {
+			vv := int32(0)
+			v := goSelectors[s]
+			// Force the returned value from the map to be int32 because we
+			// can't check it at compile time.
+			if _,ok := v.(int32);ok {
+				vv = v.(int32)
+			} else if _,ok := v.(int);ok {
+				vv = int32(v.(int))
+			}
+			intAttrs[intAttr] = vv
+			intAttr++
+		}
+	}
+
+	// Pass in the selectors
+	C.MQSET(object.qMgr.hConn, object.hObj,
+		C.MQLONG(len(selectors)),
+		C.PMQLONG(unsafe.Pointer(&selectors[0])),
+		C.MQLONG(intAttrCount),
+		intAttrsPtr,
+		C.MQLONG(charAttrLen),
+		charAttrsPtr,
+		&mqcc, &mqrc)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQSET",
+	}
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
 }
 
 /*********** Message Handles and Properties  ****************/
