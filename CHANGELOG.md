@@ -9,6 +9,7 @@
 * Add support and sample for Message Property functions
 * Add InqMap as alternative (simpler) MQINQ operation. Inq() should be considered deprecated
 * Add support for MQSET function
+* Add discovery of translated versions of the mqmetric descriptions
 
 ## November 2018 - v3.1.0
 * Added functions to mqmetric to issue DISPLAY QSTATUS for additional stats
