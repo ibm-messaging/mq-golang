@@ -837,9 +837,9 @@ func (object MQObject) Set(goSelectors map[int32]interface{}) error {
 			v := goSelectors[s]
 			// Force the returned value from the map to be int32 because we
 			// can't check it at compile time.
-			if _,ok := v.(int32);ok {
+			if _, ok := v.(int32); ok {
 				vv = v.(int32)
-			} else if _,ok := v.(int);ok {
+			} else if _, ok := v.(int); ok {
 				vv = int32(v.(int))
 			}
 			intAttrs[intAttr] = vv

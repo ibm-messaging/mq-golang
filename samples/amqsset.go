@@ -44,17 +44,17 @@ var object ibmmq.MQObject
  * This is an example of how to call MQSET
  */
 func setAttributes(obj ibmmq.MQObject) {
-  // Create a map containing the selectors and their values. The values must be
+	// Create a map containing the selectors and their values. The values must be
 	// a string (for MQCA attributes) or an int/int32 for the MQIA values.
 
 	// The value being set in the TRIGDATA attribute has a timestamp so you can
 	// see if it is successfully changed
 	selectors := map[int32]interface{}{
-		ibmmq.MQIA_INHIBIT_PUT: ibmmq.MQQA_PUT_INHIBITED,
-		ibmmq.MQIA_TRIGGER_CONTROL:     ibmmq.MQTC_ON,
+		ibmmq.MQIA_INHIBIT_PUT:     ibmmq.MQQA_PUT_INHIBITED,
+		ibmmq.MQIA_TRIGGER_CONTROL: ibmmq.MQTC_ON,
 		ibmmq.MQCA_TRIGGER_DATA:    "Data set at " + time.Now().Format(time.RFC3339)}
 
-  // And call the MQI
+	// And call the MQI
 	err := obj.Set(selectors)
 	if err != nil {
 		fmt.Println(err)
