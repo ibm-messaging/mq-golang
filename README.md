@@ -28,8 +28,8 @@ as MQCHAR48 are represented by the native Go string type. Conversion between the
 types is handled within the ibmmq package itself, removing the need for Go programmers
 to know about it.
 
-A short program in the samples/mqitest directory gives an example of using this interface,
-to put and get messages and to subscribe to a topic.
+Sample programs are provided to demonstrate various features of using the MQI. See the
+README in the `samples` directory for more information about those programs.
 
 The mqmetric directory contains functions to help monitoring programs access MQ status and
 statistics. This package is not needed for general application programs.
@@ -118,17 +118,15 @@ for the C compiler to recognise those directories. For example,
 
   `go build -o bin/mqitest ./src/github.com/ibm-messaging/mq-golang/samples/mqitest/*.go`
 
-At this point, you should have a compiled copy of the program in `$GOPATH/bin`.
+At this point, you should have a compiled copy of the program in `$GOPATH/bin`. See the
+`samples` directory for more sample programs.
 
 ## Limitations
 
-Not all of the MQI verbs are available through the `ibmmq` package. This
-implementation concentrates on the core API calls needed to put and get messages.
+Almost all of the MQI verbs are now available through the `ibmmq` package.
 Currently unavailable verbs include:
 
-* MQSET
-* All of the message property manipulators
-* MQCB
+* MQCB/MQCTL
 
 There are also no structure handlers for message headers such as MQRFH2 or MQDLH.
 

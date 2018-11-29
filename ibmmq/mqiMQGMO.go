@@ -47,7 +47,7 @@ type MQGMO struct {
 	MsgToken       []byte
 	ReturnedLength int32
 	Reserved2      int32
-	MsgHandle      C.MQHMSG
+	MsgHandle      MQMessageHandle
 }
 
 /*
@@ -70,7 +70,7 @@ func NewMQGMO() *MQGMO {
 	gmo.MsgToken = bytes.Repeat([]byte{0}, C.MQ_MSG_TOKEN_LENGTH)
 	gmo.ReturnedLength = int32(C.MQRL_UNDEFINED)
 	gmo.Reserved2 = 0
-	gmo.MsgHandle = C.MQHM_NONE
+	gmo.MsgHandle.hMsg = C.MQHM_NONE
 
 	return gmo
 }
@@ -95,7 +95,12 @@ func copyGMOtoC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	}
 	mqgmo.ReturnedLength = C.MQLONG(gogmo.ReturnedLength)
 	mqgmo.Reserved2 = C.MQLONG(gogmo.Reserved2)
-	mqgmo.MsgHandle = gogmo.MsgHandle
+	if gogmo.MsgHandle.hMsg != C.MQHM_NONE {
+		if mqgmo.Version < C.MQGMO_VERSION_4 {
+			mqgmo.Version = C.MQGMO_VERSION_4
+		}
+		mqgmo.MsgHandle = gogmo.MsgHandle.hMsg
+	}
 	return
 }
 
@@ -107,7 +112,7 @@ func copyGMOfromC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	gogmo.WaitInterval = int32(mqgmo.WaitInterval)
 	gogmo.Signal1 = int32(mqgmo.Signal1)
 	gogmo.Signal2 = int32(mqgmo.Signal2)
-	gogmo.ResolvedQName = C.GoStringN((*C.char)(&mqgmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	gogmo.ResolvedQName = trimStringN((*C.char)(&mqgmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	gogmo.MatchOptions = int32(mqgmo.MatchOptions)
 	gogmo.GroupStatus = rune(mqgmo.GroupStatus)
 	gogmo.SegmentStatus = rune(mqgmo.SegmentStatus)
@@ -118,6 +123,8 @@ func copyGMOfromC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	}
 	gogmo.ReturnedLength = int32(mqgmo.ReturnedLength)
 	gogmo.Reserved2 = int32(mqgmo.Reserved2)
-	gogmo.MsgHandle = mqgmo.MsgHandle
+	if mqgmo.Version >= C.MQGMO_VERSION_4 {
+		gogmo.MsgHandle.hMsg = mqgmo.MsgHandle
+	}
 	return
 }

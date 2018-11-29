@@ -28,7 +28,6 @@ import (
 	"fmt"
 
 	"github.com/ibm-messaging/mq-golang/ibmmq"
-	"strings"
 )
 
 var (
@@ -38,6 +37,7 @@ var (
 	statusReplyQObj  ibmmq.MQObject
 	getBuffer        = make([]byte, 32768)
 	platform         int32
+	commandLevel     int32
 	resolvedQMgrName string
 
 	qmgrConnected = false
@@ -81,24 +81,34 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		qmgrConnected = true
 	}
 
+	// Discover important information about the qmgr - its real name
+	// and the platform type. Also check if it is at least V9 (on Distributed platforms)
+	// so that monitoring will work.
 	if err == nil {
+		var qMgrObject ibmmq.MQObject
+		var v map[int32]interface{}
+
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
 
 		mqod.ObjectType = ibmmq.MQOT_Q_MGR
 		mqod.ObjectName = ""
 
-		qMgrObject, err := qMgr.Open(mqod, openOptions)
+		qMgrObject, err = qMgr.Open(mqod, openOptions)
 
 		if err == nil {
 			selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
+				ibmmq.MQIA_COMMAND_LEVEL,
 				ibmmq.MQIA_PLATFORM}
 
-			intAttrs, charAttrs, err := qMgrObject.Inq(selectors, 1, 48)
-
+			v, err = qMgrObject.InqMap(selectors)
 			if err == nil {
-				resolvedQMgrName = strings.TrimSpace(string(charAttrs[0:48]))
-				platform = intAttrs[0]
+				resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
+				platform = v[ibmmq.MQIA_PLATFORM].(int32)
+				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
+				if commandLevel < 900 && platform != ibmmq.MQPL_ZOS && platform != ibmmq.MQPL_APPLIANCE {
+					err = fmt.Errorf("Queue manager must be at least V9.0 for monitoring.")
+				}
 			}
 			// Don't need the qMgrObject any more
 			qMgrObject.Close(0)
@@ -235,4 +245,20 @@ func subscribe(topic string) (ibmmq.MQObject, error) {
 	}
 
 	return subObj, err
+}
+
+/*
+Return the current platform - the MQPL_* definition value. It
+can be turned into a string if necessary via ibmmq.MQItoString("PL"...)
+*/
+func GetPlatform() int32 {
+	return platform
+}
+
+/*
+Return the current platform - the MQPL_* definition value. It
+can be turned into a string if necessary via ibmmq.MQItoString("PL"...)
+*/
+func GetCommandLevel() int32 {
+	return commandLevel
 }

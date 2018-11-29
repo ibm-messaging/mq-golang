@@ -6,7 +6,7 @@ parameters are needed here - channel name and connection information -
 along with the queue manager name.
 
 For example, run as
-   clientconn QMGR1 "SYSTEM.DEF.SVRCONN" "myhost.example.com(1414)"
+   amqsconn QMGR1 "SYSTEM.DEF.SVRCONN" "myhost.example.com(1414)"
 
 If the MQSAMP_USER_ID environment variable is set, then a userid/password
 flow is also made to authenticate to the queue manager.
@@ -19,7 +19,7 @@ If an error occurs, the error is reported.
 package main
 
 /*
-  Copyright (c) IBM Corporation 2017
+  Copyright (c) IBM Corporation 2017, 2018
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -53,10 +53,10 @@ func main() {
 	var rc int
 
 	if len(os.Args) != 4 {
-		fmt.Println("clientconn <qmgrname> <channelname> <conname>")
+		fmt.Println("amqsconn <qmgrname> <channelname> <conname>")
 		fmt.Println("")
 		fmt.Println("For example")
-		fmt.Println("  clientconn QMGR1 \"SYSTEM.DEF.SVRCONN\" \"myhost.example.com(1414)\"")
+		fmt.Println("  amqsconn QMGR1 \"SYSTEM.DEF.SVRCONN\" \"myhost.example.com(1414)\"")
 		fmt.Println("All parameters are required.")
 		os.Exit(1)
 	}
@@ -64,31 +64,22 @@ func main() {
 	// Which queue manager do we want to connect to
 	qMgrName = os.Args[1]
 
-	// Allocate the MQCNO and MQCD structures needed for the
-	// MQCONNX call.
+	// Allocate the MQCNO and MQCD structures needed for the CONNX call.
 	cno := ibmmq.NewMQCNO()
 	cd := ibmmq.NewMQCD()
 
-	// Fill in the required fields in the
-	// MQCD channel definition structure
+	// Fill in required fields in the MQCD channel definition structure
 	cd.ChannelName = os.Args[2]
 	cd.ConnectionName = os.Args[3]
 
-	// Reference the CD structure from the CNO
-	// and indicate that we want to use the client
-	// connection method.
-	if true {
-		cno.ClientConn = cd
-	} else {
-		// This is how you might reference a remote CCDT instead of
-		// explicitly putting in the CD structure.
-		cno.CCDTUrl = "http://localhost:3030"
-	}
+	// Reference the CD structure from the CNO and indicate that we definitely want to
+	// use the client connection method.
+	cno.ClientConn = cd
 	cno.Options = ibmmq.MQCNO_CLIENT_BINDING
 
 	// Also fill in the userid and password if the MQSAMP_USER_ID
-	// environment variable is set. This is the same as the C
-	// sample programs such as amqsput.
+	// environment variable is set. This is the same variable used by the C
+	// sample programs such as amqsput shipped with the MQ product.
 	userId := os.Getenv("MQSAMP_USER_ID")
 	if userId != "" {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -97,21 +88,22 @@ func main() {
 		csp.UserId = userId
 
 		fmt.Printf("Enter password for qmgr %s: \n", qMgrName)
+		// For simplicity (it doesn't help with understanding the MQ parts of this program)
+		// don't try to do anything special like turning off console echo for the password input
 		scanner.Scan()
 		csp.Password = scanner.Text()
 
-		// And make the CNO refer to the CSP structure
+		// Make the CNO refer to the CSP structure so it gets used during the connection
 		cno.SecurityParms = csp
 	}
 
-	// And connect. Wait a short time before
-	// disconnecting.
+	// And now we can try to connect. Wait a short time before disconnecting.
 	qMgr, err = ibmmq.Connx(qMgrName, cno)
 	if err == nil {
 		fmt.Printf("Connection to %s succeeded.\n", qMgrName)
 		d, _ := time.ParseDuration("5s")
 		time.Sleep(d)
-		qMgr.Disc()
+		qMgr.Disc() // Ignore errors from disconnect as we can't do much about it anyway
 		rc = 0
 	} else {
 		fmt.Printf("Connection to %s failed.\n", qMgrName)

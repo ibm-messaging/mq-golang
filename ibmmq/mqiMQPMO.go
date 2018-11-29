@@ -48,8 +48,8 @@ type MQPMO struct {
 	PutMsgRecPtr      C.MQPTR
 	ResponseRecPtr    C.MQPTR
 
-	OriginalMsgHandle C.MQHMSG
-	NewMsgHandle      C.MQHMSG
+	OriginalMsgHandle MQMessageHandle
+	NewMsgHandle      MQMessageHandle
 	Action            int32
 	PubLevel          int32
 }
@@ -77,8 +77,8 @@ func NewMQPMO() *MQPMO {
 	pmo.PutMsgRecPtr = nil
 	pmo.ResponseRecPtr = nil
 
-	pmo.OriginalMsgHandle = C.MQHM_NONE
-	pmo.NewMsgHandle = C.MQHM_NONE
+	pmo.OriginalMsgHandle.hMsg = C.MQHM_NONE
+	pmo.NewMsgHandle.hMsg = C.MQHM_NONE
 	pmo.Action = int32(C.MQACTP_NEW)
 	pmo.PubLevel = 9
 
@@ -107,8 +107,18 @@ func copyPMOtoC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 	mqpmo.PutMsgRecPtr = gopmo.PutMsgRecPtr
 	mqpmo.ResponseRecPtr = gopmo.ResponseRecPtr
 
-	mqpmo.OriginalMsgHandle = gopmo.OriginalMsgHandle
-	mqpmo.NewMsgHandle = gopmo.NewMsgHandle
+	if gopmo.OriginalMsgHandle.hMsg != C.MQHM_NONE {
+		mqpmo.OriginalMsgHandle = gopmo.OriginalMsgHandle.hMsg
+		if mqpmo.Version < C.MQPMO_VERSION_3 {
+			mqpmo.Version = C.MQPMO_VERSION_3
+		}
+	}
+	if gopmo.NewMsgHandle.hMsg != C.MQHM_NONE {
+		mqpmo.NewMsgHandle = gopmo.NewMsgHandle.hMsg
+		if mqpmo.Version < C.MQPMO_VERSION_3 {
+			mqpmo.Version = C.MQPMO_VERSION_3
+		}
+	}
 	mqpmo.Action = C.MQLONG(gopmo.Action)
 	mqpmo.PubLevel = C.MQLONG(gopmo.PubLevel)
 
@@ -126,8 +136,8 @@ func copyPMOfromC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 	gopmo.UnknownDestCount = int32(mqpmo.UnknownDestCount)
 	gopmo.InvalidDestCount = int32(mqpmo.InvalidDestCount)
 
-	gopmo.ResolvedQName = C.GoStringN((*C.char)(&mqpmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
-	gopmo.ResolvedQMgrName = C.GoStringN((*C.char)(&mqpmo.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	gopmo.ResolvedQName = trimStringN((*C.char)(&mqpmo.ResolvedQName[0]), C.MQ_OBJECT_NAME_LENGTH)
+	gopmo.ResolvedQMgrName = trimStringN((*C.char)(&mqpmo.ResolvedQMgrName[0]), C.MQ_OBJECT_NAME_LENGTH)
 
 	gopmo.RecsPresent = int32(mqpmo.RecsPresent)
 	gopmo.PutMsgRecFields = int32(mqpmo.PutMsgRecFields)
@@ -136,8 +146,8 @@ func copyPMOfromC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 	gopmo.PutMsgRecPtr = mqpmo.PutMsgRecPtr
 	gopmo.ResponseRecPtr = mqpmo.ResponseRecPtr
 
-	gopmo.OriginalMsgHandle = mqpmo.OriginalMsgHandle
-	gopmo.NewMsgHandle = mqpmo.NewMsgHandle
+	gopmo.OriginalMsgHandle.hMsg = mqpmo.OriginalMsgHandle
+	gopmo.NewMsgHandle.hMsg = mqpmo.NewMsgHandle
 	gopmo.Action = int32(mqpmo.Action)
 	gopmo.PubLevel = int32(mqpmo.PubLevel)
 	return
