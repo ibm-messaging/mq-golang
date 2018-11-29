@@ -106,9 +106,9 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
 				platform = v[ibmmq.MQIA_PLATFORM].(int32)
 				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
-				if commandLevel < 900 && platform != ibmmq.MQPL_ZOS {
-  				 err = fmt.Errorf("Queue manager must be at least V9.0 for monitoring.")
-			  }
+				if commandLevel < 900 && platform != ibmmq.MQPL_ZOS && platform != ibmmq.MQPL_APPLIANCE {
+					err = fmt.Errorf("Queue manager must be at least V9.0 for monitoring.")
+				}
 			}
 			// Don't need the qMgrObject any more
 			qMgrObject.Close(0)
