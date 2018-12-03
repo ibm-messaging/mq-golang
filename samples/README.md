@@ -27,6 +27,7 @@ Allow use of a userid/password for authentication. There are no default values f
 * amqsprop.go: Set and extract message properties
 * amqsinq.go : Demonstrate the new InqMap API for inquiring about object attributes
 * amqsset.go : Demonstrate how to set attributes of an MQ object using the MQSET verb
+* amqscb.go  : Demonstrate use of the CALLBACK capability for asynchronous consumption of messages
 
 Some trivial scripts run the sample programs in matching pairs:
 * putget.sh  : Run amqsput and then use the generated MsgId to get the same message with amqsget

@@ -1,5 +1,3 @@
-package ibmmq
-
 /*
   Copyright (c) IBM Corporation 2018
 
@@ -18,41 +16,22 @@ package ibmmq
    Contributors:
      Mark Taylor - Initial Contribution
 */
+package ibmmq
 
 /*
-
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 #include <cmqc.h>
 
+extern void MQCALLBACK_Go(MQHCONN, MQMD *, MQGMO *, PMQVOID, MQCBC *);
+void MQCALLBACK_C(MQHCONN hc,MQMD *md,MQGMO *gmo,PMQVOID buf,MQCBC *cbc) {
+  MQCALLBACK_Go(hc,md,gmo,buf,cbc);
+}
 */
 import "C"
 
-/*
-This module contains the Subscription Request Options structure
-*/
-
-type MQSRO struct {
-	Options int32
-	NumPubs int32
-}
-
-func NewMQSRO() *MQSRO {
-	sro := new(MQSRO)
-	sro.Options = int32(C.MQSRO_NONE)
-	sro.NumPubs = 0
-	return sro
-}
-
-func copySROtoC(mqsro *C.MQSRO, gosro *MQSRO) {
-	setMQIString((*C.char)(&mqsro.StrucId[0]), "SRO ", 4)
-	mqsro.Version = 1
-	mqsro.Options = C.MQLONG(gosro.Options) | C.MQSRO_FAIL_IF_QUIESCING
-	mqsro.NumPubs = C.MQLONG(gosro.NumPubs)
-}
-
-func copySROfromC(mqsro *C.MQSRO, gosro *MQSRO) {
-	gosro.Options = int32(mqsro.Options)
-	gosro.NumPubs = int32(mqsro.NumPubs)
-	return
-}
+// This file exists purely to provide the linkage between a C callback function
+// and Go for the MQCB/MQCTL asynchronous message consumer. The MQCALLBACK_C function
+// has to be in a separate file to avoid "multiple definition" errors from the
+// CGo compilation process. It looks like it is just a comment above, but
+// that section of the file is processed by CGo.

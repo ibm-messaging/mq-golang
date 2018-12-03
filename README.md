@@ -123,12 +123,9 @@ At this point, you should have a compiled copy of the program in `$GOPATH/bin`. 
 
 ## Limitations
 
-Almost all of the MQI verbs are now available through the `ibmmq` package.
-Currently unavailable verbs include:
+All regular MQI verbs are now available through the `ibmmq` package.
 
-* MQCB/MQCTL
-
-There are also no structure handlers for message headers such as MQRFH2 or MQDLH.
+There are no structure handlers for message headers such as MQRFH2 or MQDLH.
 
 ## History
 

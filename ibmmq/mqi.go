@@ -51,6 +51,7 @@ package ibmmq
 #include <string.h>
 #include <cmqc.h>
 #include <cmqxc.h>
+
 */
 import "C"
 
@@ -219,6 +220,7 @@ func (x *MQQueueManager) Disc() error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 
+	savedConn := x.hConn
 	C.MQDISC(&x.hConn, &mqcc, &mqrc)
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -229,6 +231,8 @@ func (x *MQQueueManager) Disc() error {
 	if mqcc != C.MQCC_OK {
 		return &mqreturn
 	}
+
+	cbRemoveConnection(savedConn)
 
 	return nil
 }
@@ -248,7 +252,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 	}
 
 	copyODtoC(&mqod, good)
-	mqOpenOptions = C.MQLONG(goOpenOptions)
+	mqOpenOptions = C.MQLONG(goOpenOptions) | C.MQOO_FAIL_IF_QUIESCING
 
 	C.MQOPEN(x.hConn,
 		(C.PMQVOID)(unsafe.Pointer(&mqod)),
@@ -288,6 +292,9 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 
 	mqCloseOptions = C.MQLONG(goCloseOptions)
 
+	savedHConn := object.qMgr.hConn
+	savedHObj := object.hObj
+
 	C.MQCLOSE(object.qMgr.hConn, &object.hObj, mqCloseOptions, &mqcc, &mqrc)
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -299,6 +306,7 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 		return &mqreturn
 	}
 
+	cbRemoveHandle(savedHConn, savedHObj)
 	return nil
 
 }
@@ -371,6 +379,33 @@ func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
 	}
 
 	return nil
+}
+
+/*
+Begin is the function to start a two-phase XA transaction coordinated by MQ
+*/
+func (x *MQQueueManager) Begin(gobo  *MQBO) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+	var mqbo C.MQBO
+
+	copyBOtoC(&mqbo, gobo)
+
+	C.MQBEGIN(x.hConn, (C.PMQVOID)(unsafe.Pointer(&mqbo)), &mqcc, &mqrc)
+
+	copyBOfromC(&mqbo, gobo)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQBEGIN",
+	}
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
+
 }
 
 /*

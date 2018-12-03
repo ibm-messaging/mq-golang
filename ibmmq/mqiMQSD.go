@@ -107,7 +107,7 @@ func copySDtoC(mqsd *C.MQSD, gosd *MQSD) {
 
 	setMQIString((*C.char)(&mqsd.StrucId[0]), "SD  ", 4)
 	mqsd.Version = C.MQLONG(gosd.Version)
-	mqsd.Options = C.MQLONG(gosd.Options)
+	mqsd.Options = C.MQLONG(gosd.Options) | C.MQSO_FAIL_IF_QUIESCING
 
 	setMQIString((*C.char)(&mqsd.ObjectName[0]), gosd.ObjectName, C.MQ_OBJECT_NAME_LENGTH)
 	setMQIString((*C.char)(&mqsd.AlternateUserId[0]), gosd.AlternateUserId, C.MQ_USER_ID_LENGTH)

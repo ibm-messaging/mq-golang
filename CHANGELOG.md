@@ -1,5 +1,11 @@
 # Changelog
 
+## December 2018 - v3.3.0
+* All relevant API calls now automatically set FAIL_IF_QUIESCING
+* Samples updated to use "defer" instead of just suggesting it
+* Add support for MQCB/MQCTL callback functions
+* Add support for MQBEGIN transaction management
+
 ## November 2018 - v3.2.0
 * Added GetPlatform to mqmetric so it can be used as a label/tag in collectors
 * Added sample programs demonstrating specific operations such as put/get of message
