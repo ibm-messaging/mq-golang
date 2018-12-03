@@ -39,7 +39,7 @@ var qMgrObject ibmmq.MQObject
 var object ibmmq.MQObject
 
 /*
- * This is an example of how to call MQINQ with the new "map" format for
+ * This is an example of how to call MQINQ with a "map" format for
  * responses
  */
 func inquire(obj ibmmq.MQObject, selectors []int32) {
@@ -60,14 +60,18 @@ func inquire(obj ibmmq.MQObject, selectors []int32) {
 	}
 }
 
+// Main function that simply calls a subfunction to ensure defer routines are called before os.Exit happens
 func main() {
+	os.Exit(mainWithRc())
+}
+
+// The real main function is here to set a return code.
+func mainWithRc() int {
 	var selectors []int32
 	// The default queue manager, a queue and a namelist to be used. These can be overridden on command line.
 	qMgrName := "QM1"
 	qName := "DEV.QUEUE.1"
 	nlName := "SYSTEM.DEFAULT.NAMELIST"
-
-	qMgrConnected := false
 
 	fmt.Println("Sample AMQSINQ.GO start")
 
@@ -91,8 +95,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		qMgrConnected = true
 		fmt.Printf("Connected to queue manager %s\n", qMgrName)
+		defer disc(qMgrObject)
 	}
 
 	// Open an object
@@ -101,7 +105,7 @@ func main() {
 		mqod := ibmmq.NewMQOD()
 
 		// We have to say how we are going to use this object.
-		openOptions := ibmmq.MQOO_FAIL_IF_QUIESCING + ibmmq.MQOO_INQUIRE
+		openOptions := ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_Q_MGR
 		// Do not need the qmgr name when opening it
 
@@ -124,7 +128,7 @@ func main() {
 		mqod := ibmmq.NewMQOD()
 
 		// We have to say how we are going to use this object.
-		openOptions := ibmmq.MQOO_FAIL_IF_QUIESCING + ibmmq.MQOO_INQUIRE
+		openOptions := ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = qName
 
@@ -149,7 +153,7 @@ func main() {
 		mqod := ibmmq.NewMQOD()
 
 		// We have to say how we are going to use this object.
-		openOptions := ibmmq.MQOO_FAIL_IF_QUIESCING + ibmmq.MQOO_INQUIRE
+		openOptions := ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_NAMELIST
 		mqod.ObjectName = nlName
 
@@ -166,17 +170,22 @@ func main() {
 		}
 	}
 
-	// Disconnect from the queue manager
-	if qMgrConnected {
-		err = qMgrObject.Disc()
-		fmt.Printf("Disconnected from queue manager %s\n", qMgrName)
-	}
-
 	// Exit with any return code extracted from the failing MQI call.
-	if err == nil {
-		os.Exit(0)
-	} else {
-		mqret := err.(*ibmmq.MQReturn)
-		os.Exit((int)(mqret.MQCC))
+	// Deferred disconnect will happen after the return
+	mqret := 0
+	if err != nil {
+		mqret = int((err.(*ibmmq.MQReturn)).MQCC)
 	}
+	return mqret
+}
+
+// Disconnect from the queue manager
+func disc(qMgrObject ibmmq.MQQueueManager) error {
+	err := qMgrObject.Disc()
+	if err == nil {
+		fmt.Printf("Disconnected from queue manager %s\n", qMgrObject.Name)
+	} else {
+		fmt.Println(err)
+	}
+	return err
 }

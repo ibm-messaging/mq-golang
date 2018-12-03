@@ -63,12 +63,16 @@ func setAttributes(obj ibmmq.MQObject) {
 	}
 }
 
+// Main function that simply calls a subfunction to ensure defer routines are called before os.Exit happens
 func main() {
+	os.Exit(mainWithRc())
+}
+
+// The real main function is here to set a return code.
+func mainWithRc() int {
 	// The default queue manager and a queue to be used. These can be overridden on command line.
 	qMgrName := "QM1"
 	qName := "DEV.QUEUE.1"
-
-	qMgrConnected := false
 
 	fmt.Println("Sample AMQSSET.GO start")
 
@@ -86,8 +90,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		qMgrConnected = true
 		fmt.Printf("Connected to queue manager %s\n", qMgrName)
+		defer disc(qMgrObject)
 	}
 
 	// Open a queue with the option to say it will be modified
@@ -97,7 +101,7 @@ func main() {
 
 		// We have to say how we are going to use this object. The MQOO_SET flag
 		// says that it will be used for an MQSET operation
-		openOptions := ibmmq.MQOO_FAIL_IF_QUIESCING + ibmmq.MQOO_SET
+		openOptions := ibmmq.MQOO_SET
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = qName
 
@@ -110,17 +114,22 @@ func main() {
 		}
 	}
 
-	// Disconnect from the queue manager
-	if qMgrConnected {
-		err = qMgrObject.Disc()
-		fmt.Printf("Disconnected from queue manager %s\n", qMgrName)
-	}
-
 	// Exit with any return code extracted from the failing MQI call.
-	if err == nil {
-		os.Exit(0)
-	} else {
-		mqret := err.(*ibmmq.MQReturn)
-		os.Exit((int)(mqret.MQCC))
+	// Deferred disconnect will happen after the return
+	mqret := 0
+	if err != nil {
+		mqret = int((err.(*ibmmq.MQReturn)).MQCC)
 	}
+	return mqret
+}
+
+// Disconnect from the queue manager
+func disc(qMgrObject ibmmq.MQQueueManager) error {
+	err := qMgrObject.Disc()
+	if err == nil {
+		fmt.Printf("Disconnected from queue manager %s\n", qMgrObject.Name)
+	} else {
+		fmt.Println(err)
+	}
+	return err
 }

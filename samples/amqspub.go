@@ -42,13 +42,15 @@ var qMgrObject ibmmq.MQObject
 var topicObject ibmmq.MQObject
 
 func main() {
+	os.Exit(mainWithRc())
+}
+
+// The real main function is here to set a return code.
+func mainWithRc() int {
 
 	// The default queue manager and topic to be used. These can be overridden on command line.
 	qMgrName := "QM1"
-	topic := "GO.TEST.TOPIC"
-
-	qMgrConnected := false
-	topicOpened := false
+	topic := "DEV.BASE.TOPIC"
 
 	fmt.Println("Sample AMQSPUB.GO start")
 
@@ -70,8 +72,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		qMgrConnected = true
 		fmt.Printf("Connected to queue manager %s\n", qMgrName)
+		defer disc(qMgrObject)
 	}
 
 	// Open of the topic object
@@ -81,7 +83,7 @@ func main() {
 
 		// We have to say how we are going to use this object. In this case, to PUBLISH
 		// messages. That is done in the openOptions parameter.
-		openOptions := ibmmq.MQOO_OUTPUT + ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions := ibmmq.MQOO_OUTPUT
 
 		// When opening a Topic, MQ has a choice of whether to refer to
 		// the object through an ObjectName value or the ObjectString value or both.
@@ -93,8 +95,8 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			topicOpened = true
 			fmt.Println("Opened topic ", topic)
+			defer close(topicObject)
 		}
 	}
 
@@ -107,10 +109,8 @@ func main() {
 
 		// The default options are OK, but it's always
 		// a good idea to be explicit about transactional boundaries as
-		// not all platforms behave the same way. It's also good practice to
-		// set the FAIL_IF_QUIESCING flag on all verbs, even for short-running
-		// operations like this PUT.
-		pmo.Options = ibmmq.MQPMO_NO_SYNCPOINT | ibmmq.MQPMO_FAIL_IF_QUIESCING
+		// not all platforms behave the same way.
+		pmo.Options = ibmmq.MQPMO_NO_SYNCPOINT
 
 		// Tell MQ what the message body format is. In this case, a text string
 		putmqmd.Format = ibmmq.MQFMT_STRING
@@ -131,32 +131,33 @@ func main() {
 		}
 	}
 
-	// The usual tidy up at the end of a program is for queues to be closed,
-	// queue manager connections to be disconnected etc.
-	// In a larger Go program, we might move this to a defer() section to ensure
-	// it gets done regardless of other flows through the program.
-
-	// Close the topic if it was successfully opened
-	if topicOpened {
-		err = topicObject.Close(0)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println("Closed topic")
-		}
-	}
-
-	// Disconnect from the queue manager
-	if qMgrConnected {
-		err = qMgrObject.Disc()
-		fmt.Printf("Disconnected from queue manager %s\n", qMgrName)
-	}
-
 	// Exit with any return code extracted from the failing MQI call.
-	if err == nil {
-		os.Exit(0)
-	} else {
-		mqret := err.(*ibmmq.MQReturn)
-		os.Exit((int)(mqret.MQCC))
+	// Deferred disconnect will happen after the return
+	mqret := 0
+	if err != nil {
+		mqret = int((err.(*ibmmq.MQReturn)).MQCC)
 	}
+	return mqret
+}
+
+// Disconnect from the queue manager
+func disc(qMgrObject ibmmq.MQQueueManager) error {
+	err := qMgrObject.Disc()
+	if err == nil {
+		fmt.Printf("Disconnected from queue manager %s\n", qMgrObject.Name)
+	} else {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// Close the topic if it was opened
+func close(object ibmmq.MQObject) error {
+	err := object.Close(0)
+	if err == nil {
+		fmt.Println("Closed topic")
+	} else {
+		fmt.Println(err)
+	}
+	return err
 }

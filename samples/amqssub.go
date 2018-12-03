@@ -5,7 +5,7 @@
  * The topic and queue manager name can be given as parameters on the
  * command line. Defaults are coded in the program.
  *
- * The program loops until no more publications arv available, waiting for
+ * The program loops until no more publications are available, waiting for
  * at most 3 seconds for new messages to arrive.
  *
  * Each MQI call prints its success or failure.
@@ -44,14 +44,17 @@ var qMgrObject ibmmq.MQObject
 var qObject ibmmq.MQObject
 var subscriptionObject ibmmq.MQObject
 
+// Main function that simply calls a subfunction to ensure defer routines are called before os.Exit happens
 func main() {
+	os.Exit(mainWithRc())
+}
+
+// The real main function is here to set a return code.
+func mainWithRc() int {
 
 	// The default queue manager and topic to be used. These can be overridden on command line.
 	qMgrName := "QM1"
-	topic := "GO.TEST.TOPIC"
-
-	qMgrConnected := false
-	subscriptionMade := false
+	topic := "DEV.BASE.TOPIC"
 
 	fmt.Println("Sample AMQSSUB.GO start")
 
@@ -73,8 +76,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		qMgrConnected = true
 		fmt.Printf("Connected to queue manager %s\n", qMgrName)
+		defer disc(qMgrObject)
 	}
 
 	// Subscribe to the topic
@@ -89,7 +92,6 @@ func main() {
 		// where publications are delivered
 		mqsd.Options = ibmmq.MQSO_CREATE |
 			ibmmq.MQSO_NON_DURABLE |
-			ibmmq.MQSO_FAIL_IF_QUIESCING |
 			ibmmq.MQSO_MANAGED
 
 		// When opening a Subscription, MQ has a choice of whether to refer to
@@ -103,8 +105,8 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			subscriptionMade = true
 			fmt.Println("Subscription made to topic ", topic)
+			defer close(subscriptionObject)
 		}
 	}
 
@@ -119,9 +121,8 @@ func main() {
 
 		// The default options are OK, but it's always
 		// a good idea to be explicit about transactional boundaries as
-		// not all platforms behave the same way. It's also good practice to
-		// set the FAIL_IF_QUIESCING flag on all verbs.
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT | ibmmq.MQGMO_FAIL_IF_QUIESCING
+		// not all platforms behave the same way.
+		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
 
 		// Set options to wait for a maximum of 3 seconds for any new message to arrive
 		gmo.Options |= ibmmq.MQGMO_WAIT
@@ -151,33 +152,33 @@ func main() {
 		}
 	}
 
-	// The usual tidy up at the end of a program is for queues to be closed,
-	// queue manager connections to be disconnected etc.
-	// In a larger Go program, we might move this to a defer() section to ensure
-	// it gets done regardless of other flows through the program.
-
-	// Close the subscription if it was opened. This will also close the
-	// managed publication queue.
-	if subscriptionMade {
-		err = subscriptionObject.Close(0)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println("Closed topic")
-		}
-	}
-
-	// Disconnect from the queue manager
-	if qMgrConnected {
-		err = qMgrObject.Disc()
-		fmt.Printf("Disconnected from queue manager %s\n", qMgrName)
-	}
-
 	// Exit with any return code extracted from the failing MQI call.
-	if err == nil {
-		os.Exit(0)
-	} else {
-		mqret := err.(*ibmmq.MQReturn)
-		os.Exit((int)(mqret.MQCC))
+	// On return, the deferred close/disconnect operations will tidy up
+	mqret := 0
+	if err != nil {
+		mqret = int((err.(*ibmmq.MQReturn)).MQCC)
 	}
+	return mqret
+}
+
+// Disconnect from the queue manager
+func disc(qMgrObject ibmmq.MQQueueManager) error {
+	err := qMgrObject.Disc()
+	if err == nil {
+		fmt.Printf("Disconnected from queue manager %s\n", qMgrObject.Name)
+	} else {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// Close the topic if it was opened
+func close(object ibmmq.MQObject) error {
+	err := object.Close(0)
+	if err == nil {
+		fmt.Println("Closed topic")
+	} else {
+		fmt.Println(err)
+	}
+	return err
 }

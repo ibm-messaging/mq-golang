@@ -48,14 +48,16 @@ var qMgrObject ibmmq.MQObject
 var qObject ibmmq.MQObject
 
 func main() {
+	os.Exit(mainWithRc())
+}
+
+// The real main function is here to set a return code.
+func mainWithRc() int {
 	var msgId string
 
 	// The default queue manager and queue to be used. These can be overridden on command line.
 	qMgrName := "QM1"
 	qName := "DEV.QUEUE.1"
-
-	qMgrConnected := false
-	qOpened := false
 
 	fmt.Println("Sample AMQSGET.GO start")
 
@@ -82,8 +84,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		qMgrConnected = true
 		fmt.Printf("Connected to queue manager %s\n", qMgrName)
+		defer disc(qMgrObject)
 	}
 
 	// Open of the queue
@@ -93,7 +95,7 @@ func main() {
 
 		// We have to say how we are going to use this queue. In this case, to GET
 		// messages. That is done in the openOptions parameter.
-		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE + ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE
 
 		// Opening a QUEUE (rather than a Topic or other object type) and give the name
 		mqod.ObjectType = ibmmq.MQOT_Q
@@ -103,8 +105,8 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			qOpened = true
 			fmt.Println("Opened queue", qObject.Name)
+			defer close(qObject)
 		}
 	}
 
@@ -119,9 +121,8 @@ func main() {
 
 		// The default options are OK, but it's always
 		// a good idea to be explicit about transactional boundaries as
-		// not all platforms behave the same way. It's also good practice to
-		// set the FAIL_IF_QUIESCING flag on all verbs.
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT | ibmmq.MQGMO_FAIL_IF_QUIESCING
+		// not all platforms behave the same way.
+		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
 
 		// Set options to wait for a maximum of 3 seconds for any new message to arrive
 		gmo.Options |= ibmmq.MQGMO_WAIT
@@ -162,32 +163,33 @@ func main() {
 		}
 	}
 
-	// The usual tidy up at the end of a program is for queues to be closed,
-	// queue manager connections to be disconnected etc.
-	// In a larger Go program, we might move this to a defer() section to ensure
-	// it gets done regardless of other flows through the program.
-
-	// Close the queue if it was opened
-	if qOpened {
-		err = qObject.Close(0)
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println("Closed queue")
-		}
-	}
-
-	// Disconnect from the queue manager
-	if qMgrConnected {
-		err = qMgrObject.Disc()
-		fmt.Printf("Disconnected from queue manager %s\n", qMgrName)
-	}
-
 	// Exit with any return code extracted from the failing MQI call.
-	if err == nil {
-		os.Exit(0)
-	} else {
-		mqret := err.(*ibmmq.MQReturn)
-		os.Exit((int)(mqret.MQCC))
+	// Deferred disconnect will happen after the return
+	mqret := 0
+	if err != nil {
+		mqret = int((err.(*ibmmq.MQReturn)).MQCC)
 	}
+	return mqret
+}
+
+// Disconnect from the queue manager
+func disc(qMgrObject ibmmq.MQQueueManager) error {
+	err := qMgrObject.Disc()
+	if err == nil {
+		fmt.Printf("Disconnected from queue manager %s\n", qMgrObject.Name)
+	} else {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// Close the queue if it was opened
+func close(object ibmmq.MQObject) error {
+	err := object.Close(0)
+	if err == nil {
+		fmt.Println("Closed queue")
+	} else {
+		fmt.Println(err)
+	}
+	return err
 }
