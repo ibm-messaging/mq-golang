@@ -84,10 +84,10 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 		gocbc.CallbackArea = info.callbackArea
 		gocbc.ConnectionArea = info.connectionArea
 
-    // Get the data
+		// Get the data
 		b := C.GoBytes(unsafe.Pointer(mqBuffer), C.int(mqcbc.DataLength))
 
-    // And finally call the user function
+		// And finally call the user function
 		info.callbackFunction(info.hObj, gomd, gogmo, b, gocbc, mqreturn)
 	}
 }
@@ -129,7 +129,7 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 		return &mqreturn
 	}
 
-  // Add or remove the control information in the map used by the callback routines
+	// Add or remove the control information in the map used by the callback routines
 	switch mqOperation {
 	case C.MQOP_DEREGISTER:
 		delete(cbMap, key)
@@ -158,7 +158,7 @@ func (x *MQQueueManager) Ctl(goOperation int32, goctlo *MQCTLO) error {
 	mqOperation = C.MQLONG(goOperation)
 	copyCTLOtoC(&mqctlo, goctlo)
 
-  // Need to make sure control information is available before the callback
+	// Need to make sure control information is available before the callback
 	// is enabled. So this gets setup even if the MQCTL fails.
 	key := makePartialKey(x.hConn)
 	for k, info := range cbMap {

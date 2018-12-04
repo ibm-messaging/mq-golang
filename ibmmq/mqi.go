@@ -384,7 +384,7 @@ func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
 /*
 Begin is the function to start a two-phase XA transaction coordinated by MQ
 */
-func (x *MQQueueManager) Begin(gobo  *MQBO) error {
+func (x *MQQueueManager) Begin(gobo *MQBO) error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqbo C.MQBO

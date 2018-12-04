@@ -152,8 +152,8 @@ func mainWithRc() int {
 
 	// Keep the program running until the callback has indicated there are no
 	// more messages.
+	d, _ := time.ParseDuration("5s")
 	for ok {
-		d, _ := time.ParseDuration("5s")
 		time.Sleep(d)
 	}
 
