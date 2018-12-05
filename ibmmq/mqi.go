@@ -1249,11 +1249,11 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 			propertyValue = true
 		}
 	case C.MQTYPE_STRING:
-		propertyValue = C.GoStringN((*C.char)(propertyPtr), propertyLength)
+		propertyValue = C.GoStringN((*C.char)(propertyPtr), (C.int)(propertyLength))
 	case C.MQTYPE_BYTE_STRING:
 		ba := make([]byte, propertyLength)
 		p := (*C.MQBYTE)(propertyPtr)
-		copy(ba[:], C.GoBytes(unsafe.Pointer(p), propertyLength))
+		copy(ba[:], C.GoBytes(unsafe.Pointer(p), (C.int)(propertyLength)))
 		propertyValue = ba
 	case C.MQTYPE_NULL:
 		propertyValue = nil
