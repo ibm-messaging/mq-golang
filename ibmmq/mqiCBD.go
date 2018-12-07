@@ -34,7 +34,7 @@ MQCBD is a structure containing the MQ Callback Descriptor
 type MQCBD struct {
 	CallbackType     int32
 	Options          int32
-	CallbackArea     []byte
+	CallbackArea     interface{}
 	CallbackFunction MQCB_FUNCTION
 	CallbackName     string
 	MaxMsgLength     int32

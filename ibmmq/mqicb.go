@@ -46,8 +46,8 @@ type MQCB_FUNCTION func(*MQObject, *MQMD, *MQGMO, []byte, *MQCBC, *MQReturn)
 type cbInfo struct {
 	hObj             *MQObject
 	callbackFunction MQCB_FUNCTION
-	callbackArea     []byte
-	connectionArea   []byte
+	callbackArea     interface{}
+	connectionArea   interface{}
 }
 
 // This map is indexed by a combination of the hConn and hObj values

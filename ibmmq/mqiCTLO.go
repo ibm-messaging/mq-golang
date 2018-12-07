@@ -32,7 +32,7 @@ import "C"
 MQCTLO is a structure containing the MQ Control Options
 */
 type MQCTLO struct {
-	ConnectionArea []byte
+	ConnectionArea interface{}
 	Options        int32
 }
 

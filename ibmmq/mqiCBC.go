@@ -36,8 +36,8 @@ for the hObj
 */
 type MQCBC struct {
 	CallType       int32
-	CallbackArea   []byte // These byte arrays are saved/restored in parent function
-	ConnectionArea []byte
+	CallbackArea   interface{} // These fields are saved/restored in parent function
+	ConnectionArea interface{}
 	State          int32
 	DataLength     int32
 	BufferLength   int32
