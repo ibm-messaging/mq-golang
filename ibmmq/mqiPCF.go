@@ -47,8 +47,6 @@ type MQCFH struct {
 	ParameterCount int32
 }
 
-var endian binary.ByteOrder
-
 /*
 PCFParameter is a structure containing the data associated with
 various types of PCF element. Use the Type field to decide which

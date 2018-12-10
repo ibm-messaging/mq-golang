@@ -862,10 +862,11 @@ func formatDescription(elem *MonElement) string {
 
 		// There are some metrics that have both "count" and "byte count" in
 		// the descriptions. They were getting mapped to the same string, so
-		// we have to ensure uniqueness. We do not put "_count" on the
-		// metric name.
+		// we have to ensure uniqueness.
 		if strings.Contains(elem.Description, "byte count") {
 			s = s + "_bytes"
+		} else if strings.HasSuffix(elem.Description, " count") && !strings.Contains(s, "_count") {
+			s = s + "_count"
 		}
 	}
 

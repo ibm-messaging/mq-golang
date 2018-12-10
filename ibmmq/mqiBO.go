@@ -29,30 +29,26 @@ package ibmmq
 import "C"
 
 /*
-This module contains the Subscription Request Options structure
+This module contains the Begin Options structure
 */
 
-type MQSRO struct {
+type MQBO struct {
 	Options int32
-	NumPubs int32
 }
 
-func NewMQSRO() *MQSRO {
-	sro := new(MQSRO)
-	sro.Options = int32(C.MQSRO_NONE)
-	sro.NumPubs = 0
-	return sro
+func NewMQBO() *MQBO {
+	bo := new(MQBO)
+	bo.Options = int32(C.MQBO_NONE)
+	return bo
 }
 
-func copySROtoC(mqsro *C.MQSRO, gosro *MQSRO) {
-	setMQIString((*C.char)(&mqsro.StrucId[0]), "SRO ", 4)
-	mqsro.Version = 1
-	mqsro.Options = C.MQLONG(gosro.Options) | C.MQSRO_FAIL_IF_QUIESCING
-	mqsro.NumPubs = C.MQLONG(gosro.NumPubs)
+func copyBOtoC(mqbo *C.MQBO, gobo *MQBO) {
+	setMQIString((*C.char)(&mqbo.StrucId[0]), "BO  ", 4)
+	mqbo.Version = 1
+	mqbo.Options = C.MQLONG(gobo.Options)
 }
 
-func copySROfromC(mqsro *C.MQSRO, gosro *MQSRO) {
-	gosro.Options = int32(mqsro.Options)
-	gosro.NumPubs = int32(mqsro.NumPubs)
+func copyBOfromC(mqbo *C.MQBO, gobo *MQBO) {
+	gobo.Options = int32(mqbo.Options)
 	return
 }

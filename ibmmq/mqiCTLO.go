@@ -29,30 +29,33 @@ package ibmmq
 import "C"
 
 /*
-This module contains the Subscription Request Options structure
+MQCTLO is a structure containing the MQ Control Options
 */
-
-type MQSRO struct {
-	Options int32
-	NumPubs int32
+type MQCTLO struct {
+	ConnectionArea interface{}
+	Options        int32
 }
 
-func NewMQSRO() *MQSRO {
-	sro := new(MQSRO)
-	sro.Options = int32(C.MQSRO_NONE)
-	sro.NumPubs = 0
-	return sro
+/*
+NewMQCTLO creates a MQCTLO structure.
+*/
+func NewMQCTLO() *MQCTLO {
+	ctlo := new(MQCTLO)
+	ctlo.Options = C.MQCTLO_NONE
+	ctlo.ConnectionArea = nil
+	return ctlo
 }
 
-func copySROtoC(mqsro *C.MQSRO, gosro *MQSRO) {
-	setMQIString((*C.char)(&mqsro.StrucId[0]), "SRO ", 4)
-	mqsro.Version = 1
-	mqsro.Options = C.MQLONG(gosro.Options) | C.MQSRO_FAIL_IF_QUIESCING
-	mqsro.NumPubs = C.MQLONG(gosro.NumPubs)
+func copyCTLOtoC(mqctlo *C.MQCTLO, goctlo *MQCTLO) {
+	setMQIString((*C.char)(&mqctlo.StrucId[0]), "CTLO", 4)
+	mqctlo.Version = C.MQCTLO_VERSION_1
+	mqctlo.Options = (C.MQLONG)(goctlo.Options) | C.MQCTLO_FAIL_IF_QUIESCING
+	// Always pass NULL to the C function as the real array is saved/restored in the Go layer
+	mqctlo.ConnectionArea = (C.MQPTR)(C.NULL)
+	return
 }
 
-func copySROfromC(mqsro *C.MQSRO, gosro *MQSRO) {
-	gosro.Options = int32(mqsro.Options)
-	gosro.NumPubs = int32(mqsro.NumPubs)
+func copyCTLOfromC(mqctlo *C.MQCTLO, goctlo *MQCTLO) {
+	// There are no output fields for this structure
 	return
 }

@@ -51,11 +51,13 @@ package ibmmq
 #include <string.h>
 #include <cmqc.h>
 #include <cmqxc.h>
+
 */
 import "C"
 
 import (
 	"encoding/binary"
+	"io"
 	"strings"
 	"unsafe"
 )
@@ -119,6 +121,8 @@ func (e *MQReturn) Error() string {
 	return mqstrerror(e.verb, C.MQLONG(e.MQCC), C.MQLONG(e.MQRC))
 }
 
+var endian binary.ByteOrder // Used by structure formatters such as MQCFH
+
 /*
  * Copy a Go string in "strings"
  * to a fixed-size C char array such as MQCHAR12
@@ -138,7 +142,7 @@ func setMQIString(a *C.char, v string, l int) {
 /*
  * The C.GoStringN function can return strings that include
  * NUL characters (which is not really what is expected for a C string-related
- * function). So we have a utility function to remove any trailing nulls
+ * function). So we have a utility function to remove any trailing nulls and spaces
  */
 func trimStringN(c *C.char, l C.int) string {
 	var rc string
@@ -149,7 +153,7 @@ func trimStringN(c *C.char, l C.int) string {
 	} else {
 		rc = s[0:i]
 	}
-	return rc
+	return strings.TrimSpace(rc)
 }
 
 /*
@@ -219,6 +223,7 @@ func (x *MQQueueManager) Disc() error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 
+	savedConn := x.hConn
 	C.MQDISC(&x.hConn, &mqcc, &mqrc)
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -229,6 +234,8 @@ func (x *MQQueueManager) Disc() error {
 	if mqcc != C.MQCC_OK {
 		return &mqreturn
 	}
+
+	cbRemoveConnection(savedConn)
 
 	return nil
 }
@@ -248,7 +255,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 	}
 
 	copyODtoC(&mqod, good)
-	mqOpenOptions = C.MQLONG(goOpenOptions)
+	mqOpenOptions = C.MQLONG(goOpenOptions) | C.MQOO_FAIL_IF_QUIESCING
 
 	C.MQOPEN(x.hConn,
 		(C.PMQVOID)(unsafe.Pointer(&mqod)),
@@ -288,6 +295,9 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 
 	mqCloseOptions = C.MQLONG(goCloseOptions)
 
+	savedHConn := object.qMgr.hConn
+	savedHObj := object.hObj
+
 	C.MQCLOSE(object.qMgr.hConn, &object.hObj, mqCloseOptions, &mqcc, &mqrc)
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -299,6 +309,7 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 		return &mqreturn
 	}
 
+	cbRemoveHandle(savedHConn, savedHObj)
 	return nil
 
 }
@@ -371,6 +382,33 @@ func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
 	}
 
 	return nil
+}
+
+/*
+Begin is the function to start a two-phase XA transaction coordinated by MQ
+*/
+func (x *MQQueueManager) Begin(gobo *MQBO) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+	var mqbo C.MQBO
+
+	copyBOtoC(&mqbo, gobo)
+
+	C.MQBEGIN(x.hConn, (C.PMQVOID)(unsafe.Pointer(&mqbo)), &mqcc, &mqrc)
+
+	copyBOfromC(&mqbo, gobo)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQBEGIN",
+	}
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	return nil
+
 }
 
 /*
@@ -1214,15 +1252,42 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 			propertyValue = true
 		}
 	case C.MQTYPE_STRING:
-		propertyValue = C.GoStringN((*C.char)(propertyPtr), propertyLength)
+		propertyValue = C.GoStringN((*C.char)(propertyPtr), (C.int)(propertyLength))
 	case C.MQTYPE_BYTE_STRING:
 		ba := make([]byte, propertyLength)
 		p := (*C.MQBYTE)(propertyPtr)
-		copy(ba[:], C.GoBytes(unsafe.Pointer(p), propertyLength))
+		copy(ba[:], C.GoBytes(unsafe.Pointer(p), (C.int)(propertyLength)))
 		propertyValue = ba
 	case C.MQTYPE_NULL:
 		propertyValue = nil
 	}
 
 	return goimpo.ReturnedName, propertyValue, nil
+}
+
+/*
+GetHeader returns a structure containing a parsed-out version of an MQI
+message header such as the MQDLH (which is currently the only structure
+supported). Other structures like the RFH2 could follow.
+
+The caller of this function needs to cast the returned structure to the
+specific type in order to reference the fields.
+*/
+func GetHeader(md *MQMD, buf []byte) (interface{}, int, error) {
+	switch md.Format {
+	case MQFMT_DEAD_LETTER_HEADER:
+		return getHeaderDLH(md, buf)
+	}
+
+	mqreturn := &MQReturn{MQCC: int32(MQCC_FAILED),
+		MQRC: int32(MQRC_FORMAT_NOT_SUPPORTED),
+	}
+
+	return nil, 0, mqreturn
+}
+
+func readStringFromFixedBuffer(r io.Reader, l int32) string {
+	tmpBuf := make([]byte, l)
+	binary.Read(r, endian, tmpBuf)
+	return strings.TrimSpace(string(tmpBuf))
 }

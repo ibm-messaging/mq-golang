@@ -80,7 +80,7 @@ func copyGMOtoC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 
 	setMQIString((*C.char)(&mqgmo.StrucId[0]), "GMO ", 4)
 	mqgmo.Version = C.MQLONG(gogmo.Version)
-	mqgmo.Options = C.MQLONG(gogmo.Options)
+	mqgmo.Options = C.MQLONG(gogmo.Options) | C.MQGMO_FAIL_IF_QUIESCING
 	mqgmo.WaitInterval = C.MQLONG(gogmo.WaitInterval)
 	mqgmo.Signal1 = C.MQLONG(gogmo.Signal1)
 	mqgmo.Signal2 = C.MQLONG(gogmo.Signal2)

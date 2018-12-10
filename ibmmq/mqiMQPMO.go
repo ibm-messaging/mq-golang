@@ -90,7 +90,7 @@ func copyPMOtoC(mqpmo *C.MQPMO, gopmo *MQPMO) {
 	setMQIString((*C.char)(&mqpmo.StrucId[0]), "PMO ", 4)
 	mqpmo.Version = C.MQLONG(gopmo.Version)
 
-	mqpmo.Options = C.MQLONG(gopmo.Options)
+	mqpmo.Options = C.MQLONG(gopmo.Options) | C.MQPMO_FAIL_IF_QUIESCING
 	mqpmo.Timeout = C.MQLONG(gopmo.Timeout)
 	mqpmo.Context = gopmo.Context
 	mqpmo.KnownDestCount = C.MQLONG(gopmo.KnownDestCount)

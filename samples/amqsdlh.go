@@ -1,17 +1,9 @@
 /*
- * This is an example of a Go program to get messages from an IBM MQ
- * queue.
+ * This is an example of a Go program to put and get messages to an IBM MQ
+ * queue while manipulating a Dead Letter Header
  *
  * The queue and queue manager name can be given as parameters on the
  * command line. Defaults are coded in the program.
- *
- * The program loops until no more messages are on the queue, waiting for
- * at most 3 seconds for new messages to arrive.
- *
- * Each MQI call prints its success or failure.
- *
- * A MsgId can be provided as a final optional parameter to this command
- * in which case we try to retrieve just a single message that matches.
  *
  */
 package main
@@ -36,10 +28,10 @@ package main
 */
 
 import (
-	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
@@ -51,15 +43,61 @@ func main() {
 	os.Exit(mainWithRc())
 }
 
+func addDLH(md *ibmmq.MQMD, buf []byte) []byte {
+	// Create a new Dead Letter Header. This function modifies
+	// the original message descriptor to indicate there is a DLH
+	dlh := ibmmq.NewMQDLH(md)
+
+	// Fill in the reason this message needs to be put to a DLQ along with
+	// any other relevant information.
+	dlh.Reason = ibmmq.MQRC_NOT_AUTHORIZED
+	dlh.DestQName = "DEST.QUEUE"
+	dlh.DestQMgrName = "DEST.QMGR"
+	// Set the current date/time in the header. The way Go does date formatting
+	// is very odd.Force the hundredths as there doesn't seem to be a simple way
+	// to extract it without a '.' in the format.
+	dlh.PutTime = time.Now().Format("030405")
+	dlh.PutDate = time.Now().Format("20060102")
+
+	// Then return a modified buffer with the original message data
+	// following the DLH
+	return append(dlh.Bytes(), buf...)
+}
+
+// Extract the DLH from the body of the message, print it and then
+// print the remaining body.
+func printDLH(md *ibmmq.MQMD, buf []byte) {
+	bodyStart := 0
+	buflen := len(buf)
+
+	// Look to see if there is indeed a DLH
+	fmt.Printf("Format = '%s'\n", md.Format)
+	if md.Format == ibmmq.MQFMT_DEAD_LETTER_HEADER {
+		header, headerLen, err := ibmmq.GetHeader(md, buf)
+		if err == nil {
+			dlh, ok := header.(*ibmmq.MQDLH)
+			if ok {
+				bodyStart += headerLen
+				fmt.Printf("DLH Structure = %v\n", dlh)
+				fmt.Printf("Format of next element = '%s'\n", dlh.Format)
+			}
+		}
+	}
+
+	// The original message data starts further on in the slice
+	fmt.Printf("Got message of total length %d: ", buflen)
+	fmt.Println(strings.TrimSpace(string(buf[bodyStart:buflen])))
+}
+
 // The real main function is here to set a return code.
 func mainWithRc() int {
-	var msgId string
+	var putmqmd *ibmmq.MQMD
 
 	// The default queue manager and queue to be used. These can be overridden on command line.
 	qMgrName := "QM1"
 	qName := "DEV.QUEUE.1"
 
-	fmt.Println("Sample AMQSGET.GO start")
+	fmt.Println("Sample AMQSDLH.GO start")
 
 	// Get the queue and queue manager names from command line for overriding
 	// the defaults. Parameters are not required.
@@ -69,11 +107,6 @@ func mainWithRc() int {
 
 	if len(os.Args) >= 3 {
 		qMgrName = os.Args[2]
-	}
-
-	// Can also provide a msgid as a further command parameter
-	if len(os.Args) >= 4 {
-		msgId = os.Args[3]
 	}
 
 	// This is where we connect to the queue manager. It is assumed
@@ -93,9 +126,9 @@ func mainWithRc() int {
 		// Create the Object Descriptor that allows us to give the queue name
 		mqod := ibmmq.NewMQOD()
 
-		// We have to say how we are going to use this queue. In this case, to GET
+		// We have to say how we are going to use this queue. In this case, to PUT and GET
 		// messages. That is done in the openOptions parameter.
-		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE
+		openOptions := ibmmq.MQOO_OUTPUT | ibmmq.MQOO_INPUT_AS_Q_DEF
 
 		// Opening a QUEUE (rather than a Topic or other object type) and give the name
 		mqod.ObjectType = ibmmq.MQOT_Q
@@ -110,56 +143,56 @@ func mainWithRc() int {
 		}
 	}
 
-	msgAvail := true
-	for msgAvail == true && err == nil {
-		var datalen int
+	// PUT the message to the queue
+	if err == nil {
+		putmqmd = ibmmq.NewMQMD()
+		pmo := ibmmq.NewMQPMO()
 
-		// The GET requires control structures, the Message Descriptor (MQMD)
-		// and Get Options (MQGMO). Create those with default values.
+		pmo.Options = ibmmq.MQPMO_NO_SYNCPOINT
+
+		// Create the contents to include a timestamp just to prove when it was created
+		msgData := "Hello from Go at " + time.Now().Format(time.RFC3339)
+		buffer := []byte(msgData)
+		putmqmd.Format = ibmmq.MQFMT_STRING
+
+		// Add a Dead Letter Header to the message.
+		newBuffer := addDLH(putmqmd, buffer)
+
+		// Put the message to the queue)
+		err = qObject.Put(putmqmd, pmo, newBuffer)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	// And now try to GET the message we just put
+	if err == nil {
 		getmqmd := ibmmq.NewMQMD()
 		gmo := ibmmq.NewMQGMO()
 
-		// The default options are OK, but it's always
-		// a good idea to be explicit about transactional boundaries as
-		// not all platforms behave the same way.
 		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
 
-		// Set options to wait for a maximum of 3 seconds for any new message to arrive
-		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.WaitInterval = 3 * 1000 // The WaitInterval is in milliseconds
+		// Set options to not wait - we know the message is there since we just put it
+		gmo.Options |= ibmmq.MQGMO_NO_WAIT
 
-		// If there is a MsgId on the command line decode it into bytes and
-		// set the options for matching it during the Get processing
-		if msgId != "" {
-			fmt.Println("Setting Match Option for MsgId")
-			gmo.MatchOptions = ibmmq.MQMO_MATCH_MSG_ID
-			getmqmd.MsgId, _ = hex.DecodeString(msgId)
-			// Will only try to get a single message with the MsgId as there should
-			// never be more than one. So set the flag to not retry after the first attempt.
-			msgAvail = false
-		}
+		// Use the MsgId to retrieve the same message
+		gmo.MatchOptions = ibmmq.MQMO_MATCH_MSG_ID
+		getmqmd.MsgId = putmqmd.MsgId
 
 		// Create a buffer for the message data. This one is large enough
 		// for the messages put by the amqsput sample.
 		buffer := make([]byte, 1024)
 
-		// Now we can try to get the message
+		// Now we can try to get the message.
+		datalen := 0
 		datalen, err = qObject.Get(getmqmd, gmo, buffer)
 
 		if err != nil {
-			msgAvail = false
 			fmt.Println(err)
-			mqret := err.(*ibmmq.MQReturn)
-			if mqret.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
-				// If there's no message available, then I won't treat that as a real error as
-				// it's an expected situation
-				err = nil
-			}
 		} else {
-			// Assume the message is a printable string, which it will be
-			// if it's been created by the amqsput program
-			fmt.Printf("Got message of length %d: ", datalen)
-			fmt.Println(strings.TrimSpace(string(buffer[:datalen])))
+			// A message has been retrieved. Print the contents, and the DLH
+			// if one exists
+			printDLH(getmqmd, buffer[0:datalen])
 		}
 	}
 
