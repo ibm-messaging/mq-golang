@@ -5,6 +5,7 @@
 * Samples updated to use "defer" instead of just suggesting it
 * Add support for MQCB/MQCTL callback functions
 * Add support for MQBEGIN transaction management
+* Add Dead Letter Header parser
 
 ## November 2018 - v3.2.0
 * Added GetPlatform to mqmetric so it can be used as a label/tag in collectors

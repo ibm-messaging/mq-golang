@@ -125,8 +125,6 @@ At this point, you should have a compiled copy of the program in `$GOPATH/bin`. 
 
 All regular MQI verbs are now available through the `ibmmq` package.
 
-There are no structure handlers for message headers such as MQRFH2 or MQDLH.
-
 ## History
 
 See [CHANGELOG](CHANGELOG.md) in this directory.

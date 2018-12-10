@@ -865,7 +865,7 @@ func formatDescription(elem *MonElement) string {
 		// we have to ensure uniqueness.
 		if strings.Contains(elem.Description, "byte count") {
 			s = s + "_bytes"
-		} else if strings.HasSuffix(elem.Description," count") && !strings.Contains(s,"_count") {
+		} else if strings.HasSuffix(elem.Description, " count") && !strings.Contains(s, "_count") {
 			s = s + "_count"
 		}
 	}

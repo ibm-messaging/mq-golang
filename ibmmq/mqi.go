@@ -57,6 +57,7 @@ import "C"
 
 import (
 	"encoding/binary"
+	"io"
 	"strings"
 	"unsafe"
 )
@@ -120,6 +121,8 @@ func (e *MQReturn) Error() string {
 	return mqstrerror(e.verb, C.MQLONG(e.MQCC), C.MQLONG(e.MQRC))
 }
 
+var endian binary.ByteOrder // Used by structure formatters such as MQCFH
+
 /*
  * Copy a Go string in "strings"
  * to a fixed-size C char array such as MQCHAR12
@@ -139,7 +142,7 @@ func setMQIString(a *C.char, v string, l int) {
 /*
  * The C.GoStringN function can return strings that include
  * NUL characters (which is not really what is expected for a C string-related
- * function). So we have a utility function to remove any trailing nulls
+ * function). So we have a utility function to remove any trailing nulls and spaces
  */
 func trimStringN(c *C.char, l C.int) string {
 	var rc string
@@ -150,7 +153,7 @@ func trimStringN(c *C.char, l C.int) string {
 	} else {
 		rc = s[0:i]
 	}
-	return rc
+	return strings.TrimSpace(rc)
 }
 
 /*
@@ -1260,4 +1263,31 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 	}
 
 	return goimpo.ReturnedName, propertyValue, nil
+}
+
+/*
+GetHeader returns a structure containing a parsed-out version of an MQI
+message header such as the MQDLH (which is currently the only structure
+supported). Other structures like the RFH2 could follow.
+
+The caller of this function needs to cast the returned structure to the
+specific type in order to reference the fields.
+*/
+func GetHeader(md *MQMD, buf []byte) (interface{}, int, error) {
+	switch md.Format {
+	case MQFMT_DEAD_LETTER_HEADER:
+		return getHeaderDLH(md, buf)
+	}
+
+	mqreturn := &MQReturn{MQCC: int32(MQCC_FAILED),
+		MQRC: int32(MQRC_FORMAT_NOT_SUPPORTED),
+	}
+
+	return nil, 0, mqreturn
+}
+
+func readStringFromFixedBuffer(r io.Reader, l int32) string {
+	tmpBuf := make([]byte, l)
+	binary.Read(r, endian, tmpBuf)
+	return strings.TrimSpace(string(tmpBuf))
 }
