@@ -34,6 +34,7 @@ var (
 	qMgr             ibmmq.MQQueueManager
 	cmdQObj          ibmmq.MQObject
 	replyQObj        ibmmq.MQObject
+	replyQBaseName   string
 	statusReplyQObj  ibmmq.MQObject
 	getBuffer        = make([]byte, 32768)
 	platform         int32
@@ -133,9 +134,11 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions |= ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
 		replyQObj, err = qMgr.Open(mqod, openOptions)
+		replyQBaseName = replyQ
 		if err == nil {
 			queuesOpened = true
 		}

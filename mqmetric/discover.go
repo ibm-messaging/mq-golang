@@ -91,6 +91,7 @@ var Metrics AllMetrics
 
 var qList []string
 var locale string
+var discoveryDone = false
 
 func GetDiscoveredQueues() []string {
 	return qList
@@ -105,12 +106,60 @@ func SetLocale(l string) {
 }
 
 /*
-DiscoverAndSubscribe does all the work of finding the
+ * Check any important parameters  - this must be called after DiscoverAndSubscribe
+ * to maintain compatibility of the package's APIs.  It also needs the qList to have been
+ * populated first which is also done in DiscoverAndSubscribe.
+ * Returns: an MQ CompCode, error string. CompCode can be MQCC_OK, WARNING or ERROR.
+ */
+func VerifyConfig() (int32, error) {
+	var err error
+	var v map[int32]interface{}
+	var compCode = ibmmq.MQCC_OK
+	if !discoveryDone {
+		err = fmt.Errorf("Error: Need to call DiscoverAndSubscribe first")
+		compCode = ibmmq.MQCC_FAILED
+	}
+
+	if err == nil {
+		selectors := []int32{ibmmq.MQIA_MAX_Q_DEPTH, ibmmq.MQIA_DEFINITION_TYPE}
+		v, err = replyQObj.InqMap(selectors)
+		if err == nil {
+			maxQDepth := v[ibmmq.MQIA_MAX_Q_DEPTH].(int32)
+			// Function has tuning based on number of queues to be monitored
+			// Current published resource topics are approx 95 for qmgr
+			// ... and 35 per queue
+			// Make recommended minimum qdepth  60 / 10 * total per interval to allow one minute of data
+			// as MQ publications are at 10 second interval by default (and no public tuning)
+			// and monitor collection interval is one minute
+			recommendedDepth := (100 + len(qList)*50) * 6
+			if maxQDepth < int32(recommendedDepth) {
+				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d", replyQBaseName, maxQDepth)
+				compCode = ibmmq.MQCC_WARNING
+			}
+
+			// Make sure this reply queue that has been opened is not a predefined queue, so it
+			// has come from a model definition. The base replyQ is opened twice for different reasons.
+			// A LOCAL queue would end up with mixed sets of replies/publications
+			defType := v[ibmmq.MQIA_DEFINITION_TYPE].(int32)
+			if defType == ibmmq.MQQDT_PREDEFINED {
+				err = fmt.Errorf("Error: ReplyQ parameter %s must refer to a MODEL queue,", replyQBaseName)
+				compCode = ibmmq.MQCC_FAILED
+			}
+		}
+	}
+	return compCode, err
+}
+
+/*
+DiscoverAndSubscribe does the work of finding the
 different resources available from a queue manager and
 issuing the MQSUB calls to collect the data
 */
 func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
 	var err error
+
+	discoveryDone = true
+
 	// What metrics can the queue manager provide?
 	if err == nil {
 		err = discoverStats(metaPrefix)

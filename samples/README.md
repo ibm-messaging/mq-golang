@@ -41,12 +41,16 @@ aspect.
 Apart from the `amqsconn.go` program, the other samples are designed to either connect
 to a local queue manager (on the same machine) or for the client configuration to be
 provided externally such as by the MQSERVER environment variable or the
-MQ Client Channel Definition Table (CCDT) file.
+MQ Client Channel Definition Table (CCDT) file. The MQ_CONNECT_TYPE environment
+variable can be used to force client connections to be made, even if you have
+installed the full server product; that variable is not needed if you have 
+only installed the MQ client libraries.
 
 For example
 
 ```
   export MQSERVER="SYSTEM.DEF.SVRCONN/TCP/localhost(1414)"
+  export MQ_CONNECT_TYPE=CLIENT  
   go run amqsput.go DEV.QUEUE.1 QM1
 ```
 

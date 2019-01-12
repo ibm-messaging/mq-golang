@@ -77,7 +77,11 @@ export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
 ### Windows
 
 * Install the Go runtime and compiler. On Windows, the common directory is `c:\Go`
-* Ensure you have a gcc-based compiler, for example from the Cygwin distribution. I use the mingw variation, to ensure compiled code can be used on systems without Cygwin installed
+* Ensure you have a gcc-based compiler, for example from the Cygwin distribution. 
+I recommend you use the mingw variation, to ensure compiled code can be used on systems without Cygwin installed. 
+The default `gcc` compiler from Cygwin does not work because it tries to build a
+Cygwin-enabled executable but the MQ libraries do not work in that model; 
+the `mingw` versions build Windows-native programs.
 * Create a working directory. For example, `mkdir c:\Gowork`
 * Set environment variables. Based on the previous lines,
 
@@ -99,11 +103,21 @@ set CC=x86_64-w64-mingw32-gcc.exe
   `git clone https://github.com/ibm-messaging/mq-golang.git src/github.com/ibm-messaging/mq-golang`
 
 * If you have not installed MQ libraries into the default location, then set environment variables
-for the C compiler to recognise those directories. For example,
+for the C compiler to recognise those directories. You may get messages from the compiler
+saying that the default MQ directories cannot be found, but those warnings can be ignored.
+The exact values for these environment variables will vary by platform, but follow the 
+corresponding CFLAGS/LDFLAGS values in `mqi.go`
+
+For example,
 
 ```
-   export CGO_CFLAGS="-I/my/mq/dir/inc"
-   export CGO_LDFLAGS="-I/my/mq/dir/lib64"
+   export MQ_INSTALLATION_PATH=/my/mq/dir  # This will also be set from the setmqenv command
+
+   export CGO_CFLAGS="-I$MQ_INSTALLATION_PATH/inc"
+
+   export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,rpath=$MQ_INSTALLATION_PATH/lib64"
+       or on Darwin
+   export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,rpath,$MQ_INSTALLATION_PATH/lib64"
 ```
 
 * Compile the `ibmmq` component:
@@ -144,4 +158,4 @@ in the CLA.
 
 ## Copyright
 
-© Copyright IBM Corporation 2016, 2018
+© Copyright IBM Corporation 2016, 2019
