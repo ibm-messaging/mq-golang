@@ -1,5 +1,9 @@
 # Changelog
 
+## January 2019
+* mqmetric - Add some configuration validation
+* mqmetric - Make it possible to use CAPEXPRY for statistics subscriptions
+
 ## December 2018 - v3.3.0
 * All relevant API calls now automatically set FAIL_IF_QUIESCING
 * Samples updated to use "defer" instead of just suggesting it
