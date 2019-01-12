@@ -191,6 +191,7 @@ func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 func discoverClasses(metaPrefix string) error {
 	var data []byte
 	var sub ibmmq.MQObject
+	var metaReplyQObj ibmmq.MQObject
 	var err error
 	var rootTopic string
 
@@ -200,10 +201,10 @@ func discoverClasses(metaPrefix string) error {
 	} else {
 		rootTopic = metaPrefix + "/INFO/QMGR/" + resolvedQMgrName + "/Monitor/METADATA/CLASSES"
 	}
-	sub, err = subscribe(rootTopic)
+	sub, err = subscribeManaged(rootTopic, &metaReplyQObj)
 	if err == nil {
-		data, err = getMessage(true)
-		sub.Close(0)
+		data, err = getMessageWithHObj(true, metaReplyQObj)
+		defer sub.Close(0)
 
 		elemList, _ := parsePCFResponse(data)
 
@@ -245,12 +246,13 @@ func discoverClasses(metaPrefix string) error {
 func discoverTypes(cl *MonClass) error {
 	var data []byte
 	var sub ibmmq.MQObject
+	var metaReplyQObj ibmmq.MQObject
 	var err error
 
-	sub, err = subscribe(cl.typesTopic)
+	sub, err = subscribeManaged(cl.typesTopic, &metaReplyQObj)
 	if err == nil {
-		data, err = getMessage(true)
-		sub.Close(0)
+		data, err = getMessageWithHObj(true, metaReplyQObj)
+		defer sub.Close(0)
 
 		elemList, _ := parsePCFResponse(data)
 
@@ -293,12 +295,13 @@ func discoverElements(ty *MonType) error {
 	var err error
 	var data []byte
 	var sub ibmmq.MQObject
+	var metaReplyQObj ibmmq.MQObject
 	var elem *MonElement
 
-	sub, err = subscribe(ty.elementTopic)
+	sub, err = subscribeManaged(ty.elementTopic, &metaReplyQObj)
 	if err == nil {
-		data, err = getMessage(true)
-		sub.Close(0)
+		data, err = getMessageWithHObj(true, metaReplyQObj)
+		defer sub.Close(0)
 
 		elemList, _ := parsePCFResponse(data)
 
@@ -350,15 +353,16 @@ func discoverElementsNLS(ty *MonType, locale string) error {
 	var err error
 	var data []byte
 	var sub ibmmq.MQObject
+	var metaReplyQObj ibmmq.MQObject
 
 	if locale == "" {
 		return nil
 	}
 
-	sub, err = subscribe(ty.elementTopic + "/" + locale)
+	sub, err = subscribe(ty.elementTopic+"/"+locale, &metaReplyQObj)
 	if err == nil {
 		// Don't wait - if there's nothing on that topic, then get out fast
-		data, err = getMessage(false)
+		data, err = getMessageWithHObj(false, metaReplyQObj)
 		sub.Close(0)
 
 		if err != nil {
@@ -668,11 +672,11 @@ func createSubscriptions() error {
 						continue
 					}
 					topic := fmt.Sprintf(ty.ObjectTopic, qList[i])
-					sub, err = subscribe(topic)
+					sub, err = subscribe(topic, &replyQObj)
 					ty.subHobj[qList[i]] = sub
 				}
 			} else {
-				sub, err = subscribe(ty.ObjectTopic)
+				sub, err = subscribe(ty.ObjectTopic, &replyQObj)
 				ty.subHobj[QMgrMapKey] = sub
 			}
 

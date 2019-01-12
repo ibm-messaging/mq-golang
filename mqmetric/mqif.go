@@ -218,10 +218,10 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 
 	if wait {
 		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.WaitInterval = 30 * 1000
+		gmo.WaitInterval = 10 * 1000
 	}
 
-	datalen, err = replyQObj.Get(getmqmd, gmo, getBuffer)
+	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
 
 	return getBuffer[0:datalen], err
 }
@@ -232,17 +232,32 @@ replyQ is used for publications; we do not use a managed queue here,
 so that everything can be read from one queue. The object handle for the
 subscription is returned so we can close it when it's no longer needed.
 */
-func subscribe(topic string) (ibmmq.MQObject, error) {
+func subscribe(topic string, pubQObj *ibmmq.MQObject) (ibmmq.MQObject, error) {
+	return subscribeWithOptions(topic, pubQObj, false)
+}
+
+/*
+subscribe to the nominated topic, but ask the queue manager to
+allocate the replyQ for us
+*/
+func subscribeManaged(topic string, pubQObj *ibmmq.MQObject) (ibmmq.MQObject, error) {
+	return subscribeWithOptions(topic, pubQObj, true)
+}
+
+func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (ibmmq.MQObject, error) {
 	var err error
 
 	mqsd := ibmmq.NewMQSD()
 	mqsd.Options = ibmmq.MQSO_CREATE
 	mqsd.Options |= ibmmq.MQSO_NON_DURABLE
 	mqsd.Options |= ibmmq.MQSO_FAIL_IF_QUIESCING
+	if managed {
+		mqsd.Options |= ibmmq.MQSO_MANAGED
+	}
 
 	mqsd.ObjectString = topic
 
-	subObj, err := qMgr.Sub(mqsd, &replyQObj)
+	subObj, err := qMgr.Sub(mqsd, pubQObj)
 	if err != nil {
 		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v", topic, err)
 	}
