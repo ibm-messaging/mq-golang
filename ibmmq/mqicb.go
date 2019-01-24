@@ -63,7 +63,7 @@ accessible from a C function. See mqicb_c.go for the proxy/gateway C function th
 //export MQCALLBACK_Go
 func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQVOID, mqcbc *C.MQCBC) {
 
-  var cbHObj *MQObject
+	var cbHObj *MQObject
 
 	// Find the real callback function and invoke it
 	// Invoked function should match signature of the MQCB_FUNCTION type
@@ -101,14 +101,14 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	// The way I've chosen is to find the first entry in
 	// the map associated with the hConn and call its registered function with
 	// a dummy hObj.
-	if ! ok {
+	if !ok {
 		if gocbc.CallType == MQCBCT_EVENT_CALL && mqcbc.Hobj == 0 {
 			key = makePartialKey(hConn)
 			for k, i := range cbMap {
 				if strings.HasPrefix(k, key) {
 					ok = true
 					info = i
-					cbHObj = &MQObject{qMgr:info.hObj.qMgr,Name:""}
+					cbHObj = &MQObject{qMgr: info.hObj.qMgr, Name: ""}
 					// Only care about finding one match in the table
 					break
 				}
