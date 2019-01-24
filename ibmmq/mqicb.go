@@ -63,14 +63,24 @@ accessible from a C function. See mqicb_c.go for the proxy/gateway C function th
 //export MQCALLBACK_Go
 func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQVOID, mqcbc *C.MQCBC) {
 
+	var cbHObj *MQObject
+
 	// Find the real callback function and invoke it
 	// Invoked function should match signature of the MQCB_FUNCTION type
 	gogmo := NewMQGMO()
 	gomd := NewMQMD()
 	gocbc := NewMQCBC()
 
-	copyGMOfromC(mqgmo, gogmo)
-	copyMDfromC(mqmd, gomd)
+	// For EVENT callbacks, the GMO and MD may be NULL
+	if mqgmo != (C.PMQGMO)(C.NULL) {
+		copyGMOfromC(mqgmo, gogmo)
+	}
+
+	if mqmd != (C.PMQMD)(C.NULL) {
+		copyMDfromC(mqmd, gomd)
+	}
+
+	// This should never be NULL
 	copyCBCfromC(mqcbc, gocbc)
 
 	mqreturn := &MQReturn{MQCC: int32(mqcbc.CompCode),
@@ -79,16 +89,44 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	}
 
 	key := makeKey(hConn, mqcbc.Hobj)
-	if info, ok := cbMap[key]; ok {
+	info, ok := cbMap[key]
+
+	// The MQ Client libraries seem to sometimes call us with an EVENT
+	// even if it's not been registered. And therefore the cbMap does not
+	// contain a matching callback function with the hObj.  It has
+	// been seen with a 2033 return (see issue #75).
+	//
+	// This feels like wrong behaviour from the client, but we need to find a
+	// way to deal with it even if it gets fixed in future.
+	// The way I've chosen is to find the first entry in
+	// the map associated with the hConn and call its registered function with
+	// a dummy hObj.
+	if !ok {
+		if gocbc.CallType == MQCBCT_EVENT_CALL && mqcbc.Hobj == 0 {
+			key = makePartialKey(hConn)
+			for k, i := range cbMap {
+				if strings.HasPrefix(k, key) {
+					ok = true
+					info = i
+					cbHObj = &MQObject{qMgr: info.hObj.qMgr, Name: ""}
+					// Only care about finding one match in the table
+					break
+				}
+			}
+		}
+	} else {
+		cbHObj = info.hObj
+	}
+
+	if ok {
 
 		gocbc.CallbackArea = info.callbackArea
 		gocbc.ConnectionArea = info.connectionArea
 
 		// Get the data
 		b := C.GoBytes(unsafe.Pointer(mqBuffer), C.int(mqcbc.DataLength))
-
 		// And finally call the user function
-		info.callbackFunction(info.hObj, gomd, gogmo, b, gocbc, mqreturn)
+		info.callbackFunction(cbHObj, gomd, gogmo, b, gocbc, mqreturn)
 	}
 }
 

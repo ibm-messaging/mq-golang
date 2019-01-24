@@ -1,5 +1,8 @@
 # Changelog
 
+## January 24 2019
+* Deal with callback functions being called unexpectedly (#75)
+
 ## January 2019
 * mqmetric - Add some configuration validation
 * mqmetric - Make it possible to use CAPEXPRY for statistics subscriptions
