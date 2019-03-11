@@ -1232,8 +1232,8 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		p := (*C.MQBYTE)(propertyPtr)
 		propertyValue = (int16)(*p)
 	case C.MQTYPE_INT32:
-		p := (*C.MQINT16)(propertyPtr)
-		propertyValue = (int16)(*p)
+		p := (*C.MQINT32)(propertyPtr)
+		propertyValue = (int32)(*p)
 	case C.MQTYPE_INT64:
 		p := (*C.MQINT64)(propertyPtr)
 		propertyValue = (int64)(*p)
