@@ -117,7 +117,7 @@ For example,
 
    export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,rpath=$MQ_INSTALLATION_PATH/lib64"
        or on Darwin
-   export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,rpath,$MQ_INSTALLATION_PATH/lib64"
+   export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,-rpath,$MQ_INSTALLATION_PATH/lib64"
 ```
 
 * Compile the `ibmmq` component:
