@@ -207,7 +207,8 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 		verb: "MQCONNX",
 	}
 
-	if mqcc != C.MQCC_OK {
+	// Repeated SSL connects may receive MQRC_SSL_ALREADY_INITIALIZED, with a valid hConn
+	if mqcc != C.MQCC_OK && !(mqreturn.MQCC == MQCC_WARNING && mqreturn.MQRC == MQRC_SSL_ALREADY_INITIALIZED && qMgr.hConn > 0) {
 		return qMgr, mqreturn
 	}
 
