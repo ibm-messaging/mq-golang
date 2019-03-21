@@ -2,7 +2,7 @@
 # first and in the background. Give it a chance to start. Then run the
 # publisher
 
-go run amqssub.go DEV.BASE.TOPIC QM1 &
+go run amqssub.go dev/GoTopic QM1 &
 sleep 1
-go run amqspub.go DEV.BASE.TOPIC QM1
+go run amqspub.go dev/GoTopic QM1
 wait

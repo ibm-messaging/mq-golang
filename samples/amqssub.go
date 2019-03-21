@@ -54,14 +54,14 @@ func mainWithRc() int {
 
 	// The default queue manager and topic to be used. These can be overridden on command line.
 	qMgrName := "QM1"
-	topic := "DEV.BASE.TOPIC"
+	topicString := "dev/GoTopic"
 
 	fmt.Println("Sample AMQSSUB.GO start")
 
 	// Get the queue and queue manager names from command line for overriding
 	// the defaults. Parameters are not required.
 	if len(os.Args) >= 2 {
-		topic = os.Args[1]
+		topicString = os.Args[1]
 	}
 
 	if len(os.Args) >= 3 {
@@ -97,7 +97,7 @@ func mainWithRc() int {
 		// When opening a Subscription, MQ has a choice of whether to refer to
 		// the object through an ObjectName value or the ObjectString value or both.
 		// For simplicity, here we work with just the ObjectString
-		mqsd.ObjectString = topic
+		mqsd.ObjectString = topicString
 
 		// The qObject is filled in with a reference to the queue created automatically
 		// for publications. It will be used in a moment for the Get operations
@@ -105,7 +105,7 @@ func mainWithRc() int {
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Println("Subscription made to topic ", topic)
+			fmt.Println("Subscription made to topic ", topicString)
 			defer close(subscriptionObject)
 		}
 	}

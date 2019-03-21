@@ -50,14 +50,14 @@ func mainWithRc() int {
 
 	// The default queue manager and topic to be used. These can be overridden on command line.
 	qMgrName := "QM1"
-	topic := "DEV.BASE.TOPIC"
+	topicString := "dev/GoTopic"
 
 	fmt.Println("Sample AMQSPUB.GO start")
 
 	// Get the topic and queue manager names from command line for overriding
 	// the defaults. Parameters are not required.
 	if len(os.Args) >= 2 {
-		topic = os.Args[1]
+		topicString = os.Args[1]
 	}
 
 	if len(os.Args) >= 3 {
@@ -89,13 +89,13 @@ func mainWithRc() int {
 		// the object through an ObjectName value or the ObjectString value or both.
 		// For simplicity, here we work with just the ObjectString
 		mqod.ObjectType = ibmmq.MQOT_TOPIC
-		mqod.ObjectString = topic
+		mqod.ObjectString = topicString
 
 		topicObject, err = qMgrObject.Open(mqod, openOptions)
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Println("Opened topic ", topic)
+			fmt.Println("Opened topic ", topicString)
 			defer close(topicObject)
 		}
 	}
@@ -127,7 +127,7 @@ func mainWithRc() int {
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Println("Published message to", topic)
+			fmt.Println("Published message to", topicString)
 		}
 	}
 

@@ -1,4 +1,13 @@
 # Changelog
+Newest updates are at the top of this file.
+
+## March 20 2019 - v4.0.0
+* Update for MQ 9.1.2 - ApplName now settable during Connect
+* BREAKING API: deprecated Inq()/MQINQ implementation replaced.
+* Fixes to callback functions for EVENT processing
+* mqmetric - Improve handling of z/OS channel status where multiple instances of the same name
+* mqmetric - More accurate testing of model queue default maxdepth for status replies
+* mqmetric - Was ignoring an error in subscription processing
 
 ## January 24 2019
 * Deal with callback functions being called unexpectedly (#75)

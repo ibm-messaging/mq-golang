@@ -22,7 +22,7 @@ directories.
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016, 2018
+  Copyright (c) IBM Corporation 2016, 2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -178,6 +178,7 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	}
 
 	qMgr := MQQueueManager{}
+	qMgr.Name = goQMgrName
 	mqQMgrName := unsafe.Pointer(C.CString(goQMgrName))
 	defer C.free(mqQMgrName)
 
@@ -210,8 +211,6 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	if mqcc != C.MQCC_OK {
 		return qMgr, mqreturn
 	}
-
-	qMgr.Name = goQMgrName
 
 	return qMgr, nil
 }
@@ -636,10 +635,11 @@ how long each field in that buffer will be.
 The caller passes in how many integer selectors are expected to be
 returned, as well as the maximum length of the char buffer to be returned
 
-Deprecated: This function is a direct mapping of the MQI C function. It should be considered
-deprecated. In preference, use the InqMap function which provides a more convenient
-API. In a future version of this package, Inq will be replaced by InqMap
-*/
+This function is a direct mapping of the MQI C function. It has
+now been removed (just commented-out to start with). It was originally
+marked as deprecated but a new major version of the package has been created
+to allow it to be completely replaced.
+
 func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen int) ([]int32,
 	[]byte, error) {
 	var mqrc C.MQLONG
@@ -687,17 +687,18 @@ func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen in
 
 	return goIntAttrs, goCharAttrs, nil
 }
+*/
 
 /*
- * InqMap should be considered the replacement for the Inq() function as it
- * has a much simpler API. Simply pass in the list of selectors for the object
+ * Inq is the function to inquire on an attribute of an object
+ *
+ * This has a much simpler API than the original implementation.
+ * Simply pass in the list of selectors for the object
  * and the return value consists of a map whose elements are
  * a) accessed via the selector
  * b) varying datatype (integer, string, string array) based on the selector
- * In a future breaking update, this function will become the default Inq()
- * implementation.
  */
-func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error) {
+func (object MQObject) Inq(goSelectors []int32) (map[int32]interface{}, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqCharAttrs C.PMQCHAR
@@ -803,6 +804,14 @@ func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error
 	}
 
 	return returnedMap, nil
+}
+
+/*
+* The InqMap function was the migration path when the original Inq was
+* deprecated. It is kept here as a tempoary wrapper to the new Inq() version.
+ */
+func (object MQObject) InqMap(goSelectors []int32) (map[int32]interface{}, error) {
+	return object.Inq(goSelectors)
 }
 
 /*
@@ -1232,8 +1241,8 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		p := (*C.MQBYTE)(propertyPtr)
 		propertyValue = (int16)(*p)
 	case C.MQTYPE_INT32:
-		p := (*C.MQINT16)(propertyPtr)
-		propertyValue = (int16)(*p)
+		p := (*C.MQINT32)(propertyPtr)
+		propertyValue = (int32)(*p)
 	case C.MQTYPE_INT64:
 		p := (*C.MQINT64)(propertyPtr)
 		propertyValue = (int64)(*p)

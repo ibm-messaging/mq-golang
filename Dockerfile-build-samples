@@ -19,8 +19,6 @@ FROM $BASE_IMAGE
 RUN mkdir -p "$GOPATH/src/github.com/ibm-messaging/mq-golang/samples"
 WORKDIR $GOPATH/src/github.com/ibm-messaging/mq-golang/samples
 
-COPY ./samples/clientconn clientconn
 COPY ./samples/mqitest mqitest
 
-RUN go install ./clientconn  \
-  && go install ./mqitest
+RUN go install ./mqitest  

@@ -126,13 +126,15 @@ func VerifyConfig() (int32, error) {
 		if err == nil {
 			maxQDepth := v[ibmmq.MQIA_MAX_Q_DEPTH].(int32)
 			// Function has tuning based on number of queues to be monitored
-			// Current published resource topics are approx 95 for qmgr
-			// ... and 35 per queue
+			// Current published resource topics are approx 16 subs for 95 elements on the qmgr
+			// ... and 35 elements per queue in 4 subs
+			// Round these to 20 and 5 for a bit of headroom
 			// Make recommended minimum qdepth  60 / 10 * total per interval to allow one minute of data
 			// as MQ publications are at 10 second interval by default (and no public tuning)
-			// and monitor collection interval is one minute
-			recommendedDepth := (100 + len(qList)*50) * 6
-			if maxQDepth < int32(recommendedDepth) {
+			// and assume monitor collection interval is one minute
+			// Since we don't do pubsub-based collection on z/OS, this qdepth doesn't matter
+			recommendedDepth := (20 + len(qList)*5) * 6
+			if maxQDepth < int32(recommendedDepth) && platform != ibmmq.MQPL_ZOS {
 				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d", replyQBaseName, maxQDepth)
 				compCode = ibmmq.MQCC_WARNING
 			}
@@ -182,7 +184,7 @@ func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 
 	// Subscribe to all of the various topics
 	if err == nil {
-		createSubscriptions()
+		err = createSubscriptions()
 	}
 
 	return err

@@ -13,7 +13,7 @@ Where needed for the sample programs:
 
 * the default queue manager is "QM1"
 * the default queue is "DEV.QUEUE.1"
-* the default topic is "DEV.BASE.TOPIC"
+* the default topic is based on "DEV.BASE.TOPIC" (topic string is under dev/... tree)
 
 ## Description of sample programs
 Current samples in this directory include
@@ -43,14 +43,14 @@ to a local queue manager (on the same machine) or for the client configuration t
 provided externally such as by the MQSERVER environment variable or the
 MQ Client Channel Definition Table (CCDT) file. The MQ_CONNECT_TYPE environment
 variable can be used to force client connections to be made, even if you have
-installed the full server product; that variable is not needed if you have 
+installed the full server product; that variable is not needed if you have
 only installed the MQ client libraries.
 
 For example
 
 ```
   export MQSERVER="SYSTEM.DEF.SVRCONN/TCP/localhost(1414)"
-  export MQ_CONNECT_TYPE=CLIENT  
+  export MQ_CONNECT_TYPE=CLIENT
   go run amqsput.go DEV.QUEUE.1 QM1
 ```
 
