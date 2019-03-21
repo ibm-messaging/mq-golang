@@ -115,8 +115,6 @@ For example,
 
    export CGO_CFLAGS="-I$MQ_INSTALLATION_PATH/inc"
 
-   export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,rpath=$MQ_INSTALLATION_PATH/lib64"
-       or on Darwin
    export CGO_LDFLAGS="-L$MQ_INSTALLATION_PATH/lib64 -Wl,-rpath,$MQ_INSTALLATION_PATH/lib64"
 ```
 

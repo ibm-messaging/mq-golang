@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018,2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -214,6 +214,10 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 				allReceived = true
 			}
 			if cfh.Reason != ibmmq.MQRC_NONE {
+				continue
+			}
+			// Returned by z/OS qmgrs but are not interesting
+			if cfh.Type == ibmmq.MQCFT_XR_SUMMARY || cfh.Type == ibmmq.MQCFT_XR_MSG {
 				continue
 			}
 			parseQData(instanceType, cfh, replyBuf[offset:datalen])

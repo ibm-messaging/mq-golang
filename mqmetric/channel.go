@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2018
+  Copyright (c) IBM Corporation 2016, 2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -117,7 +117,6 @@ func InquireChannels(patterns string) ([]string, error) {
 func CollectChannelStatus(patterns string) error {
 	var err error
 	channelsSeen = make(map[string]bool) // Record which channels have been seen in this period
-
 	ChannelInitAttributes()
 
 	// Empty any collected values
@@ -138,12 +137,13 @@ func CollectChannelStatus(patterns string) error {
 
 		// This would allow us to extract SAVED information too
 		errCurrent := collectChannelStatus(pattern, ibmmq.MQOT_CURRENT_CHANNEL)
-		errSaved := collectChannelStatus(pattern, ibmmq.MQOT_SAVED_CHANNEL)
-		if errCurrent != nil {
-			err = errCurrent
-		} else {
-			err = errSaved
-		}
+		err = errCurrent
+		//errSaved := collectChannelStatus(pattern, ibmmq.MQOT_SAVED_CHANNEL)
+		//if errCurrent != nil {
+		//	err = errCurrent
+		//} else {
+		//	err = errSaved
+		//}
 
 	}
 
@@ -252,17 +252,21 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 		datalen, err = statusReplyQObj.Get(getmqmd, gmo, replyBuf)
 		if err == nil {
 			cfh, offset := ibmmq.ReadPCFHeader(replyBuf)
-
 			if cfh.Control == ibmmq.MQCFC_LAST {
 				allReceived = true
 			}
 			if cfh.Reason != ibmmq.MQRC_NONE {
 				continue
 			}
+			// Returned by z/OS qmgrs but are not interesting
+			if cfh.Type == ibmmq.MQCFT_XR_SUMMARY || cfh.Type == ibmmq.MQCFT_XR_MSG {
+				continue
+			}
 			key := parseChlData(instanceType, cfh, replyBuf[offset:datalen])
 			if key != "" {
 				channelsSeen[key] = true
 			}
+
 		}
 	}
 
@@ -277,6 +281,8 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	connName := ""
 	jobName := ""
 	rqmName := ""
+	startDate := ""
+	startTime := ""
 	key := ""
 
 	parmAvail := true
@@ -305,10 +311,23 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			jobName = strings.TrimSpace(elem.String[0])
 		case ibmmq.MQCA_REMOTE_Q_MGR_NAME:
 			rqmName = strings.TrimSpace(elem.String[0])
+		case ibmmq.MQCACH_CHANNEL_START_TIME:
+			startTime = strings.TrimSpace(elem.String[0])
+		case ibmmq.MQCACH_CHANNEL_START_DATE:
+			startDate = strings.TrimSpace(elem.String[0])
 		}
 	}
 
 	// Create a unique key for this channel instance
+	//
+	// The jobName does not exist on z/OS so it cannot be used to distinguish
+	// unique instances of the same channel name. Instead, we try to fake it with
+	// the channel start timestamp. That may still be wrong if lots of channel
+	// instances start at the same time, but it's a lot better than combining the
+	// instances badly.
+	if jobName == "" && platform == ibmmq.MQPL_ZOS {
+		jobName = startDate + ":" + startTime
+	}
 	key = chlName + "/" + connName + "/" + rqmName + "/" + jobName
 
 	// Look to see if we've already seen a Current channel status that matches
@@ -353,8 +372,14 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 						// then use it to create the delta. Otherwise make the initial
 						// value 0.
 						if prevVal, ok := ChannelStatus.Attributes[attr].prevValues[key]; ok {
-							ChannelStatus.Attributes[attr].Values[key] = newStatusValueInt64(v - prevVal)
+							delta := v - prevVal
+							if delta < 0 {
+								delta = v
+							}
+							//fmt.Printf("Channel Status attr: %s key %s CurV %d PrevV %d Delta %d\n", attr, key, v, prevVal, delta)
+							ChannelStatus.Attributes[attr].Values[key] = newStatusValueInt64(delta)
 						} else {
+							//fmt.Printf("Channel Status attr: %s key %s NewV %d PrevV N/A\n", attr, key, v)
 							ChannelStatus.Attributes[attr].Values[key] = newStatusValueInt64(0)
 						}
 						ChannelStatus.Attributes[attr].prevValues[key] = v

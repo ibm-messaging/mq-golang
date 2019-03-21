@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2018
+  Copyright (c) IBM Corporation 2016,2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -17,6 +17,12 @@ package ibmmq
 
    Contributors:
      Mark Taylor - Initial Contribution
+*/
+
+/*
+C functions allow support of new features while still compiling
+on older versions of the MQ header files. It uses the _VERSION values
+to select what can be done.
 */
 
 /*
@@ -52,6 +58,23 @@ void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 #endif
 }
 
+
+void setCnoApplName(MQCNO *mqcno, PMQCHAR applName, MQLONG length) {
+#if defined(MQCNO_VERSION_7) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_7
+  if (applName != NULL) {
+    memset(mqcno->ApplName,0,length);
+    strncpy(mqcno->ApplName,applName,length);
+    if (mqcno->Version < MQCNO_VERSION_7) {
+      mqcno->Version = MQCNO_VERSION_7;
+    }
+  }
+#endif
+  if (applName != NULL) {
+    free(applName);
+  }
+  return;
+}
+
 */
 import "C"
 import "unsafe"
@@ -68,6 +91,7 @@ type MQCNO struct {
 	CCDTUrl       string
 	ClientConn    *MQCD
 	SSLConfig     *MQSCO
+	ApplName      string
 }
 
 /*
@@ -89,6 +113,8 @@ func NewMQCNO() *MQCNO {
 	cno.Options = int32(C.MQCNO_NONE)
 	cno.SecurityParms = nil
 	cno.ClientConn = nil
+	cno.CCDTUrl = ""
+	cno.ApplName = ""
 
 	return cno
 }
@@ -140,6 +166,7 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	if gocno.SSLConfig != nil {
 		gosco := gocno.SSLConfig
 		mqsco = C.PMQSCO(C.malloc(C.MQSCO_LENGTH_5))
+		C.memset((unsafe.Pointer)(mqsco), 0, C.size_t(C.MQSCO_LENGTH_5))
 		copySCOtoC(mqsco, gosco)
 		mqcno.SSLConfigPtr = C.PMQSCO(mqsco)
 		if gocno.Version < 4 {
@@ -154,6 +181,7 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		gocsp := gocno.SecurityParms
 
 		mqcsp = C.PMQCSP(C.malloc(C.MQCSP_LENGTH_1))
+		C.memset((unsafe.Pointer)(mqcsp), 0, C.size_t(C.MQCSP_LENGTH_1))
 		setMQIString((*C.char)(&mqcsp.StrucId[0]), "CSP ", 4)
 		mqcsp.Version = C.MQCSP_VERSION_1
 		mqcsp.AuthenticationType = C.MQLONG(gocsp.AuthenticationType)
@@ -164,10 +192,16 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 			mqcsp.AuthenticationType = C.MQLONG(C.MQCSP_AUTH_USER_ID_AND_PWD)
 			mqcsp.CSPUserIdPtr = C.MQPTR(unsafe.Pointer(C.CString(gocsp.UserId)))
 			mqcsp.CSPUserIdLength = C.MQLONG(len(gocsp.UserId))
+		} else {
+			mqcsp.CSPUserIdPtr = nil
+			mqcsp.CSPUserIdLength = 0
 		}
 		if gocsp.Password != "" {
 			mqcsp.CSPPasswordPtr = C.MQPTR(unsafe.Pointer(C.CString(gocsp.Password)))
 			mqcsp.CSPPasswordLength = C.MQLONG(len(gocsp.Password))
+		} else {
+			mqcsp.CSPPasswordPtr = nil
+			mqcsp.CSPPasswordLength = 0
 		}
 		mqcno.SecurityParmsPtr = C.PMQCSP(mqcsp)
 		if gocno.Version < 5 {
@@ -184,6 +218,14 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	if gocno.CCDTUrl != "" {
 		C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
 	}
+
+	// The ApplName option to the CNO was introduced in MQ V9.1.2. To compile against
+	// older versions of MQ, setting of it has been moved to a C function. The function
+	// will free() the CString-allocated buffer regardless of MQ version.
+	if gocno.ApplName != "" {
+		C.setCnoApplName(mqcno, C.PMQCHAR(C.CString(gocno.ApplName)), C.MQ_APPL_NAME_LENGTH)
+	}
+
 	return
 }
 
@@ -212,5 +254,8 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 	}
 
 	C.freeCCDTUrl(mqcno)
+
+	// ApplName is input-only so we don't need to do any version-specific processing
+	// for it in this function.
 	return
 }

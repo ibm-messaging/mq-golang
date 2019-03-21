@@ -1,7 +1,7 @@
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2018
+  Copyright (c) IBM Corporation 2016, 2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -62,10 +62,10 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
 
+	// Explicitly force client mode if requested. Otherwise use the "default"
+	// connection mechanism depending on what is installed or configured.
 	if cc.ClientMode {
 		gocno.Options = ibmmq.MQCNO_CLIENT_BINDING
-	} else {
-		gocno.Options = ibmmq.MQCNO_LOCAL_BINDING
 	}
 	gocno.Options |= ibmmq.MQCNO_HANDLE_SHARE_BLOCK
 
@@ -125,6 +125,9 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
+		if platform == ibmmq.MQPL_ZOS {
+			mqod.ObjectName = "SYSTEM.COMMAND.INPUT"
+		}
 
 		cmdQObj, err = qMgr.Open(mqod, openOptions)
 
