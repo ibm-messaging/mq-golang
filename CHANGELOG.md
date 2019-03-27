@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## March 26 2019
+* BREAKING API: Add hConn to callback function
+* Callbacks not setting hConn correctly (#93)
+
 ## March 20 2019 - v4.0.0
 * Update for MQ 9.1.2 - ApplName now settable during Connect
 * BREAKING API: deprecated Inq()/MQINQ implementation replaced.

@@ -41,6 +41,7 @@ import (
 
 var qMgrObject ibmmq.MQObject
 var qObject ibmmq.MQObject
+var mh ibmmq.MQMessageHandle
 
 var ok = true
 
@@ -50,7 +51,7 @@ func main() {
 }
 
 // This is the callback function invoked when a message arrives on the queue.
-func cb(hObj *ibmmq.MQObject, md *ibmmq.MQMD, gmo *ibmmq.MQGMO, buffer []byte, cbc *ibmmq.MQCBC, err *ibmmq.MQReturn) {
+func cb(hConn *ibmmq.MQQueueManager, hObj *ibmmq.MQObject, md *ibmmq.MQMD, gmo *ibmmq.MQGMO, buffer []byte, cbc *ibmmq.MQCBC, err *ibmmq.MQReturn) {
 	buflen := len(buffer)
 	if err.MQCC != ibmmq.MQCC_OK {
 		fmt.Println(err)
@@ -114,6 +115,11 @@ func mainWithRc() int {
 	}
 
 	if err == nil {
+		cmho := ibmmq.NewMQCMHO()
+		mh, err = qMgrObject.CrtMH(cmho)
+	}
+
+	if err == nil {
 		// The GET/MQCB requires control structures, the Message Descriptor (MQMD)
 		// and Get Options (MQGMO). Create those with default values.
 		getmqmd := ibmmq.NewMQMD()
@@ -127,6 +133,9 @@ func mainWithRc() int {
 		// Set options to wait for a maximum of 3 seconds for any new message to arrive
 		gmo.Options |= ibmmq.MQGMO_WAIT
 		gmo.WaitInterval = 3 * 1000 // The WaitInterval is in milliseconds
+
+		gmo.Options |= ibmmq.MQGMO_PROPERTIES_IN_HANDLE
+		gmo.MsgHandle = mh
 
 		// The MQCBD structure is used to specify the function to be invoked
 		// when a message arrives on a queue

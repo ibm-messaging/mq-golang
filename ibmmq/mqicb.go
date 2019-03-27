@@ -38,7 +38,7 @@ import (
 )
 
 // The user's callback function must match this signature
-type MQCB_FUNCTION func(*MQObject, *MQMD, *MQGMO, []byte, *MQCBC, *MQReturn)
+type MQCB_FUNCTION func(*MQQueueManager, *MQObject, *MQMD, *MQGMO, []byte, *MQCBC, *MQReturn)
 
 // Need to keep references to the user's callback function and some other
 // structure elements which do not map to the C functions, or do not need to
@@ -119,6 +119,9 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	}
 
 	if ok {
+		if gogmo.MsgHandle.hMsg != C.MQHM_NONE {
+			gogmo.MsgHandle.qMgr = cbHObj.qMgr
+		}
 
 		gocbc.CallbackArea = info.callbackArea
 		gocbc.ConnectionArea = info.connectionArea
@@ -126,7 +129,7 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 		// Get the data
 		b := C.GoBytes(unsafe.Pointer(mqBuffer), C.int(mqcbc.DataLength))
 		// And finally call the user function
-		info.callbackFunction(cbHObj, gomd, gogmo, b, gocbc, mqreturn)
+		info.callbackFunction(cbHObj.qMgr, cbHObj, gomd, gogmo, b, gocbc, mqreturn)
 	}
 }
 
