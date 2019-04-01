@@ -9,7 +9,8 @@ some monitoring packages. These have now been moved to a
 new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
 A minimum level of MQ V8 is required to build these packages. However, note that
-the monitoring data published by the queue manager is not available before MQ V9.
+the monitoring data published by the queue manager and exploited in the mqmetric package
+is not available before MQ V9.
 
 ## Health Warning
 
@@ -77,10 +78,10 @@ export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
 ### Windows
 
 * Install the Go runtime and compiler. On Windows, the common directory is `c:\Go`
-* Ensure you have a gcc-based compiler, for example from the Cygwin distribution. 
-I recommend you use the mingw variation, to ensure compiled code can be used on systems without Cygwin installed. 
+* Ensure you have a gcc-based compiler, for example from the Cygwin distribution.
+I recommend you use the mingw variation, to ensure compiled code can be used on systems without Cygwin installed.
 The default `gcc` compiler from Cygwin does not work because it tries to build a
-Cygwin-enabled executable but the MQ libraries do not work in that model; 
+Cygwin-enabled executable but the MQ libraries do not work in that model;
 the `mingw` versions build Windows-native programs.
 * Create a working directory. For example, `mkdir c:\Gowork`
 * Set environment variables. Based on the previous lines,
@@ -105,7 +106,7 @@ set CC=x86_64-w64-mingw32-gcc.exe
 * If you have not installed MQ libraries into the default location, then set environment variables
 for the C compiler to recognise those directories. You may get messages from the compiler
 saying that the default MQ directories cannot be found, but those warnings can be ignored.
-The exact values for these environment variables will vary by platform, but follow the 
+The exact values for these environment variables will vary by platform, but follow the
 corresponding CFLAGS/LDFLAGS values in `mqi.go`
 
 For example,
@@ -132,6 +133,9 @@ For example,
 
 At this point, you should have a compiled copy of the program in `$GOPATH/bin`. See the
 `samples` directory for more sample programs.
+
+The `buildSamples.sh` script in this directory can also be used to create a container which will
+compile the samples and copy them to a local directory.
 
 ## Limitations
 

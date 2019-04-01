@@ -1,7 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## March 26 2019
+## April 1 2019
+* Added scripts to compile samples inside a container
+
+## March 26 2019 - v4.0.2
 * BREAKING API: Add hConn to callback function
 * Callbacks not setting hConn correctly (#93)
 

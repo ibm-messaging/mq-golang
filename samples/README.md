@@ -8,6 +8,9 @@ which configuration values can be changed.
 Make sure you first read the README in the root of this repository to set up an environment
 where Go programs can be compiled, and how the packages refer to the MQ interfaces.
 
+The `buildSamples.sh` script in the root directory can be used to create a container to
+compile the samples and copy them to a local directory.
+
 ## Default values
 Where needed for the sample programs:
 
