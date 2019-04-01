@@ -66,7 +66,9 @@ COPY buildInDocker.sh $GOPATH
 RUN chmod 777 $GOPATH/buildInDocker.sh
 
 # Copy the rest of the source tree from this directory into the container
+# And make sure it's readable by the id that will run the compiles (not just root)
 COPY . $GOPATH/src/$ORG/$REPO
+RUN chmod -R a+rx $GOPATH/src
 
 # Set the entrypoint to the script that will do the compilation
 ENTRYPOINT $GOPATH/buildInDocker.sh

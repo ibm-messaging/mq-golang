@@ -42,11 +42,17 @@ then
   rm -rf $OUTBINDIR $OUTPKGDIR >/dev/null 2>&1
   mkdir -p $OUTBINDIR $OUTPKGDIR
 
+  # The container will be run as the current user to ensure files
+  # written back to the host image are owned by that person instead of root.
+  uid=`id -u`
+  gid=`id -g`
+
   # Mount an output directory
   # Delete the container once it's done its job
   docker run --rm \
-          -v $OUTBINDIR:$GOPATH/bin:z \
-          -v $OUTPKGDIR:$GOPATH/pkg:z \
+          --user $uid:$gid \
+          -v $OUTBINDIR:$GOPATH/bin \
+          -v $OUTPKGDIR:$GOPATH/pkg \
           $TAG:$VER
   echo "Compiled samples should now be in $OUTBINDIR"
 fi

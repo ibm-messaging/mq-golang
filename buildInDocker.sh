@@ -20,6 +20,9 @@
 export PATH="${PATH}:/usr/lib/go-${GOVERSION}/bin:/go/bin"
 export CGO_CFLAGS="-I/opt/mqm/inc/"
 export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
+export GOCACHE=/tmp/.gocache
+
+echo "Running as " `id`
 
 # Build the libraries so they can be used by other programs
 cd $GOPATH/src
