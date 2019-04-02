@@ -24,6 +24,14 @@ package mqmetric
      Mark Taylor - Initial Contribution
 */
 
+import (
+	"fmt"
+	"strings"
+	"time"
+)
+
+var statusDummy = fmt.Sprintf("dummy")
+
 /*
 This file defines types and constructors for elements related to status
 of MQ objects that are retrieved via polling commands such as DISPLAY CHSTATUS
@@ -32,6 +40,7 @@ of MQ objects that are retrieved via polling commands such as DISPLAY CHSTATUS
 type StatusAttribute struct {
 	Description string
 	MetricName  string
+	Pseudo      bool
 	pcfAttr     int32
 	squash      bool
 	delta       bool
@@ -63,6 +72,13 @@ func newStatusAttribute(n string, d string, p int32) *StatusAttribute {
 	s.index = -1
 	s.Values = make(map[string]*StatusValue)
 	s.prevValues = make(map[string]int64)
+	s.Pseudo = false
+	return s
+}
+
+func newPseudoStatusAttribute(n string, d string) *StatusAttribute {
+	s := newStatusAttribute(n, d, -1)
+	s.Pseudo = true
 	return s
 }
 
@@ -78,4 +94,43 @@ func newStatusValueString(v string) *StatusValue {
 	s.ValueString = v
 	s.IsInt64 = false
 	return s
+}
+
+// Go uses an example-based method for formatting and parsing timestamps
+// This layout matches the MQ PutDate and PutTime strings. An additional TZ
+// may eventually have to be turned into a config parm. Note the "15" to indicate
+// a 24-hour timestamp. There also seems to be two formats for the time layout comnig
+// from MQ - TPSTATUS uses a colon format time, QSTATUS uses the dots.
+const timeStampLayoutDot = "2006-01-02 15.04.05"
+const timeStampLayoutColon = "2006-01-02 15:04:05"
+
+// Convert the MQ Time and Date formats
+func statusTimeDiff(now time.Time, d string, t string) int64 {
+	var rc int64
+	var err error
+	var parsedT time.Time
+
+	// If there's any error in parsing the timestamp - perhaps
+	// the value has not been set yet, then just return 0
+	rc = 0
+
+	timeStampLayout := timeStampLayoutDot
+	if len(d) == 10 && len(t) == 8 {
+		if strings.Contains(t, ":") {
+			timeStampLayout = timeStampLayoutColon
+		}
+		parsedT, err = time.ParseInLocation(timeStampLayout, d+" "+t, now.Location())
+		if err == nil {
+			diff := now.Sub(parsedT).Seconds()
+
+			if diff < 0 { // Cannot have status from the future
+				// TODO: Perhaps issue a one-time warning as it might indicate timezone offsets
+				// are mismatched between the qmgr and this program
+				diff = 0
+			}
+			rc = int64(diff)
+		}
+	}
+	//fmt.Printf("statusTimeDiff d:%s t:%s diff:%d err:%v\n",d,t,rc,err)
+	return rc
 }

@@ -59,6 +59,8 @@ to be used for all responses including the publications
 */
 func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error {
 	var err error
+	var errorString = ""
+
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
 
@@ -80,6 +82,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
+	} else {
+		errorString = "Cannot connect to queue manager " + qMgrName
 	}
 
 	// Discover important information about the qmgr - its real name
@@ -109,6 +113,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
 				if commandLevel < 900 && platform != ibmmq.MQPL_ZOS && platform != ibmmq.MQPL_APPLIANCE {
 					err = fmt.Errorf("Queue manager must be at least V9.0 for monitoring.")
+					errorString = "Unsupported system"
 				}
 			}
 			// Don't need the qMgrObject any more
@@ -130,6 +135,9 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		}
 
 		cmdQObj, err = qMgr.Open(mqod, openOptions)
+		if err != nil {
+			errorString = "Cannot open queue " + mqod.ObjectName
+		}
 
 	}
 
@@ -144,6 +152,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		replyQBaseName = replyQ
 		if err == nil {
 			queuesOpened = true
+		} else {
+			errorString = "Cannot open queue " + replyQ
 		}
 	}
 
@@ -154,10 +164,13 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
 		statusReplyQObj, err = qMgr.Open(mqod, openOptions)
+		if err != nil {
+			errorString = "Cannot open queue" + replyQ
+		}
 	}
 
 	if err != nil {
-		return fmt.Errorf("Cannot access queue manager. Error: %v", err)
+		return fmt.Errorf(errorString+". Error: %v", err)
 	}
 
 	return err
@@ -221,7 +234,7 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 
 	if wait {
 		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.WaitInterval = 10 * 1000
+		gmo.WaitInterval = 30 * 1000
 	}
 
 	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
@@ -277,8 +290,7 @@ func GetPlatform() int32 {
 }
 
 /*
-Return the current platform - the MQPL_* definition value. It
-can be turned into a string if necessary via ibmmq.MQItoString("PL"...)
+Return the current command level
 */
 func GetCommandLevel() int32 {
 	return commandLevel

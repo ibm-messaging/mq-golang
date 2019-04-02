@@ -25,8 +25,8 @@ package mqmetric
 */
 
 /*
-Functions in this file use the DISPLAY QueueStatus command to extract metrics
-about MQ queues
+Functions in this file use the DISPLAY QMSTATUS command to extract metrics
+about the MQ queue manager
 */
 
 import (
@@ -36,19 +36,16 @@ import (
 )
 
 const (
-	ATTR_Q_NAME        = "name"
-	ATTR_Q_MSGAGE      = "oldest_message_age"
-	ATTR_Q_IPPROCS     = "input_handles"
-	ATTR_Q_OPPROCS     = "output_handles"
-	ATTR_Q_QTIME_SHORT = "qtime_short"
-	ATTR_Q_QTIME_LONG  = "qtime_long"
-	ATTR_Q_DEPTH       = "depth"
-	ATTR_Q_SINCE_PUT   = "time_since_put"
-	ATTR_Q_SINCE_GET   = "time_since_get"
+	ATTR_QMGR_NAME              = "name"
+	ATTR_QMGR_CONNECTION_COUNT  = "connection_count"
+	ATTR_QMGR_CHINIT_STATUS     = "channel_initiator_status"
+	ATTR_QMGR_CMD_SERVER_STATUS = "command_server_status"
+	ATTR_QMGR_STATUS            = "status"
+	ATTR_QMGR_UPTIME            = "uptime"
 )
 
-var QueueStatus StatusSet
-var qAttrsInit = false
+var QueueManagerStatus StatusSet
+var qMgrAttrsInit = false
 
 /*
 Unlike the statistics produced via a topic, there is no discovery
@@ -58,83 +55,53 @@ attributes we are going to look for and gives the associated descriptive
 text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
-func QueueInitAttributes() {
-	if qAttrsInit {
+func QueueManagerInitAttributes() {
+	if qMgrAttrsInit {
 		return
 	}
-	QueueStatus.Attributes = make(map[string]*StatusAttribute)
+	QueueManagerStatus.Attributes = make(map[string]*StatusAttribute)
 
-	attr := ATTR_Q_NAME
-	QueueStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Name")
+	attr := ATTR_QMGR_NAME
+	QueueManagerStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Manager Name")
 
-	attr = ATTR_Q_SINCE_PUT
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Put", -1)
-	attr = ATTR_Q_SINCE_GET
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Get", -1)
+	attr = ATTR_QMGR_UPTIME
+	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Up time", -1)
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_Q_MSGAGE
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Oldest Message", ibmmq.MQIACF_OLDEST_MSG_AGE)
-	attr = ATTR_Q_IPPROCS
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
-	attr = ATTR_Q_OPPROCS
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
-	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response
-	if platform == ibmmq.MQPL_ZOS {
-		attr = ATTR_Q_DEPTH
-		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
-	}
+	attr = ATTR_QMGR_CONNECTION_COUNT
+	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Connection Count", ibmmq.MQIACF_CONNECTION_COUNT)
+	attr = ATTR_QMGR_CHINIT_STATUS
+	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Initiator Status", ibmmq.MQIACF_CHINIT_STATUS)
+	attr = ATTR_QMGR_CMD_SERVER_STATUS
+	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
 
-	attr = ATTR_Q_QTIME_SHORT
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
-	QueueStatus.Attributes[attr].index = 0
-	attr = ATTR_Q_QTIME_LONG
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Long", ibmmq.MQIACF_Q_TIME_INDICATOR)
-	QueueStatus.Attributes[attr].index = 1
+	// The qmgr status is pointless - if we can't connect to the qmgr, then we can't report on it. And if we can, it's up.
+	// I'll leave this in as a reminder of why it's not being collected.
+	//attr = ATTR_QMGR_STATUS
+	//QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
 
-	qAttrsInit = true
+	qMgrAttrsInit = true
 }
 
-// If we need to list the queues that match a pattern. Not needed for
-// the status queries as they (unlike the pub/sub resource stats) accept
-// patterns in the PCF command
-func InquireQueues(patterns string) ([]string, error) {
-	QueueInitAttributes()
-	return inquireObjects(patterns, ibmmq.MQOT_Q)
-}
-
-func CollectQueueStatus(patterns string) error {
+func CollectQueueManagerStatus() error {
 	var err error
 
-	QueueInitAttributes()
+	QueueManagerInitAttributes()
 
 	// Empty any collected values
-	for k := range QueueStatus.Attributes {
-		QueueStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range QueueManagerStatus.Attributes {
+		QueueManagerStatus.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
-	queuePatterns := strings.Split(patterns, ",")
-	if len(queuePatterns) == 0 {
-		return nil
-	}
-
-	for _, pattern := range queuePatterns {
-		pattern = strings.TrimSpace(pattern)
-		if len(pattern) == 0 {
-			continue
-		}
-
-		err = collectQueueStatus(pattern, ibmmq.MQOT_Q)
-
-	}
+	err = collectQueueManagerStatus(ibmmq.MQOT_Q_MGR)
 
 	return err
 
 }
 
-// Issue the INQUIRE_QUEUE_STATUS command for a queue or wildcarded queue name
+// Issue the INQUIRE_Q_MGR_STATUS command for a queue or wildcarded queue name
 // Collect the responses and build up the statistics
-func collectQueueStatus(pattern string, instanceType int32) error {
+func collectQueueManagerStatus(instanceType int32) error {
 	var err error
 	var datalen int
 
@@ -174,22 +141,7 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 	cfh.Type = ibmmq.MQCFT_COMMAND_XR
 
 	// Can allow all the other fields to default
-	cfh.Command = ibmmq.MQCMD_INQUIRE_Q_STATUS
-
-	// Add the parameters one at a time into a buffer
-	pcfparm := new(ibmmq.PCFParameter)
-	pcfparm.Type = ibmmq.MQCFT_STRING
-	pcfparm.Parameter = ibmmq.MQCA_Q_NAME
-	pcfparm.String = []string{pattern}
-	cfh.ParameterCount++
-	buf = append(buf, pcfparm.Bytes()...)
-
-	pcfparm = new(ibmmq.PCFParameter)
-	pcfparm.Type = ibmmq.MQCFT_INTEGER
-	pcfparm.Parameter = ibmmq.MQIACF_Q_STATUS_TYPE
-	pcfparm.Int64Value = []int64{int64(ibmmq.MQIACF_Q_STATUS)}
-	cfh.ParameterCount++
-	buf = append(buf, pcfparm.Bytes()...)
+	cfh.Command = ibmmq.MQCMD_INQUIRE_Q_MGR_STATUS
 
 	// Once we know the total number of parameters, put the
 	// CFH header on the front of the buffer.
@@ -228,7 +180,7 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 			if cfh.Type == ibmmq.MQCFT_XR_SUMMARY || cfh.Type == ibmmq.MQCFT_XR_MSG {
 				continue
 			}
-			parseQData(instanceType, cfh, replyBuf[offset:datalen])
+			parseQMgrData(instanceType, cfh, replyBuf[offset:datalen])
 
 		}
 	}
@@ -237,16 +189,14 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
-func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
+func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
-	qName := ""
+	qMgrName := ""
 	key := ""
 
-	lastPutTime := ""
-	lastGetTime := ""
-	lastPutDate := ""
-	lastGetDate := ""
+	startTime := ""
+	startDate := ""
 
 	parmAvail := true
 	bytesRead := 0
@@ -266,15 +216,15 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 
 		switch elem.Parameter {
-		case ibmmq.MQCA_Q_NAME:
-			qName = strings.TrimSpace(elem.String[0])
+		case ibmmq.MQCA_Q_MGR_NAME:
+			qMgrName = strings.TrimSpace(elem.String[0])
 		}
 	}
 
 	// Create a unique key for this instance
-	key = qName
+	key = qMgrName
 
-	QueueStatus.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
+	QueueManagerStatus.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(qMgrName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -299,61 +249,56 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 
 		if usableValue {
-			for attr, _ := range QueueStatus.Attributes {
-				if QueueStatus.Attributes[attr].pcfAttr == elem.Parameter {
-					index := QueueStatus.Attributes[attr].index
+			for attr, _ := range QueueManagerStatus.Attributes {
+				if QueueManagerStatus.Attributes[attr].pcfAttr == elem.Parameter {
+					index := QueueManagerStatus.Attributes[attr].index
 					if index == -1 {
 						v := elem.Int64Value[0]
-						if QueueStatus.Attributes[attr].delta {
+						if QueueManagerStatus.Attributes[attr].delta {
 							// If we have already got a value for this attribute and queue
 							// then use it to create the delta. Otherwise make the initial
 							// value 0.
-							if prevVal, ok := QueueStatus.Attributes[attr].prevValues[key]; ok {
-								QueueStatus.Attributes[attr].Values[key] = newStatusValueInt64(v - prevVal)
+							if prevVal, ok := QueueManagerStatus.Attributes[attr].prevValues[key]; ok {
+								QueueManagerStatus.Attributes[attr].Values[key] = newStatusValueInt64(v - prevVal)
 							} else {
-								QueueStatus.Attributes[attr].Values[key] = newStatusValueInt64(0)
+								QueueManagerStatus.Attributes[attr].Values[key] = newStatusValueInt64(0)
 							}
-							QueueStatus.Attributes[attr].prevValues[key] = v
+							QueueManagerStatus.Attributes[attr].prevValues[key] = v
 						} else {
 							// Return the actual number
-							QueueStatus.Attributes[attr].Values[key] = newStatusValueInt64(v)
+							QueueManagerStatus.Attributes[attr].Values[key] = newStatusValueInt64(v)
 						}
 					} else {
 						v := elem.Int64Value
-						if QueueStatus.Attributes[attr].delta {
+						if QueueManagerStatus.Attributes[attr].delta {
 							// If we have already got a value for this attribute and queue
 							// then use it to create the delta. Otherwise make the initial
 							// value 0.
-							if prevVal, ok := QueueStatus.Attributes[attr].prevValues[key]; ok {
-								QueueStatus.Attributes[attr].Values[key] = newStatusValueInt64(v[index] - prevVal)
+							if prevVal, ok := QueueManagerStatus.Attributes[attr].prevValues[key]; ok {
+								QueueManagerStatus.Attributes[attr].Values[key] = newStatusValueInt64(v[index] - prevVal)
 							} else {
-								QueueStatus.Attributes[attr].Values[key] = newStatusValueInt64(0)
+								QueueManagerStatus.Attributes[attr].Values[key] = newStatusValueInt64(0)
 							}
-							QueueStatus.Attributes[attr].prevValues[key] = v[index]
+							QueueManagerStatus.Attributes[attr].prevValues[key] = v[index]
 						} else {
 							// Return the actual number
-							QueueStatus.Attributes[attr].Values[key] = newStatusValueInt64(v[index])
+							QueueManagerStatus.Attributes[attr].Values[key] = newStatusValueInt64(v[index])
 						}
 					}
 				}
 			}
 		} else {
 			switch elem.Parameter {
-			case ibmmq.MQCACF_LAST_PUT_TIME:
-				lastPutTime = strings.TrimSpace(elem.String[0])
-			case ibmmq.MQCACF_LAST_PUT_DATE:
-				lastPutDate = strings.TrimSpace(elem.String[0])
-			case ibmmq.MQCACF_LAST_GET_TIME:
-				lastGetTime = strings.TrimSpace(elem.String[0])
-			case ibmmq.MQCACF_LAST_GET_DATE:
-				lastGetDate = strings.TrimSpace(elem.String[0])
+			case ibmmq.MQCACF_Q_MGR_START_TIME:
+				startTime = strings.TrimSpace(elem.String[0])
+			case ibmmq.MQCACF_Q_MGR_START_DATE:
+				startDate = strings.TrimSpace(elem.String[0])
 			}
 		}
 	}
 
 	now := time.Now()
-	QueueStatus.Attributes[ATTR_Q_SINCE_PUT].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
-	QueueStatus.Attributes[ATTR_Q_SINCE_GET].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
+	QueueManagerStatus.Attributes[ATTR_QMGR_UPTIME].Values[key] = newStatusValueInt64(statusTimeDiff(now, startDate, startTime))
 
 	return key
 }
@@ -361,7 +306,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 // Return a standardised value. If the attribute indicates that something
 // special has to be done, then do that. Otherwise just make sure it's a non-negative
 // value of the correct datatype
-func QueueNormalise(attr *StatusAttribute, v int64) float64 {
+func QueueManagerNormalise(attr *StatusAttribute, v int64) float64 {
 	var f float64
 
 	if attr.squash {

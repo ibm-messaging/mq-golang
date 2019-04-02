@@ -1,6 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## April 03 2019
+* mqmetric - Added last put/get time metric for queues
+* mqmetric - Added last msg time metric for channels
+* mqmetric - Added fields from QMSTATUS and TPSTATUS 
+
 ## April 1 2019
 * Added scripts to compile samples inside a container
 

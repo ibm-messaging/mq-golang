@@ -33,6 +33,7 @@ import (
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 	ATTR_CHL_SUBSTATE      = "substate"
 	ATTR_CHL_TYPE          = "type"
 	ATTR_CHL_INSTANCE_TYPE = "instance_type"
+	ATTR_CHL_SINCE_MSG     = "time_since_msg"
 
 	SQUASH_CHL_STATUS_STOPPED    = 0
 	SQUASH_CHL_STATUS_TRANSITION = 1
@@ -74,13 +76,13 @@ func ChannelInitAttributes() {
 	// These fields are used to construct the key to the per-channel map values and
 	// as tags to uniquely identify a channel instance
 	attr := ATTR_CHL_NAME
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Name", -1)
+	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
 	attr = ATTR_CHL_RQMNAME
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Remote Queue Manager Name", -1)
+	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Remote Queue Manager Name")
 	attr = ATTR_CHL_JOBNAME
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "MCA Job Name", -1)
+	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "MCA Job Name")
 	attr = ATTR_CHL_CONNNAME
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Connection Name", -1)
+	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_CHL_MESSAGES
@@ -104,6 +106,9 @@ func ChannelInitAttributes() {
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
 	ChannelStatus.Attributes[attr].squash = true
 	chlAttrsInit = true
+
+	attr = ATTR_CHL_SINCE_MSG
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
 }
 
 // If we need to list the channels that match a pattern. Not needed for
@@ -285,6 +290,9 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	startTime := ""
 	key := ""
 
+	lastMsgDate := ""
+	lastMsgTime := ""
+
 	parmAvail := true
 	bytesRead := 0
 	offset := 0
@@ -389,8 +397,19 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 					}
 				}
 			}
+		} else {
+			switch elem.Parameter {
+			case ibmmq.MQCACH_LAST_MSG_TIME:
+				lastMsgTime = strings.TrimSpace(elem.String[0])
+			case ibmmq.MQCACH_LAST_MSG_DATE:
+				lastMsgDate = strings.TrimSpace(elem.String[0])
+			}
 		}
 	}
+
+	now := time.Now()
+	diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
+	ChannelStatus.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
 
 	return key
 }
