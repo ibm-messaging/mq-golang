@@ -99,6 +99,9 @@ func MQItoString(class string, value int) string {
 		if s == "" {
 			s = C.GoString(C.MQRCCF_STR(v))
 		}
+
+	case "SUBTYPE":
+		s = C.GoString(C.MQSUBTYPE_STR(v))
 	}
 	return s
 }

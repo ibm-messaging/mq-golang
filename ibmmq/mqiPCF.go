@@ -29,6 +29,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -252,11 +253,13 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		binary.Read(p, endian, &pcfParm.ParameterCount)
 
 	case C.MQCFT_BYTE_STRING:
-		// For now, the data is not actually stored anywhere as we don't need it
-		// But we do need to know how to step over the field
+		// The byte string is converted to a hex string as that's how
+		// we expect to use it in reporting
 		offset := int32(C.MQCFBS_STRUC_LENGTH_FIXED)
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &pcfParm.stringLength)
+		s := hex.EncodeToString(buf[offset : pcfParm.stringLength+offset])
+		pcfParm.String = append(pcfParm.String, s)
 		p.Next(int(pcfParm.strucLength - offset))
 
 	default:

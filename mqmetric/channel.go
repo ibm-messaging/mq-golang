@@ -50,6 +50,9 @@ const (
 	ATTR_CHL_INSTANCE_TYPE = "instance_type"
 	ATTR_CHL_SINCE_MSG     = "time_since_msg"
 
+	ATTR_CHL_NETTIME_SHORT = "nettime_short"
+	ATTR_CHL_NETTIME_LONG  = "nettime_long"
+
 	SQUASH_CHL_STATUS_STOPPED    = 0
 	SQUASH_CHL_STATUS_TRANSITION = 1
 	SQUASH_CHL_STATUS_RUNNING    = 2
@@ -106,6 +109,13 @@ func ChannelInitAttributes() {
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
 	ChannelStatus.Attributes[attr].squash = true
 	chlAttrsInit = true
+
+	attr = ATTR_CHL_NETTIME_SHORT
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
+	ChannelStatus.Attributes[attr].index = 0
+	attr = ATTR_CHL_NETTIME_LONG
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
+	ChannelStatus.Attributes[attr].index = 1
 
 	attr = ATTR_CHL_SINCE_MSG
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
@@ -175,42 +185,9 @@ func CollectChannelStatus(patterns string) error {
 // Collect the responses and build up the statistics
 func collectChannelStatus(pattern string, instanceType int32) error {
 	var err error
-	var datalen int
+	statusClearReplyQ()
 
-	putmqmd := ibmmq.NewMQMD()
-	pmo := ibmmq.NewMQPMO()
-
-	pmo.Options = ibmmq.MQPMO_NO_SYNCPOINT
-	pmo.Options |= ibmmq.MQPMO_NEW_MSG_ID
-	pmo.Options |= ibmmq.MQPMO_NEW_CORREL_ID
-	pmo.Options |= ibmmq.MQPMO_FAIL_IF_QUIESCING
-
-	putmqmd.Format = "MQADMIN"
-	putmqmd.ReplyToQ = statusReplyQObj.Name
-	putmqmd.MsgType = ibmmq.MQMT_REQUEST
-	putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
-
-	buf := make([]byte, 0)
-	// Empty replyQ in case any left over from previous errors
-	for ok := true; ok; {
-		getmqmd := ibmmq.NewMQMD()
-		gmo := ibmmq.NewMQGMO()
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
-		gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING
-		gmo.Options |= ibmmq.MQGMO_NO_WAIT
-		gmo.Options |= ibmmq.MQGMO_CONVERT
-		gmo.Options |= ibmmq.MQGMO_ACCEPT_TRUNCATED_MSG
-		_, err = statusReplyQObj.Get(getmqmd, gmo, buf)
-
-		if err != nil && err.(*ibmmq.MQReturn).MQCC == ibmmq.MQCC_FAILED {
-			ok = false
-		}
-	}
-	buf = make([]byte, 0)
-
-	cfh := ibmmq.NewMQCFH()
-	cfh.Version = ibmmq.MQCFH_VERSION_3
-	cfh.Type = ibmmq.MQCFT_COMMAND_XR
+	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 
 	// Can allow all the other fields to default
 	cfh.Command = ibmmq.MQCMD_INQUIRE_CHANNEL_STATUS
@@ -239,39 +216,17 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		return err
-
 	}
 
 	// Now get the responses - loop until all have been received (one
 	// per channel) or we run out of time
-	replyBuf := make([]byte, 10240)
 	for allReceived := false; !allReceived; {
-		getmqmd := ibmmq.NewMQMD()
-		gmo := ibmmq.NewMQGMO()
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
-		gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING
-		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.Options |= ibmmq.MQGMO_CONVERT
-		gmo.WaitInterval = 3 * 1000 // 3 seconds
-
-		datalen, err = statusReplyQObj.Get(getmqmd, gmo, replyBuf)
-		if err == nil {
-			cfh, offset := ibmmq.ReadPCFHeader(replyBuf)
-			if cfh.Control == ibmmq.MQCFC_LAST {
-				allReceived = true
-			}
-			if cfh.Reason != ibmmq.MQRC_NONE {
-				continue
-			}
-			// Returned by z/OS qmgrs but are not interesting
-			if cfh.Type == ibmmq.MQCFT_XR_SUMMARY || cfh.Type == ibmmq.MQCFT_XR_MSG {
-				continue
-			}
-			key := parseChlData(instanceType, cfh, replyBuf[offset:datalen])
+		cfh, buf, allReceived, err = statusGetReply()
+		if buf != nil {
+			key := parseChlData(instanceType, cfh, buf)
 			if key != "" {
 				channelsSeen[key] = true
 			}
-
 		}
 	}
 
@@ -366,38 +321,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		// Look at the Parameter and loop through all the possible status
-		// attributes to find it.We don't break from the loop after finding a match
-		// because there might be more than one attribute associated with the
-		// attribute (in particular status/status_squash)
-		if elem.Type == ibmmq.MQCFT_INTEGER || elem.Type == ibmmq.MQCFT_INTEGER64 {
-			v := elem.Int64Value[0]
-
-			for attr, _ := range ChannelStatus.Attributes {
-				if ChannelStatus.Attributes[attr].pcfAttr == elem.Parameter {
-					if ChannelStatus.Attributes[attr].delta {
-						// If we have already got a value for this attribute and channel
-						// then use it to create the delta. Otherwise make the initial
-						// value 0.
-						if prevVal, ok := ChannelStatus.Attributes[attr].prevValues[key]; ok {
-							delta := v - prevVal
-							if delta < 0 {
-								delta = v
-							}
-							//fmt.Printf("Channel Status attr: %s key %s CurV %d PrevV %d Delta %d\n", attr, key, v, prevVal, delta)
-							ChannelStatus.Attributes[attr].Values[key] = newStatusValueInt64(delta)
-						} else {
-							//fmt.Printf("Channel Status attr: %s key %s NewV %d PrevV N/A\n", attr, key, v)
-							ChannelStatus.Attributes[attr].Values[key] = newStatusValueInt64(0)
-						}
-						ChannelStatus.Attributes[attr].prevValues[key] = v
-					} else {
-						// Return the actual number
-						ChannelStatus.Attributes[attr].Values[key] = newStatusValueInt64(v)
-					}
-				}
-			}
-		} else {
+		if !statusGetIntAttributes(ChannelStatus, elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACH_LAST_MSG_TIME:
 				lastMsgTime = strings.TrimSpace(elem.String[0])
