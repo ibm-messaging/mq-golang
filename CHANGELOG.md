@@ -1,7 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## April XX 2019
+## April 23 2019
+* Fixed memory leak in InqMP
+* mqmetric - Added ability to set a timezone offset
 * mqmetric - Added fields from SBSTATUS
 
 ## April 03 2019

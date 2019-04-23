@@ -41,15 +41,18 @@ var (
 	commandLevel     int32
 	resolvedQMgrName string
 
+	tzOffsetSecs float64
+
 	qmgrConnected = false
 	queuesOpened  = false
 	subsOpened    = false
 )
 
 type ConnectionConfig struct {
-	ClientMode bool
-	UserId     string
-	Password   string
+	ClientMode   bool
+	UserId       string
+	Password     string
+	TZOffsetSecs float64
 }
 
 /*
@@ -63,6 +66,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
+
+	tzOffsetSecs = cc.TZOffsetSecs
 
 	// Explicitly force client mode if requested. Otherwise use the "default"
 	// connection mechanism depending on what is installed or configured.

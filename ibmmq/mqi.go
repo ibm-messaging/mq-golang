@@ -1172,7 +1172,6 @@ func (handle *MQMessageHandle) DltMP(godmpo *MQDMPO, name string) error {
 /*
 InqMP is the function to inquire about the value of a message property.
 */
-
 func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (string, interface{}, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
@@ -1198,11 +1197,18 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		mqName.VSPtr = (C.MQPTR)(C.malloc(namebufsize))
 		mqName.VSBufSize = namebufsize
 	}
+	// VSPtr is either explicit malloc or comes from CString which does a
+	// malloc. Either way, the buffer should be freed at the end.
+	defer C.free(unsafe.Pointer(mqName.VSPtr))
 
 	copyIMPOtoC(&mqimpo, goimpo)
 	copyPDtoC(&mqpd, gopd)
 
+	// Use a local buffer instead of something global so we don't
+	// have to worry about multiple threads accessing it.
 	propertyPtr = C.PMQVOID(C.malloc(propbufsize))
+	defer C.free(unsafe.Pointer(propertyPtr))
+
 	bufferLength := C.MQLONG(namebufsize)
 
 	C.MQINQMP(handle.qMgr.hConn,
@@ -1216,10 +1222,6 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		(C.PMQLONG)(unsafe.Pointer(&propertyLength)),
 		&mqcc,
 		&mqrc)
-
-	if len(name) > 0 {
-		C.free(unsafe.Pointer(mqName.VSPtr))
-	}
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
 		MQRC: int32(mqrc),
@@ -1238,7 +1240,7 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		p := (*C.MQBYTE)(propertyPtr)
 		propertyValue = (int8)(*p)
 	case C.MQTYPE_INT16:
-		p := (*C.MQBYTE)(propertyPtr)
+		p := (*C.MQINT16)(propertyPtr)
 		propertyValue = (int16)(*p)
 	case C.MQTYPE_INT32:
 		p := (*C.MQINT32)(propertyPtr)

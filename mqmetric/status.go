@@ -122,7 +122,7 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 		}
 		parsedT, err = time.ParseInLocation(timeStampLayout, d+" "+t, now.Location())
 		if err == nil {
-			diff := now.Sub(parsedT).Seconds()
+			diff := now.Sub(parsedT).Seconds() + tzOffsetSecs
 
 			if diff < 0 { // Cannot have status from the future
 				// TODO: Perhaps issue a one-time warning as it might indicate timezone offsets
@@ -132,7 +132,7 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 			rc = int64(diff)
 		}
 	}
-	//fmt.Printf("statusTimeDiff d:%s t:%s diff:%d err:%v\n",d,t,rc,err)
+	//fmt.Printf("statusTimeDiff d:%s t:%s diff:%d tzoffset: %f err:%v\n", d, t, rc, tzOffsetSecs, err)
 	return rc
 }
 

@@ -86,6 +86,13 @@ func setProperties(putMsgHandle ibmmq.MQMessageHandle) error {
 		fmt.Printf("PROP2: %v\n", err)
 	}
 
+	name = "PROP2CINT16"
+	v2c := 4242
+	err = putMsgHandle.SetMP(smpo, name, pd, int16(v2c))
+	if err != nil {
+		fmt.Printf("PROP2: %v\n", err)
+	}
+
 	name = "PROP3BOOL"
 	v3 := true
 	err = putMsgHandle.SetMP(smpo, name, pd, v3)

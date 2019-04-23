@@ -30,7 +30,7 @@ cd $GOPATH/src
 for pkg in $ORG/$REPO/ibmmq $ORG/$REPO/mqmetric
 do
   lib=`basename $pkg`
-  echo "Building $lib"
+  echo "Building package: $lib"
   go install  $pkg
 done
 
@@ -41,6 +41,6 @@ srcdir=src/$ORG/$REPO/samples
 for samp in $srcdir/*.go
 do
   exe=`basename $samp .go`
-  echo "Building $exe"
+  echo "Building program: $exe"
   go build -o bin/$exe $samp
 done
