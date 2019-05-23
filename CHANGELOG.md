@@ -1,6 +1,12 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## May 31 2019
+* mqmetric - Allow limited monitoring of V8 Distributed platforms
+(set `ibmmq.usePublications` to *false* to enable in monitor programs) #104
+* mqmetric - Added queue_attribute_max_depth to permit %full calculation 
+(set `ibmmq.useStatus` to *true* to enable in monitor programs) #105
+
 ## April 23 2019
 * Fixed memory leak in InqMP
 * mqmetric - Added ability to set a timezone offset
@@ -9,7 +15,7 @@ Newest updates are at the top of this file.
 ## April 03 2019
 * mqmetric - Added last put/get time metric for queues
 * mqmetric - Added last msg time metric for channels
-* mqmetric - Added fields from QMSTATUS and TPSTATUS 
+* mqmetric - Added fields from QMSTATUS and TPSTATUS
 
 ## April 1 2019
 * Added scripts to compile samples inside a container

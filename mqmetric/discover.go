@@ -80,21 +80,30 @@ type AllMetrics struct {
 	Classes map[int]*MonClass
 }
 
+type QInfo struct {
+	MaxDepth int64
+}
+
 // QMgrMapKey can never be a real object name and is therefore useful in
 // maps that may contain only this single entry
 const QMgrMapKey = "@self"
 
 const maxBufSize = 100 * 1024 * 1024 // 100 MB
+const defaultMaxQDepth = 5000
 
 // Metrics is the global variable for the tree of data
 var Metrics AllMetrics
 
-var qList []string
+var qInfoMap map[string]*QInfo
 var locale string
 var discoveryDone = false
 
 func GetDiscoveredQueues() []string {
-	return qList
+	keys := make([]string, 0)
+	for key := range qInfoMap {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 /*
@@ -107,7 +116,7 @@ func SetLocale(l string) {
 
 /*
  * Check any important parameters  - this must be called after DiscoverAndSubscribe
- * to maintain compatibility of the package's APIs.  It also needs the qList to have been
+ * to maintain compatibility of the package's APIs.  It also needs the list of queues to have been
  * populated first which is also done in DiscoverAndSubscribe.
  * Returns: an MQ CompCode, error string. CompCode can be MQCC_OK, WARNING or ERROR.
  */
@@ -133,8 +142,8 @@ func VerifyConfig() (int32, error) {
 			// as MQ publications are at 10 second interval by default (and no public tuning)
 			// and assume monitor collection interval is one minute
 			// Since we don't do pubsub-based collection on z/OS, this qdepth doesn't matter
-			recommendedDepth := (20 + len(qList)*5) * 6
-			if maxQDepth < int32(recommendedDepth) && platform != ibmmq.MQPL_ZOS {
+			recommendedDepth := (20 + len(qInfoMap)*5) * 6
+			if maxQDepth < int32(recommendedDepth) && usePublications {
 				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d", replyQBaseName, maxQDepth)
 				compCode = ibmmq.MQCC_WARNING
 			}
@@ -161,6 +170,7 @@ func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 	var err error
 
 	discoveryDone = true
+	qInfoMap = make(map[string]*QInfo)
 
 	// What metrics can the queue manager provide?
 	if err == nil {
@@ -172,14 +182,15 @@ func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 	if err == nil {
 		if checkQueueList {
 			err = discoverQueues(queueList)
+			//fmt.Printf("Queue Set size = %d\n",len(qInfoMap))
 		} else {
-			qList = strings.Split(queueList, ",")
+			qList := strings.Split(queueList, ",")
+			// Make sure the names are reasonably valid
+			for i := 0; i < len(qList); i++ {
+				qInfoMap[strings.TrimSpace(qList[i])] = new(QInfo)
+			}
 		}
 
-		// Make sure the names are reasonably valid
-		for i := 0; i < len(qList); i++ {
-			qList[i] = strings.TrimSpace(qList[i])
-		}
 	}
 
 	// Subscribe to all of the various topics
@@ -426,7 +437,7 @@ func discoverStats(metaPrefix string) error {
 	Metrics.Classes = make(map[int]*MonClass)
 
 	// Allow us to proceed on z/OS even though it does not support pub/sub resources
-	if metaPrefix == "" && platform == ibmmq.MQPL_ZOS {
+	if metaPrefix == "" && !usePublications {
 		return nil
 	}
 
@@ -488,11 +499,24 @@ and then use a more general regexp match. Something for a later update perhaps.
 */
 func discoverQueues(monitoredQueues string) error {
 	var err error
+	var qList []string
+
 	qList, err = inquireObjects(monitoredQueues, ibmmq.MQOT_Q)
 	if len(qList) > 0 {
 		//fmt.Printf("Monitoring Queues: %v\n", qList)
+		for i := 0; i < len(qList); i++ {
+			qName := strings.TrimSpace(qList[i])
+			qInfoElem := new(QInfo)
+			qInfoElem.MaxDepth = defaultMaxQDepth
+			qInfoMap[qName] = qInfoElem
+		}
+
+		if useStatus {
+			inquireQueueAttributes(monitoredQueues)
+		}
+
 		if err != nil {
-			// fmt.Printf("Queue Discovery: %v\n", err)
+			//fmt.Printf("Queue Discovery Error: %v\n", err)
 		}
 		return nil
 	}
@@ -669,13 +693,13 @@ func createSubscriptions() error {
 		for _, ty := range cl.Types {
 
 			if strings.Contains(ty.ObjectTopic, "%s") {
-				for i := 0; i < len(qList); i++ {
-					if len(qList[i]) == 0 {
+				for key, _ := range qInfoMap {
+					if len(key) == 0 {
 						continue
 					}
-					topic := fmt.Sprintf(ty.ObjectTopic, qList[i])
+					topic := fmt.Sprintf(ty.ObjectTopic, key)
 					sub, err = subscribe(topic, &replyQObj)
-					ty.subHobj[qList[i]] = sub
+					ty.subHobj[key] = sub
 				}
 			} else {
 				sub, err = subscribe(ty.ObjectTopic, &replyQObj)
@@ -711,7 +735,7 @@ func ProcessPublications() error {
 	var elementidx int
 	var value int64
 
-	if platform == ibmmq.MQPL_ZOS {
+	if !usePublications {
 		return nil
 	}
 

@@ -46,6 +46,9 @@ var (
 	qmgrConnected = false
 	queuesOpened  = false
 	subsOpened    = false
+
+	usePublications = true
+	useStatus       = false
 )
 
 type ConnectionConfig struct {
@@ -53,6 +56,9 @@ type ConnectionConfig struct {
 	UserId       string
 	Password     string
 	TZOffsetSecs float64
+
+	UsePublications bool
+	UseStatus       bool
 }
 
 /*
@@ -98,6 +104,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		var qMgrObject ibmmq.MQObject
 		var v map[int32]interface{}
 
+		useStatus = cc.UseStatus
+
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
 
@@ -116,10 +124,21 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
 				platform = v[ibmmq.MQIA_PLATFORM].(int32)
 				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
-				if commandLevel < 900 && platform != ibmmq.MQPL_ZOS && platform != ibmmq.MQPL_APPLIANCE {
-					err = fmt.Errorf("Queue manager must be at least V9.0 for monitoring.")
-					errorString = "Unsupported system"
+				if platform == ibmmq.MQPL_ZOS {
+					usePublications = false
+				} else {
+					if cc.UsePublications == true {
+						if commandLevel < 900 && platform != ibmmq.MQPL_APPLIANCE {
+							err = fmt.Errorf("Queue manager must be at least V9.0 for full monitoring. The ibmmq.usePublications configuration parameter can be used to permit limited monitoring.")
+							errorString = "Unsupported system"
+						} else {
+							usePublications = cc.UsePublications
+						}
+					} else {
+						usePublications = false
+					}
 				}
+
 			}
 			// Don't need the qMgrObject any more
 			qMgrObject.Close(0)
