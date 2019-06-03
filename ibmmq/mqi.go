@@ -122,6 +122,7 @@ func (e *MQReturn) Error() string {
 }
 
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
+const space8 = "        "
 
 /*
  * Copy a Go string in "strings"

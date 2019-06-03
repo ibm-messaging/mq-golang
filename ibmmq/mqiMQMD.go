@@ -78,7 +78,7 @@ func NewMQMD() *MQMD {
 	md.Feedback = int32(C.MQFB_NONE)
 	md.Encoding = int32(C.MQENC_NATIVE)
 	md.CodedCharSetId = int32(C.MQCCSI_Q_MGR)
-	md.Format = "        "
+	md.Format = space8
 	md.Priority = int32(C.MQPRI_PRIORITY_AS_Q_DEF)
 	md.Persistence = int32(C.MQPER_PERSISTENCE_AS_Q_DEF)
 	md.MsgId = bytes.Repeat([]byte{0}, C.MQ_MSG_ID_LENGTH)
@@ -113,7 +113,8 @@ func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 	mqmd.Feedback = C.MQLONG(gomd.Feedback)
 	mqmd.Encoding = C.MQLONG(gomd.Encoding)
 	mqmd.CodedCharSetId = C.MQLONG(gomd.CodedCharSetId)
-	setMQIString((*C.char)(&mqmd.Format[0]), gomd.Format, C.MQ_FORMAT_LENGTH)
+	// Make sure Format is space padded
+	setMQIString((*C.char)(&mqmd.Format[0]), (gomd.Format + space8), C.MQ_FORMAT_LENGTH)
 	mqmd.Priority = C.MQLONG(gomd.Priority)
 	mqmd.Persistence = C.MQLONG(gomd.Persistence)
 

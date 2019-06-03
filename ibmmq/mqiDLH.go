@@ -100,7 +100,8 @@ func (dlh *MQDLH) Bytes() []byte {
 	offset += 4
 	endian.PutUint32(buf[offset:], uint32(dlh.CodedCharSetId))
 	offset += 4
-	copy(buf[offset:], dlh.Format)
+	// Make sure the format is space padded to the correct length
+	copy(buf[offset:], (dlh.Format + space8)[0:8])
 	offset += int(MQ_FORMAT_LENGTH)
 	endian.PutUint32(buf[offset:], uint32(dlh.PutApplType))
 	offset += 4
