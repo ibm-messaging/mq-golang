@@ -212,6 +212,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 
 		// Can allow all the other fields to default
 		cfh.Command = ibmmq.MQCMD_INQUIRE_Q
+		cfh.ParameterCount = 0
 
 		// Add the parameters one at a time into a buffer
 		pcfparm := new(ibmmq.PCFParameter)
@@ -337,7 +338,6 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 	if cfh.ParameterCount == 0 {
 		return
 	}
-
 	// Parse it once to extract the fields that are needed for the map key
 	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
 		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])

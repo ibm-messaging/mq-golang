@@ -140,6 +140,24 @@ func (p *PCFParameter) Bytes() []byte {
 		endian.PutUint32(buf[offset:], uint32(p.Int64Value[0]))
 		offset += 4
 
+	case C.MQCFT_INTEGER_LIST:
+		l := len(p.Int64Value)
+		buf = make([]byte, C.MQCFIL_STRUC_LENGTH_FIXED+4*l)
+		offset := 0
+
+		endian.PutUint32(buf[offset:], uint32(p.Type))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(len(buf)))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(p.Parameter))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(l))
+		offset += 4
+		for i := 0; i < l; i++ {
+			endian.PutUint32(buf[offset:], uint32(p.Int64Value[i]))
+			offset += 4
+		}
+
 	case C.MQCFT_STRING:
 		buf = make([]byte, C.MQCFST_STRUC_LENGTH_FIXED+roundTo4(int32(len(p.String[0]))))
 		offset := 0
@@ -154,6 +172,8 @@ func (p *PCFParameter) Bytes() []byte {
 		endian.PutUint32(buf[offset:], uint32(len(p.String[0])))
 		offset += 4
 		copy(buf[offset:], []byte(p.String[0]))
+	default:
+		fmt.Println("mqiPCF.go: Trying to serialise PCF parameter. Unknown PCF type ", p.Type)
 	}
 	return buf
 }
