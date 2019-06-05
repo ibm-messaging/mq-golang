@@ -44,3 +44,6 @@ do
   echo "Building program: $exe"
   go build -o bin/$exe $samp
 done
+
+echo "Building program: mqitest"
+go build -o bin/mqitest $srcdir/mqitest/mqitest.go

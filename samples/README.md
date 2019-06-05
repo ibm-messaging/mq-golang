@@ -28,7 +28,7 @@ Current samples in this directory include
 * amqsconn.go: How to programmatically connect as an MQ client to a remote queue manager.
 Allow use of a userid/password for authentication. There are no default values for this sample.
 * amqsprop.go: Set and extract message properties
-* amqsinq.go : Demonstrate the new InqMap API for inquiring about object attributes
+* amqsinq.go : Demonstrate the Inq API for inquiring about object attributes
 * amqsset.go : Demonstrate how to set attributes of an MQ object using the MQSET verb
 * amqscb.go  : Demonstrate use of the CALLBACK capability for asynchronous consumption of messages
 

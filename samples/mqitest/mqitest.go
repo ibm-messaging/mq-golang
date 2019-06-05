@@ -41,6 +41,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
@@ -102,7 +103,7 @@ func main() {
 		pmo.Options = ibmmq.MQPMO_SYNCPOINT | ibmmq.MQPMO_NEW_MSG_ID | ibmmq.MQPMO_NEW_CORREL_ID
 
 		putmqmd.Format = "MQSTR"
-		msgData := "Hello from Go"
+		msgData := "Hello from Go at " + time.Now().Format("02 Jan 2006 03:04:05")
 		buffer := []byte(msgData)
 
 		err = qObject.Put(putmqmd, pmo, buffer)
@@ -247,15 +248,14 @@ func main() {
 			ibmmq.MQCA_DEAD_LETTER_Q_NAME,
 			ibmmq.MQIA_MSG_MARK_BROWSE_INTERVAL}
 
-		intAttrs, charAttrs, err := qMgrObject.Inq(selectors, 2, 160)
+		values, err := qMgrObject.Inq(selectors)
 
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			returnedName := string(charAttrs[0:48])
-			fmt.Printf("MQINQ returned +%v %s \n",
-				intAttrs, string(charAttrs))
-			fmt.Printf("               '%s'\n", returnedName)
+			returnedName := values[ibmmq.MQCA_Q_MGR_NAME]
+			fmt.Printf("MQINQ returned %v \n", values)
+			fmt.Printf("        QM is '%s'\n", returnedName)
 		}
 
 	}

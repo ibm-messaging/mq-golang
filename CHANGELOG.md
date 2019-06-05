@@ -1,11 +1,12 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## May 31 2019
+## May 31 2019 - v4.0.6
 * mqmetric - Allow limited monitoring of V8 Distributed platforms
 (set `ibmmq.usePublications` to *false* to enable in monitor programs) #104
 * mqmetric - Added queue_attribute_max_depth to permit %full calculation 
 (set `ibmmq.useStatus` to *true* to enable in monitor programs) #105
+* samples - Correct use of the new form of the Inq() verb
 
 ## April 23 2019
 * Fixed memory leak in InqMP

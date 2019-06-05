@@ -44,7 +44,7 @@ var object ibmmq.MQObject
  */
 func inquire(obj ibmmq.MQObject, selectors []int32) {
 	// This is the function to do the actual inquiry
-	values, err := obj.InqMap(selectors)
+	values, err := obj.Inq(selectors)
 	if err != nil {
 		fmt.Println(err)
 	} else {
