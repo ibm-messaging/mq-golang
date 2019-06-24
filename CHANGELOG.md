@@ -1,11 +1,20 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## June 25 2019 - v4.0.7
+* mqmetric - Allow exclusion patterns for queue names (but not other object types)
+  * Use "!" as prefix to a simple pattern in the list of monitored queues
+  * For example, "APP.*,S*,!SYSTEM.*"
+* mqmetric - Enable re-expansion of monitored queue wildcards while still monitoring
+  * See Prometheus monitor sample for configuration
+* mqmetric - Added batch size and xmitq time averages to channel metrics
+* mqmetric - Enable use of z/OS DISPLAY USAGE for pageset/bufferpool data
+
 ## May 31 2019 - v4.0.6
 * mqmetric - Allow limited monitoring of V8 Distributed platforms
-(set `ibmmq.usePublications` to *false* to enable in monitor programs) #104
-* mqmetric - Added queue_attribute_max_depth to permit %full calculation 
-(set `ibmmq.useStatus` to *true* to enable in monitor programs) #105
+  * Set `ibmmq.usePublications` to *false* to enable in monitor programs #104
+* mqmetric - Added queue_attribute_max_depth to permit %full calculation
+  * Set `ibmmq.useStatus` to *true* to enable in monitor programs #105
 * samples - Correct use of the new form of the Inq() verb
 
 ## April 23 2019

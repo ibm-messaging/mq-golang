@@ -58,6 +58,7 @@ import "C"
 import (
 	"encoding/binary"
 	"io"
+	"os"
 	"strings"
 	"unsafe"
 )
@@ -177,6 +178,14 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	} else {
 		endian = binary.BigEndian
 	}
+
+	// MQ normally sets signal handlers that turn out to
+	// get in the way of Go programs. In particular SEGV.
+	// Setting this environment variable should make it easier
+	// to get stack traces out of Go programs in the event of
+	// errors. For this particular variable, any value will make it
+	// effective.
+	os.Setenv("MQS_NO_SYNC_SIGNAL_HANDLING", "true")
 
 	qMgr := MQQueueManager{}
 	qMgr.Name = goQMgrName
@@ -323,7 +332,7 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 	var mqsd C.MQSD
 
 	subObject := MQObject{
-		Name: gosd.ObjectName,
+		Name: gosd.ObjectName + "[" + gosd.ObjectString + "]",
 		qMgr: x,
 	}
 

@@ -81,7 +81,10 @@ type AllMetrics struct {
 }
 
 type QInfo struct {
-	MaxDepth int64
+	MaxDepth        int64
+	Usage           int64
+	exists          bool // Used during rediscovery
+	firstCollection bool // To indicate discard needed of first stat
 }
 
 // QMgrMapKey can never be a real object name and is therefore useful in
@@ -167,13 +170,39 @@ different resources available from a queue manager and
 issuing the MQSUB calls to collect the data
 */
 func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
-	var err error
-
 	discoveryDone = true
+	redo := false
 	qInfoMap = make(map[string]*QInfo)
 
+	err := discoverAndSubscribe(queueList, checkQueueList, metaPrefix, redo)
+	return err
+}
+func RediscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
+	discoveryDone = true
+	redo := true
+
+	// Assume queues have been deleted and we will tidy up later.
+	// The flag is reset to true during the discovery process if the queue still exists
+	for _, qi := range qInfoMap {
+		qi.exists = false
+	}
+
+	err := discoverAndSubscribe(queueList, checkQueueList, metaPrefix, redo)
+
+	// We now know if a queue still exists; remove it from the map if not.
+	for key, qi := range qInfoMap {
+		if !qi.exists {
+			delete(qInfoMap, key)
+		}
+	}
+	return err
+}
+
+func discoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string, redo bool) error {
+	var err error
+
 	// What metrics can the queue manager provide?
-	if err == nil {
+	if err == nil && redo == false {
 		err = discoverStats(metaPrefix)
 	}
 
@@ -182,12 +211,12 @@ func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 	if err == nil {
 		if checkQueueList {
 			err = discoverQueues(queueList)
-			//fmt.Printf("Queue Set size = %d\n",len(qInfoMap))
 		} else {
 			qList := strings.Split(queueList, ",")
 			// Make sure the names are reasonably valid
 			for i := 0; i < len(qList); i++ {
-				qInfoMap[strings.TrimSpace(qList[i])] = new(QInfo)
+				key := strings.TrimSpace(qList[i])
+				qInfoMap[key] = new(QInfo)
 			}
 		}
 
@@ -416,7 +445,6 @@ func discoverElementsNLS(ty *MonType, locale string) error {
 
 			if description != "" {
 				ty.Elements[elementIndex].DescriptionNLS = description
-				fmt.Printf("Updated element %v\n", ty.Elements[elementIndex])
 			}
 		}
 	}
@@ -497,22 +525,55 @@ then an error is reported but we continue processing other patterns.
 An alternative would be to list ALL the queues (though that could be a long list),
 and then use a more general regexp match. Something for a later update perhaps.
 */
-func discoverQueues(monitoredQueues string) error {
+func discoverQueues(monitoredQueuePatterns string) error {
 	var err error
 	var qList []string
+	var allQueues []string
+	usingRegExp := false
 
-	qList, err = inquireObjects(monitoredQueues, ibmmq.MQOT_Q)
+	// If the list of monitored queues has a ! somewhere in it, we will
+	// get the full list of queues on the qmgr, and filter it by patterns.
+	if strings.Contains(monitoredQueuePatterns, "!") {
+		usingRegExp = true
+	}
+
+	// A valid pattern list looks like
+	//    !A*, !SYSTEM*, B*, DEV.QUEUE.1
+	// If we know there are no exclusion patterns, then use the
+	// set directly as it is more efficient
+	if usingRegExp {
+		allQueues, err = inquireObjects("*", ibmmq.MQOT_Q)
+		if err == nil {
+			qList = FilterRegExp(monitoredQueuePatterns, allQueues)
+		}
+	} else {
+		qList, err = inquireObjects(monitoredQueuePatterns, ibmmq.MQOT_Q)
+	}
+
 	if len(qList) > 0 {
 		//fmt.Printf("Monitoring Queues: %v\n", qList)
 		for i := 0; i < len(qList); i++ {
+			var qInfoElem *QInfo
+			var ok bool
 			qName := strings.TrimSpace(qList[i])
-			qInfoElem := new(QInfo)
+			if qInfoElem, ok = qInfoMap[qName]; !ok {
+				qInfoElem = new(QInfo)
+			}
 			qInfoElem.MaxDepth = defaultMaxQDepth
+			qInfoElem.exists = true
 			qInfoMap[qName] = qInfoElem
 		}
 
 		if useStatus {
-			inquireQueueAttributes(monitoredQueues)
+			if usingRegExp {
+				for qName, _ := range qInfoMap {
+					if len(qName) > 0 {
+						inquireQueueAttributes(qName)
+					}
+				}
+			} else {
+				inquireQueueAttributes(monitoredQueuePatterns)
+			}
 		}
 
 		if err != nil {
@@ -538,6 +599,8 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 	if objectPatternsList == "" {
 		return nil, err
 	}
+
+	statusClearReplyQ()
 
 	objectPatterns := strings.Split(strings.TrimSpace(objectPatternsList), ",")
 	for i := 0; i < len(objectPatterns) && err == nil; i++ {
@@ -574,7 +637,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		pmo.Options |= ibmmq.MQPMO_FAIL_IF_QUIESCING
 
 		putmqmd.Format = "MQADMIN"
-		putmqmd.ReplyToQ = replyQObj.Name
+		putmqmd.ReplyToQ = statusReplyQObj.Name
 		putmqmd.MsgType = ibmmq.MQMT_REQUEST
 		putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
@@ -628,12 +691,14 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		for truncation := true; truncation; {
 			buf = make([]byte, bufSize)
 
-			datalen, err = replyQObj.Get(getmqmd, gmo, buf)
+			datalen, err = statusReplyQObj.Get(getmqmd, gmo, buf)
 			if err == nil {
 				truncation = false
 				cfh, offset := ibmmq.ReadPCFHeader(buf)
 				if cfh.CompCode != ibmmq.MQCC_OK {
-					return objectList, fmt.Errorf("PCF command failed with CC %d RC %d", cfh.CompCode, cfh.Reason)
+					return objectList, fmt.Errorf("PCF command failed with CC %s [%d] RC %s [%d]",
+						ibmmq.MQItoString("CC", int(cfh.CompCode)), cfh.CompCode,
+						ibmmq.MQItoString("RC", int(cfh.Reason)), cfh.Reason)
 				} else {
 					parmAvail := true
 					bytesRead := 0
@@ -697,9 +762,24 @@ func createSubscriptions() error {
 					if len(key) == 0 {
 						continue
 					}
-					topic := fmt.Sprintf(ty.ObjectTopic, key)
-					sub, err = subscribe(topic, &replyQObj)
-					ty.subHobj[key] = sub
+
+					// See if we've already got a subscription
+					// for this object
+					if s, ok := ty.subHobj[key]; ok {
+						if qInfoMap[key].exists {
+							// leave alone
+						} else {
+							s.Close(0)
+							delete(ty.subHobj, key)
+						}
+					} else {
+						topic := fmt.Sprintf(ty.ObjectTopic, key)
+						sub, err = subscribe(topic, &replyQObj)
+						if err == nil {
+							ty.subHobj[key] = sub
+							qInfoMap[key].firstCollection = true
+						}
+					}
 				}
 			} else {
 				sub, err = subscribe(ty.ObjectTopic, &replyQObj)
@@ -809,8 +889,25 @@ func ProcessPublications() error {
 			for key, newValue := range values {
 				if elem, ok := Metrics.Classes[classidx].Types[typeidx].Elements[key]; ok {
 					objectName := qName
+
 					if objectName == "" {
 						objectName = QMgrMapKey
+					} else {
+						// If we've unsubscribed and resubscribed to the same queue (unusual
+						// but a dynamic resub nature may permit that) then discard the first metric
+						// from a queue in case it's got a running total instead of the last interval.
+						if qi, ok := qInfoMap[qName]; ok {
+							if qi.firstCollection {
+								continue
+							}
+							if !qi.exists {
+								//fmt.Printf("Data for untracked queue %s being ignored\n", qName)
+								continue
+							}
+						} else {
+							//fmt.Printf("Data for unknown queue %s being ignored\n", qName)
+							continue
+						}
 					}
 
 					if oldValue, ok := elem.Values[objectName]; ok {
@@ -833,6 +930,11 @@ func ProcessPublications() error {
 				return mqreturn
 			}
 		}
+	}
+
+	// Ensure that all known queues are marked as having had at least one collection cycle
+	for _, qi := range qInfoMap {
+		qi.firstCollection = false
 	}
 	return nil
 }
@@ -1010,6 +1112,12 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 }
 
 func VerifyPatterns(patternList string) error {
+	return verifyObjectPatterns(patternList, false)
+}
+func VerifyQueuePatterns(patternList string) error {
+	return verifyObjectPatterns(patternList, true)
+}
+func verifyObjectPatterns(patternList string, allowNegatives bool) error {
 	var err error
 	objectPatterns := strings.Split(patternList, ",")
 	for i := 0; i < len(objectPatterns) && err == nil; i++ {
@@ -1020,8 +1128,136 @@ func VerifyPatterns(patternList string) error {
 		}
 		if strings.Count(pattern, "*") > 1 ||
 			(strings.Count(pattern, "*") == 1 && !strings.HasSuffix(pattern, "*")) {
-			err = fmt.Errorf("Object pattern '%s' is not valid", pattern)
+			err = fmt.Errorf("Object pattern '%s' is not valid. '*' must be last character in a pattern", pattern)
+		}
+		// Will allow ! to be at the start of a pattern.
+		if allowNegatives {
+			if strings.Count(pattern, "!") > 1 ||
+				(strings.Count(pattern, "!") == 1 && !strings.HasPrefix(pattern, "!")) {
+				err = fmt.Errorf("Object pattern '%s' is not valid. '!' must be first character in a pattern", pattern)
+			}
 		}
 	}
 	return err
+}
+
+/*
+Patterns are very simple, following normal MQ lines except that
+they can be prefixed with "!" to exclude them. For example,
+  "APP*,DEV*,!SYSTEM*"
+I decided not to use a full regexp pattern matcher because it's not really
+natural in the MQ world.
+
+Rules for the pattern matching are:
+   All positive implies NONE except listed names
+   All negative implies ALL except listed names
+   Mixed positive and negative entries is done in two phases:
+     Remove the negative patterns
+     Filter the remaining set with the positive patterns
+   Allows patterns like "S*,!SYSTEM*" to still return S.1 but not SYSTEM.DEF.Q
+
+A pattern like "!DEV*,DEV.QUEUE.1" has the negative element
+given priority over the positive. So DEV.QUEUE.1 does not match here.
+I could reverse the logic in the mixed model, but I think this is preferable.
+*/
+func FilterRegExp(patterns string, possibleList []string) []string {
+	var excludeList []string
+	var includeList []string
+	var qList []string
+	var include bool
+
+	assumeAll := false
+	mixed := false
+	excludeListString := "" // Comma-separated strings rebuilt for recursive input to this function
+	includeListString := ""
+
+	objectPatterns := strings.Split(strings.TrimSpace(patterns), ",")
+	for i := 0; i < len(objectPatterns); i++ {
+		r := strings.TrimSpace(objectPatterns[i])
+		if len(r) == 0 {
+			continue
+		}
+		if strings.HasPrefix(r, "!") {
+			// Build a list of patterns to exlude, removing the '!' prefix
+			excludeList = append(excludeList, r[1:])
+			if excludeListString == "" {
+				excludeListString = r
+			} else {
+				excludeListString = excludeListString + "," + r
+
+			}
+		} else {
+			includeList = append(includeList, r)
+			if includeListString == "" {
+				includeListString = r
+			} else {
+				includeListString = includeListString + "," + r
+			}
+		}
+	}
+
+	//fmt.Printf("  Include list: %v (%d)\n", includeList, len(includeList))
+	//fmt.Printf("  Exclude list: %v (%d)\n", excludeList, len(excludeList))
+
+	if len(includeList) > 0 && len(excludeList) == 0 { // all positive
+		assumeAll = false
+	} else if len(excludeList) > 0 && len(includeList) == 0 { // all negative
+		assumeAll = true
+	} else {
+		assumeAll = true
+		mixed = true // Will run a second filter pass
+	}
+
+	for j := 0; j < len(possibleList); j++ {
+		s := strings.TrimSpace(possibleList[j])
+		if len(s) == 0 {
+			continue
+		}
+
+		if assumeAll {
+			include = true
+			for i := 0; i < len(excludeList); i++ {
+				r := excludeList[i]
+				if patternMatch(s, r) {
+					include = false
+				}
+			}
+		} else {
+			include = false
+			for i := 0; i < len(includeList); i++ {
+				r := includeList[i]
+				if patternMatch(s, r) {
+					include = true
+				}
+			}
+		}
+
+		if include {
+			qList = append(qList, s)
+		} else {
+			//fmt.Printf("Excluding %s\n", s)
+		}
+	}
+
+	if mixed {
+		//fmt.Printf("Calling again with patterns %s for %v\n", includeListString, qList)
+		qList = FilterRegExp(includeListString, qList)
+	}
+
+	//fmt.Printf("Discovered qList = %v\n",qList)
+	return qList
+}
+
+func patternMatch(s string, r string) bool {
+	rc := false
+	if strings.HasSuffix(r, "*") {
+		if strings.HasPrefix(s, r[:len(r)-1]) {
+			rc = true
+		}
+	} else if s == r {
+		rc = true
+	}
+
+	//	fmt.Printf("Comparing %s with %s %v\n",s,r,rc)
+	return rc
 }

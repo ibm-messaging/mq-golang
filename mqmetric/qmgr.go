@@ -147,7 +147,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	bytesRead := 0
 	offset := 0
 	datalen := len(buf)
-	if cfh.ParameterCount == 0 {
+	if cfh == nil || cfh.ParameterCount == 0 {
 		return ""
 	}
 

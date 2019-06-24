@@ -25,8 +25,8 @@ package mqmetric
 */
 
 /*
-Functions in this file use the DISPLAY CHSTATUS command to extract metrics
-about running MQ topics
+Functions in this file use the DISPLAY TPSTATUS command to extract metrics
+about MQ topics
 */
 
 import (
@@ -222,7 +222,7 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	bytesRead := 0
 	offset := 0
 	datalen := len(buf)
-	if cfh.ParameterCount == 0 {
+	if cfh == nil || cfh.ParameterCount == 0 {
 		return ""
 	}
 

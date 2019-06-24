@@ -215,6 +215,9 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 		if cfh.Type == ibmmq.MQCFT_XR_SUMMARY || cfh.Type == ibmmq.MQCFT_XR_MSG {
 			return cfh, nil, allDone, err
 		}
+	} else {
+		fmt.Printf("StatusGetReply error : %v\n", err)
+		return nil, nil, allDone, err
 	}
 
 	return cfh, replyBuf[offset:datalen], allDone, err

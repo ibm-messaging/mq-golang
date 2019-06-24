@@ -43,6 +43,7 @@ const (
 	ATTR_CHL_RQMNAME  = "rqmname"
 
 	ATTR_CHL_MESSAGES      = "messages"
+	ATTR_CHL_BATCHES       = "batches"
 	ATTR_CHL_STATUS        = "status"
 	ATTR_CHL_STATUS_SQUASH = ATTR_CHL_STATUS + "_squash"
 	ATTR_CHL_SUBSTATE      = "substate"
@@ -52,6 +53,10 @@ const (
 
 	ATTR_CHL_NETTIME_SHORT = "nettime_short"
 	ATTR_CHL_NETTIME_LONG  = "nettime_long"
+	ATTR_CHL_BATCHSZ_SHORT = "batchsz_short"
+	ATTR_CHL_BATCHSZ_LONG  = "batchsz_long"
+	ATTR_CHL_XQTIME_SHORT  = "xmitq_time_short"
+	ATTR_CHL_XQTIME_LONG   = "xmitq_time_long"
 
 	SQUASH_CHL_STATUS_STOPPED    = 0
 	SQUASH_CHL_STATUS_TRANSITION = 1
@@ -91,6 +96,9 @@ func ChannelInitAttributes() {
 	attr = ATTR_CHL_MESSAGES
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
 	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	attr = ATTR_CHL_BATCHES
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
+	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 
 	// This is decoded by MQCHS_* values
 	attr = ATTR_CHL_STATUS
@@ -115,6 +123,20 @@ func ChannelInitAttributes() {
 	ChannelStatus.Attributes[attr].index = 0
 	attr = ATTR_CHL_NETTIME_LONG
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
+	ChannelStatus.Attributes[attr].index = 1
+
+	attr = ATTR_CHL_BATCHSZ_SHORT
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
+	ChannelStatus.Attributes[attr].index = 0
+	attr = ATTR_CHL_BATCHSZ_LONG
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
+	ChannelStatus.Attributes[attr].index = 1
+
+	attr = ATTR_CHL_XQTIME_SHORT
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
+	ChannelStatus.Attributes[attr].index = 0
+	attr = ATTR_CHL_XQTIME_LONG
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
 	ChannelStatus.Attributes[attr].index = 1
 
 	attr = ATTR_CHL_SINCE_MSG
@@ -252,7 +274,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	bytesRead := 0
 	offset := 0
 	datalen := len(buf)
-	if cfh.ParameterCount == 0 {
+	if cfh == nil || cfh.ParameterCount == 0 {
 		return ""
 	}
 

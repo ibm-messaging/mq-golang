@@ -31,6 +31,7 @@ about MQ queues
 
 import (
 	"github.com/ibm-messaging/mq-golang/ibmmq"
+	//	"fmt"
 	"strings"
 	"time"
 )
@@ -46,6 +47,7 @@ const (
 	ATTR_Q_SINCE_PUT   = "time_since_put"
 	ATTR_Q_SINCE_GET   = "time_since_get"
 	ATTR_Q_MAX_DEPTH   = "attribute_max_depth"
+	ATTR_Q_USAGE       = "attribute_usage"
 )
 
 var QueueStatus StatusSet
@@ -87,13 +89,15 @@ func QueueInitAttributes() {
 		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
 	}
 
-	// This is not really a momitoring metric but it enables calculations to be made such as %full for
+	// This is not really a monitoring metric but it enables calculations to be made such as %full for
 	// the queue. It's extracted at startup of the program via INQUIRE_Q and not updated later even if the
 	// queue definition is changed. It's not easy to generate the % value in this program as the CurDepth will
 	// usually - but not always - come from the published resource stats. So we don't have direct access to it.
 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
 	attr = ATTR_Q_MAX_DEPTH
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", -1)
+	//	attr = ATTR_Q_USAGE
+	//	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", -1)
 
 	attr = ATTR_Q_QTIME_SHORT
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
@@ -128,14 +132,26 @@ func CollectQueueStatus(patterns string) error {
 		return nil
 	}
 
-	for _, pattern := range queuePatterns {
-		pattern = strings.TrimSpace(pattern)
-		if len(pattern) == 0 {
-			continue
+	// If there was a negative pattern, then we have to look through the
+	// list of queues and query status individually. Otherwise we can
+	// use regular MQ patterns to query queues in a batch.
+	if strings.Contains(patterns, "!") {
+		for qName, qi := range qInfoMap {
+			if len(qName) == 0 || !qi.exists {
+				continue
+			}
+			//fmt.Printf("Collecting qStatus for %s\n",qName)
+			err = collectQueueStatus(qName, ibmmq.MQOT_Q)
 		}
-		err = collectQueueStatus(pattern, ibmmq.MQOT_Q)
+	} else {
+		for _, pattern := range queuePatterns {
+			pattern = strings.TrimSpace(pattern)
+			if len(pattern) == 0 {
+				continue
+			}
+			err = collectQueueStatus(pattern, ibmmq.MQOT_Q)
+		}
 	}
-
 	return err
 }
 
@@ -265,7 +281,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	bytesRead := 0
 	offset := 0
 	datalen := len(buf)
-	if cfh.ParameterCount == 0 {
+	if cfh == nil || cfh.ParameterCount == 0 {
 		return ""
 	}
 
@@ -322,6 +338,8 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	if s, ok := qInfoMap[key]; ok {
 		maxDepth := s.MaxDepth
 		QueueStatus.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
+		//	usage := s.Usage
+		//	QueueStatus.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
 	}
 	return key
 }
@@ -373,6 +391,14 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 					qInfo.MaxDepth = v
 				}
 			}
+		case ibmmq.MQIA_USAGE:
+			v := elem.Int64Value[0]
+			if v > 0 {
+				if qInfo, ok := qInfoMap[qName]; ok {
+					qInfo.Usage = v
+				}
+			}
+			//fmt.Printf("MaxQDepth for %s = %d \n",qName,v)
 		}
 
 	}

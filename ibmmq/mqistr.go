@@ -29,6 +29,7 @@ import "C"
 
 import (
 	"fmt"
+	"strings"
 )
 
 /*
@@ -102,6 +103,18 @@ func MQItoString(class string, value int) string {
 
 	case "SUBTYPE":
 		s = C.GoString(C.MQSUBTYPE_STR(v))
+	}
+	return s
+}
+
+func MQItoStringStripPrefix(class string, value int) string {
+	s := MQItoString(class, value)
+	if strings.HasPrefix(s, class) {
+		l := strings.IndexRune(s, '_')
+		if l > 0 {
+			s = s[l:]
+		}
+
 	}
 	return s
 }

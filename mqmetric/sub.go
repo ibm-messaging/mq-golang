@@ -112,7 +112,7 @@ func CollectSubStatus(patterns string) error {
 
 }
 
-// Issue the INQUIRE_QUEUE_STATUS command for a queue or wildcarded queue name
+// Issue the INQUIRE_SUB_STATUS command for a subscription name pattern
 // Collect the responses and build up the statistics
 func collectSubStatus(pattern string) error {
 	var err error
@@ -171,7 +171,7 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	bytesRead := 0
 	offset := 0
 	datalen := len(buf)
-	if cfh.ParameterCount == 0 {
+	if cfh == nil || cfh.ParameterCount == 0 {
 		return ""
 	}
 

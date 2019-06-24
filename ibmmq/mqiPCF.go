@@ -182,8 +182,14 @@ func (p *PCFParameter) Bytes() []byte {
 ReadPCFHeader extracts the MQCFH from an MQ message
 */
 func ReadPCFHeader(buf []byte) (*MQCFH, int) {
-	cfh := new(MQCFH)
+
 	fullLen := len(buf)
+
+	if fullLen < C.MQCFH_STRUC_LENGTH {
+		return nil, 0
+	}
+
+	cfh := new(MQCFH)
 	p := bytes.NewBuffer(buf)
 
 	binary.Read(p, endian, &cfh.Type)
