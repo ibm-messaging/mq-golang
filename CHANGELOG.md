@@ -1,5 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
+## July 11 2018 - v4.0.8
+* Update for MQ 9.1.3 - No new API function introduced
+* mqmetric - Fix leak in subscriptions after rediscovery
+* mqmetric - Add USAGE as a queue label for selection by xmitq
 
 ## June 25 2019 - v4.0.7
 * mqmetric - Allow exclusion patterns for queue names (but not other object types)

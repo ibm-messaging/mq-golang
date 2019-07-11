@@ -217,8 +217,8 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 		}
 	} else {
 		if err.(*ibmmq.MQReturn).MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-		  fmt.Printf("StatusGetReply error : %v\n", err)
-	  }
+			fmt.Printf("StatusGetReply error : %v\n", err)
+		}
 		return nil, nil, allDone, err
 	}
 

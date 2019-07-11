@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  3/8/19 4:14 PM
-*   Build Level:   p912-L190308
+*   Generated on:  6/28/19 2:38 PM
+*   Build Level:   p913-L190628
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -41,6 +41,8 @@ var (
 	MQACH_CURRENT_VERSION          int32  = 1
 	MQACH_LENGTH_1                 int32  = 72
 	MQACH_VERSION_1                int32  = 1
+	MQACTIVE_NO                    int32  = 0
+	MQACTIVE_YES                   int32  = 1
 	MQACTP_FORWARD                 int32  = 1
 	MQACTP_NEW                     int32  = 0
 	MQACTP_REPLY                   int32  = 2
@@ -83,6 +85,8 @@ var (
 	MQAIT_IDPW_LDAP                int32  = 4
 	MQAIT_IDPW_OS                  int32  = 3
 	MQAIT_OCSP                     int32  = 2
+	MQAPPL_IMMOVABLE               int32  = 0
+	MQAPPL_MOVABLE                 int32  = 1
 	MQAS_ACTIVE                    int32  = 6
 	MQAS_INACTIVE                  int32  = 7
 	MQAS_NONE                      int32  = 0
@@ -186,6 +190,7 @@ var (
 	MQBACF_ALTERNATE_SECURITYID    int32  = 7019
 	MQBACF_CF_LEID                 int32  = 7014
 	MQBACF_CONNECTION_ID           int32  = 7006
+	MQBACF_CONN_TAG                int32  = 7038
 	MQBACF_CORREL_ID               int32  = 7011
 	MQBACF_DESTINATION_CORREL_ID   int32  = 7015
 	MQBACF_EVENT_ACCOUNTING_TOKEN  int32  = 7001
@@ -194,7 +199,7 @@ var (
 	MQBACF_FIRST                   int32  = 7001
 	MQBACF_GENERIC_CONNECTION_ID   int32  = 7007
 	MQBACF_GROUP_ID                int32  = 7012
-	MQBACF_LAST_USED               int32  = 7037
+	MQBACF_LAST_USED               int32  = 7038
 	MQBACF_MESSAGE_DATA            int32  = 7020
 	MQBACF_MQBO_STRUCT             int32  = 7021
 	MQBACF_MQCBC_STRUCT            int32  = 7023
@@ -219,6 +224,15 @@ var (
 	MQBACF_XA_XID                  int32  = 7033
 	MQBACF_XQH_CORREL_ID           int32  = 7034
 	MQBACF_XQH_MSG_ID              int32  = 7035
+	MQBALANCED_NO                  int32  = 0
+	MQBALANCED_NOT_APPLICABLE      int32  = 2
+	MQBALANCED_UNKNOWN             int32  = 3
+	MQBALANCED_YES                 int32  = 1
+	MQBALSTATE_HIGH                int32  = 3
+	MQBALSTATE_LOW                 int32  = 1
+	MQBALSTATE_NOT_APPLICABLE      int32  = 0
+	MQBALSTATE_OK                  int32  = 2
+	MQBALSTATE_UNKNOWN             int32  = 4
 	MQBA_FIRST                     int32  = 6001
 	MQBA_LAST                      int32  = 8000
 	MQBL_NULL_TERMINATED           int32  = -1
@@ -249,6 +263,8 @@ var (
 	MQCACF_APPL_DESC               int32  = 3174
 	MQCACF_APPL_FUNCTION           int32  = 3200
 	MQCACF_APPL_IDENTITY_DATA      int32  = 3135
+	MQCACF_APPL_IMMOVABLE_DATE     int32  = 3209
+	MQCACF_APPL_IMMOVABLE_TIME     int32  = 3210
 	MQCACF_APPL_NAME               int32  = 3024
 	MQCACF_APPL_ORIGIN_DATA        int32  = 3136
 	MQCACF_APPL_TAG                int32  = 3058
@@ -325,7 +341,7 @@ var (
 	MQCACF_LAST_PUB_TIME           int32  = 3162
 	MQCACF_LAST_PUT_DATE           int32  = 3128
 	MQCACF_LAST_PUT_TIME           int32  = 3129
-	MQCACF_LAST_USED               int32  = 3208
+	MQCACF_LAST_USED               int32  = 3210
 	MQCACF_LOCAL_Q_NAMES           int32  = 3015
 	MQCACF_LOG_PATH                int32  = 3074
 	MQCACF_MEDIA_LOG_EXTENT_NAME   int32  = 3073
@@ -722,11 +738,12 @@ var (
 	MQCC_OK                        int32  = 0
 	MQCC_UNKNOWN                   int32  = -1
 	MQCC_WARNING                   int32  = 1
-	MQCDC_CURRENT_LENGTH           int32  = 1984
-	MQCDC_CURRENT_VERSION          int32  = 11
+	MQCDC_CURRENT_LENGTH           int32  = 1992
+	MQCDC_CURRENT_VERSION          int32  = 12
 	MQCDC_LENGTH_1                 int32  = 984
 	MQCDC_LENGTH_10                int32  = 1920
 	MQCDC_LENGTH_11                int32  = 1984
+	MQCDC_LENGTH_12                int32  = 1992
 	MQCDC_LENGTH_2                 int32  = 1312
 	MQCDC_LENGTH_3                 int32  = 1480
 	MQCDC_LENGTH_4                 int32  = 1568
@@ -740,6 +757,7 @@ var (
 	MQCDC_VERSION_1                int32  = 1
 	MQCDC_VERSION_10               int32  = 10
 	MQCDC_VERSION_11               int32  = 11
+	MQCDC_VERSION_12               int32  = 12
 	MQCDC_VERSION_2                int32  = 2
 	MQCDC_VERSION_3                int32  = 3
 	MQCDC_VERSION_4                int32  = 4
@@ -748,11 +766,12 @@ var (
 	MQCDC_VERSION_7                int32  = 7
 	MQCDC_VERSION_8                int32  = 8
 	MQCDC_VERSION_9                int32  = 9
-	MQCD_CURRENT_LENGTH            int32  = 1984
-	MQCD_CURRENT_VERSION           int32  = 11
+	MQCD_CURRENT_LENGTH            int32  = 1992
+	MQCD_CURRENT_VERSION           int32  = 12
 	MQCD_LENGTH_1                  int32  = 984
 	MQCD_LENGTH_10                 int32  = 1920
 	MQCD_LENGTH_11                 int32  = 1984
+	MQCD_LENGTH_12                 int32  = 1992
 	MQCD_LENGTH_2                  int32  = 1312
 	MQCD_LENGTH_3                  int32  = 1480
 	MQCD_LENGTH_4                  int32  = 1568
@@ -764,6 +783,7 @@ var (
 	MQCD_VERSION_1                 int32  = 1
 	MQCD_VERSION_10                int32  = 10
 	MQCD_VERSION_11                int32  = 11
+	MQCD_VERSION_12                int32  = 12
 	MQCD_VERSION_2                 int32  = 2
 	MQCD_VERSION_3                 int32  = 3
 	MQCD_VERSION_4                 int32  = 4
@@ -982,7 +1002,7 @@ var (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 912
+	MQCMDL_CURRENT_LEVEL           int32  = 913
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1020,6 +1040,7 @@ var (
 	MQCMDL_LEVEL_910               int32  = 910
 	MQCMDL_LEVEL_911               int32  = 911
 	MQCMDL_LEVEL_912               int32  = 912
+	MQCMDL_LEVEL_913               int32  = 913
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1101,6 +1122,7 @@ var (
 	MQCMD_DEREGISTER_SUBSCRIBER    int32  = 62
 	MQCMD_ESCAPE                   int32  = 38
 	MQCMD_INQUIRE_AMQP_CAPABILITY  int32  = 216
+	MQCMD_INQUIRE_APPL_STATUS      int32  = 220
 	MQCMD_INQUIRE_ARCHIVE          int32  = 114
 	MQCMD_INQUIRE_AUTH_INFO        int32  = 83
 	MQCMD_INQUIRE_AUTH_INFO_NAMES  int32  = 84
@@ -1235,6 +1257,7 @@ var (
 	MQCNO_CURRENT_LENGTH           int32  = 256
 	MQCNO_CURRENT_VERSION          int32  = 7
 	MQCNO_FASTPATH_BINDING         int32  = 1
+	MQCNO_GENERATE_CONN_TAG        int32  = 2097152
 	MQCNO_HANDLE_SHARE_BLOCK       int32  = 64
 	MQCNO_HANDLE_SHARE_NONE        int32  = 32
 	MQCNO_HANDLE_SHARE_NO_BLOCK    int32  = 128
@@ -1662,6 +1685,14 @@ var (
 	MQIACF_API_ENVIRONMENT         int32  = 1358
 	MQIACF_APPL_COUNT              int32  = 1089
 	MQIACF_APPL_FUNCTION_TYPE      int32  = 1400
+	MQIACF_APPL_IMMOVABLE_COUNT    int32  = 1432
+	MQIACF_APPL_IMMOVABLE_REASON   int32  = 1435
+	MQIACF_APPL_INFO_APPL          int32  = 1429
+	MQIACF_APPL_INFO_ATTRS         int32  = 1425
+	MQIACF_APPL_INFO_LOCAL         int32  = 1431
+	MQIACF_APPL_INFO_QMGR          int32  = 1430
+	MQIACF_APPL_INFO_TYPE          int32  = 1428
+	MQIACF_APPL_MOVABLE            int32  = 1426
 	MQIACF_ARCHIVE_LOG_SIZE        int32  = 1416
 	MQIACF_ASYNC_STATE             int32  = 1308
 	MQIACF_AUTHORIZATION_LIST      int32  = 1115
@@ -1675,6 +1706,8 @@ var (
 	MQIACF_AUX_ERROR_DATA_INT_1    int32  = 1070
 	MQIACF_AUX_ERROR_DATA_INT_2    int32  = 1071
 	MQIACF_BACKOUT_COUNT           int32  = 1241
+	MQIACF_BALANCED                int32  = 1433
+	MQIACF_BALSTATE                int32  = 1434
 	MQIACF_BRIDGE_TYPE             int32  = 1073
 	MQIACF_BROKER_COUNT            int32  = 1088
 	MQIACF_BROKER_OPTIONS          int32  = 1077
@@ -1763,7 +1796,7 @@ var (
 	MQIACF_INVALID_DEST_COUNT      int32  = 1371
 	MQIACF_ITEM_COUNT              int32  = 1378
 	MQIACF_KNOWN_DEST_COUNT        int32  = 1369
-	MQIACF_LAST_USED               int32  = 1424
+	MQIACF_LAST_USED               int32  = 1435
 	MQIACF_LDAP_CONNECTION_STATUS  int32  = 1409
 	MQIACF_LISTENER_ATTRS          int32  = 1222
 	MQIACF_LISTENER_STATUS_ATTRS   int32  = 1223
@@ -1858,6 +1891,7 @@ var (
 	MQIACF_REFRESH_TYPE            int32  = 1078
 	MQIACF_REGISTRATION_OPTIONS    int32  = 1081
 	MQIACF_REG_REG_OPTIONS         int32  = 1091
+	MQIACF_REMOTE_QMGR_ACTIVE      int32  = 1427
 	MQIACF_REMOVE_AUTHREC          int32  = 1398
 	MQIACF_REMOVE_QUEUES           int32  = 1096
 	MQIACF_REPLACE                 int32  = 1006
@@ -2085,7 +2119,7 @@ var (
 	MQIACH_KEEP_ALIVE_INTERVAL     int32  = 1566
 	MQIACH_LAST_SEQUENCE_NUMBER    int32  = 1529
 	MQIACH_LAST_SEQ_NUMBER         int32  = 1529
-	MQIACH_LAST_USED               int32  = 1645
+	MQIACH_LAST_USED               int32  = 1646
 	MQIACH_LISTENER_CONTROL        int32  = 1601
 	MQIACH_LISTENER_STATUS         int32  = 1599
 	MQIACH_LONG_RETRIES_LEFT       int32  = 1540
@@ -2131,6 +2165,7 @@ var (
 	MQIACH_SHORT_RETRY             int32  = 1505
 	MQIACH_SHORT_TIMER             int32  = 1504
 	MQIACH_SOCKET                  int32  = 1521
+	MQIACH_SPL_PROTECTION          int32  = 1646
 	MQIACH_SSLTASKS_MAX            int32  = 1588
 	MQIACH_SSLTASKS_STARTED        int32  = 1587
 	MQIACH_SSL_CLIENT_AUTH         int32  = 1568
@@ -2586,6 +2621,11 @@ var (
 	MQIMGRCOV_AS_Q_MGR             int32  = 2
 	MQIMGRCOV_NO                   int32  = 0
 	MQIMGRCOV_YES                  int32  = 1
+	MQIMMREASON_APPLNAME_CHANGED   int32  = 4
+	MQIMMREASON_MOVING             int32  = 3
+	MQIMMREASON_NONE               int32  = 0
+	MQIMMREASON_NOT_CLIENT         int32  = 1
+	MQIMMREASON_NOT_RECONNECTABLE  int32  = 2
 	MQIMPO_CONVERT_TYPE            int32  = 2
 	MQIMPO_CONVERT_VALUE           int32  = 32
 	MQIMPO_CURRENT_LENGTH          int32  = 64
@@ -3111,6 +3151,7 @@ var (
 	MQRCCF_ALLOC_RETRY_ERROR       int32  = 3164
 	MQRCCF_ALLOC_SLOW_TIMER_ERROR  int32  = 3165
 	MQRCCF_ALREADY_JOINED          int32  = 3157
+	MQRCCF_APPL_STATUS_NOT_FOUND   int32  = 4097
 	MQRCCF_ATTR_VALUE_ERROR        int32  = 4005
 	MQRCCF_ATTR_VALUE_FIXED        int32  = 3213
 	MQRCCF_AUTH_VALUE_ERROR        int32  = 3171
@@ -3272,6 +3313,7 @@ var (
 	MQRCCF_IPADDR_RANGE_CONFLICT   int32  = 3343
 	MQRCCF_IPADDR_RANGE_ERROR      int32  = 3346
 	MQRCCF_KEEP_ALIVE_INT_ERROR    int32  = 4060
+	MQRCCF_KWD_VALUE_WRONG_TYPE    int32  = 4096
 	MQRCCF_LIKE_OBJECT_WRONG_TYPE  int32  = 4003
 	MQRCCF_LISTENER_CONFLICT       int32  = 3232
 	MQRCCF_LISTENER_NOT_STARTED    int32  = 4020
@@ -3851,6 +3893,7 @@ var (
 	MQRC_Q_MGR_NOT_ACTIVE          int32  = 2223
 	MQRC_Q_MGR_NOT_AVAILABLE       int32  = 2059
 	MQRC_Q_MGR_QUIESCING           int32  = 2161
+	MQRC_Q_MGR_RECONNECT_REQUESTED int32  = 2601
 	MQRC_Q_MGR_STOPPING            int32  = 2162
 	MQRC_Q_NOT_EMPTY               int32  = 2055
 	MQRC_Q_SERVICE_INTERVAL_HIGH   int32  = 2226
@@ -4281,6 +4324,9 @@ var (
 	MQSO_SET_IDENTITY_CONTEXT      int32  = 64
 	MQSO_WILDCARD_CHAR             int32  = 1048576
 	MQSO_WILDCARD_TOPIC            int32  = 2097152
+	MQSPL_AS_POLICY                int32  = 2
+	MQSPL_PASSTHRU                 int32  = 0
+	MQSPL_REMOVE                   int32  = 1
 	MQSP_AVAILABLE                 int32  = 1
 	MQSP_NOT_AVAILABLE             int32  = 0
 	MQSQQM_IGNORE                  int32  = 1

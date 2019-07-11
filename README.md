@@ -6,7 +6,7 @@ This repository demonstrates how you can call IBM MQ from applications written i
 
 This repository previously contained sample programs that exported MQ statistics to
 some monitoring packages. These have now been moved to a
-new [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
+[GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
 A minimum level of MQ V8 is required to build these packages. However, note that
 the monitoring data published by the queue manager and exploited in the mqmetric package
@@ -57,6 +57,9 @@ but subsequent steps are independent of the platform.
 
 * Install the Go runtime and compiler. On Linux, the packaging may vary but a typical
 directory for the code is `/usr/lib/golang`.
+The compiler should be at least version 10. If you see an error similar to "ld: NULL not defined"
+when building a program then it is likely you need to upgrade your compiler.
+
 
 * Create a working directory. For example, ```mkdir $HOME/gowork```
 
@@ -67,7 +70,7 @@ directory for the code is `/usr/lib/golang`.
   export GOPATH=$HOME/gowork
 ```
 
-* If using a version of Go from after 2017, you must set environment variables to permit some compile/link flags. This is due to a security fix in the compiler.
+* On Linux, you must set environment variables to permit some compile/link flags. This is due to a security fix in the compiler.
 
 ```
 export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"

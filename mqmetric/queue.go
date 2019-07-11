@@ -96,8 +96,8 @@ func QueueInitAttributes() {
 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
 	attr = ATTR_Q_MAX_DEPTH
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", -1)
-	//	attr = ATTR_Q_USAGE
-	//	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", -1)
+	attr = ATTR_Q_USAGE
+	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", -1)
 
 	attr = ATTR_Q_QTIME_SHORT
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
@@ -241,7 +241,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH)}
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE)}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -338,8 +338,8 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	if s, ok := qInfoMap[key]; ok {
 		maxDepth := s.MaxDepth
 		QueueStatus.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
-		//	usage := s.Usage
-		//	QueueStatus.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
+		usage := s.Usage
+		QueueStatus.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
 	}
 	return key
 }
@@ -391,6 +391,7 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 					qInfo.MaxDepth = v
 				}
 			}
+			//fmt.Printf("MaxQDepth for %s = %d \n",qName,v)
 		case ibmmq.MQIA_USAGE:
 			v := elem.Int64Value[0]
 			if v > 0 {
@@ -398,7 +399,6 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 					qInfo.Usage = v
 				}
 			}
-			//fmt.Printf("MaxQDepth for %s = %d \n",qName,v)
 		}
 
 	}

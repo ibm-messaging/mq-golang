@@ -194,6 +194,8 @@ func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 	mqcd.DefReconnect = C.MQLONG(gocd.DefReconnect)
 	setMQIString((*C.char)(&mqcd.CertificateLabel[0]), gocd.CertificateLabel, C.MQ_CERT_LABEL_LENGTH)
 
+	// mqcd.SPLProtection was introduced with version 12 of structure (V9.1.3) but not relevant for clients
+
 	return
 }
 

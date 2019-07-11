@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2018
+  Copyright (c) IBM Corporation 2016, 2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -782,8 +782,13 @@ func createSubscriptions() error {
 					}
 				}
 			} else {
-				sub, err = subscribe(ty.ObjectTopic, &replyQObj)
-				ty.subHobj[QMgrMapKey] = sub
+				if _, ok := ty.subHobj[QMgrMapKey]; !ok {
+
+					// Don't have a qmgr-level subscription to this topic. Should
+					// only do this subscription once at startup
+					sub, err = subscribe(ty.ObjectTopic, &replyQObj)
+					ty.subHobj[QMgrMapKey] = sub
+				}
 			}
 
 			if err != nil {

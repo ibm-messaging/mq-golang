@@ -22,11 +22,6 @@ ENV GOVERSION=1.10 \
     ORG="github.com/ibm-messaging" \
     REPO="mq-golang"
 
-# Location of the downloadable MQ client package \
-ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
-    RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
-    VRMF=9.1.2.0
-
 # Install the Go compiler and Git
 RUN export DEBIAN_FRONTEND=noninteractive \
   && bash -c 'source /etc/os-release; \
@@ -53,6 +48,11 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
   && mkdir -p $GOPATH/src/$ORG \
   && mkdir -p /opt/mqm \
   && chmod a+rx /opt/mqm
+
+# Location of the downloadable MQ client package \
+ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
+    RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
+    VRMF=9.1.3.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against.
