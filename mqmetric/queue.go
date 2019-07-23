@@ -30,8 +30,8 @@ about MQ queues
 */
 
 import (
-	"github.com/ibm-messaging/mq-golang/ibmmq"
 	//	"fmt"
+	"github.com/ibm-messaging/mq-golang/ibmmq"
 	"strings"
 	"time"
 )
@@ -48,6 +48,17 @@ const (
 	ATTR_Q_SINCE_GET   = "time_since_get"
 	ATTR_Q_MAX_DEPTH   = "attribute_max_depth"
 	ATTR_Q_USAGE       = "attribute_usage"
+
+	// The next two attributes are given the same name
+	// as the published statistics from the amqsrua-style
+	// vaues. That allows a dashboard for Distributed and z/OS
+	// to merge the same query.
+	ATTR_Q_INTERVAL_PUT = "mqput_mqput1_count"
+	ATTR_Q_INTERVAL_GET = "mqget_count"
+	// This is the Highest Depth returned over an interval via the
+	// RESET QSTATS command. Contrast with the attribute_max_depth
+	// value which is the DISPLAY QL(x) MAXDEPTH attribute.
+	ATTR_Q_INTERVAL_HI_DEPTH = "hi_depth"
 )
 
 var QueueStatus StatusSet
@@ -89,9 +100,19 @@ func QueueInitAttributes() {
 		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
 	}
 
+	if platform == ibmmq.MQPL_ZOS && useResetQStats {
+		attr = ATTR_Q_INTERVAL_PUT
+		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Put/Put1 Count", ibmmq.MQIA_MSG_ENQ_COUNT)
+		attr = ATTR_Q_INTERVAL_GET
+		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Get Count", ibmmq.MQIA_MSG_DEQ_COUNT)
+		attr = ATTR_Q_INTERVAL_HI_DEPTH
+		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Highest Depth", ibmmq.MQIA_HIGH_Q_DEPTH)
+	}
+
 	// This is not really a monitoring metric but it enables calculations to be made such as %full for
 	// the queue. It's extracted at startup of the program via INQUIRE_Q and not updated later even if the
-	// queue definition is changed. It's not easy to generate the % value in this program as the CurDepth will
+	// queue definition is changed until rediscovery of the queues on a schedule.
+	// It's not easy to generate the % value in this program as the CurDepth will
 	// usually - but not always - come from the published resource stats. So we don't have direct access to it.
 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
 	attr = ATTR_Q_MAX_DEPTH
@@ -142,6 +163,9 @@ func CollectQueueStatus(patterns string) error {
 			}
 			//fmt.Printf("Collecting qStatus for %s\n",qName)
 			err = collectQueueStatus(qName, ibmmq.MQOT_Q)
+			if err == nil && useResetQStats {
+				err = collectResetQStats(qName)
+			}
 		}
 	} else {
 		for _, pattern := range queuePatterns {
@@ -150,6 +174,9 @@ func CollectQueueStatus(patterns string) error {
 				continue
 			}
 			err = collectQueueStatus(pattern, ibmmq.MQOT_Q)
+			if err == nil && useResetQStats {
+				err = collectResetQStats(pattern)
+			}
 		}
 	}
 	return err
@@ -198,6 +225,43 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 		cfh, buf, allReceived, err = statusGetReply()
 		if buf != nil {
 			parseQData(instanceType, cfh, buf)
+		}
+	}
+
+	return err
+}
+
+func collectResetQStats(pattern string) error {
+	var err error
+
+	statusClearReplyQ()
+	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+
+	// Can allow all the other fields to default
+	cfh.Command = ibmmq.MQCMD_RESET_Q_STATS
+
+	// Add the parameters one at a time into a buffer
+	pcfparm := new(ibmmq.PCFParameter)
+	pcfparm.Type = ibmmq.MQCFT_STRING
+	pcfparm.Parameter = ibmmq.MQCA_Q_NAME
+	pcfparm.String = []string{pattern}
+	cfh.ParameterCount++
+	buf = append(buf, pcfparm.Bytes()...)
+
+	buf = append(cfh.Bytes(), buf...)
+
+	// And now put the command to the queue
+	err = cmdQObj.Put(putmqmd, pmo, buf)
+	if err != nil {
+		return err
+	}
+
+	// Now get the responses - loop until all have been received (one
+	// per queue) or we run out of time
+	for allReceived := false; !allReceived; {
+		cfh, buf, allReceived, err = statusGetReply()
+		if buf != nil {
+			parseResetQStatsData(cfh, buf)
 		}
 	}
 
@@ -334,13 +398,65 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	now := time.Now()
 	QueueStatus.Attributes[ATTR_Q_SINCE_PUT].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
 	QueueStatus.Attributes[ATTR_Q_SINCE_GET].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
-
 	if s, ok := qInfoMap[key]; ok {
-		maxDepth := s.MaxDepth
+		maxDepth := s.AttrMaxDepth
 		QueueStatus.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
-		usage := s.Usage
+		usage := s.AttrUsage
 		QueueStatus.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
 	}
+	return key
+}
+
+// Given a PCF response message, parse it to extract the desired statistics
+func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
+	var elem *ibmmq.PCFParameter
+
+	qName := ""
+	key := ""
+
+	parmAvail := true
+	bytesRead := 0
+	offset := 0
+	datalen := len(buf)
+	if cfh == nil || cfh.ParameterCount == 0 {
+		return ""
+	}
+
+	// Parse it once to extract the fields that are needed for the map key
+	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+		offset += bytesRead
+		// Have we now reached the end of the message
+		if offset >= datalen {
+			parmAvail = false
+		}
+
+		// Only one field needed for queues
+		switch elem.Parameter {
+		case ibmmq.MQCA_Q_NAME:
+			qName = strings.TrimSpace(elem.String[0])
+		}
+	}
+
+	// Create a unique key for this instance
+	key = qName
+
+	QueueStatus.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
+
+	// And then re-parse the message so we can store the metrics now knowing the map key
+	parmAvail = true
+	offset = 0
+	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+		offset += bytesRead
+		// Have we now reached the end of the message
+		if offset >= datalen {
+			parmAvail = false
+		}
+
+		statusGetIntAttributes(QueueStatus, elem, key)
+	}
+
 	return key
 }
 
@@ -388,7 +504,7 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 			v := elem.Int64Value[0]
 			if v > 0 {
 				if qInfo, ok := qInfoMap[qName]; ok {
-					qInfo.MaxDepth = v
+					qInfo.AttrMaxDepth = v
 				}
 			}
 			//fmt.Printf("MaxQDepth for %s = %d \n",qName,v)
@@ -396,7 +512,7 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 			v := elem.Int64Value[0]
 			if v > 0 {
 				if qInfo, ok := qInfoMap[qName]; ok {
-					qInfo.Usage = v
+					qInfo.AttrUsage = v
 				}
 			}
 		}

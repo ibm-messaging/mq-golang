@@ -26,7 +26,6 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 
 import (
 	"fmt"
-
 	"github.com/ibm-messaging/mq-golang/ibmmq"
 )
 
@@ -49,6 +48,7 @@ var (
 
 	usePublications = true
 	useStatus       = false
+	useResetQStats  = false
 )
 
 type ConnectionConfig struct {
@@ -59,6 +59,7 @@ type ConnectionConfig struct {
 
 	UsePublications bool
 	UseStatus       bool
+	UseResetQStats  bool
 }
 
 /*
@@ -90,6 +91,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		gocno.SecurityParms = gocsp
 	}
 
+	logDebug("Connecting to queue manager %s", qMgrName)
 	qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
 		qmgrConnected = true
@@ -117,6 +119,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		if err == nil {
 			selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
 				ibmmq.MQIA_COMMAND_LEVEL,
+				ibmmq.MQIA_PERFORMANCE_EVENT,
 				ibmmq.MQIA_PLATFORM}
 
 			v, err = qMgrObject.InqMap(selectors)
@@ -126,6 +129,12 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
 				if platform == ibmmq.MQPL_ZOS {
 					usePublications = false
+					useResetQStats = cc.UseResetQStats
+					evEnabled := v[ibmmq.MQIA_PERFORMANCE_EVENT].(int32)
+					if useResetQStats && evEnabled == 0 {
+						err = fmt.Errorf("Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)")
+						errorString = "Command"
+					}
 				} else {
 					if cc.UsePublications == true {
 						if commandLevel < 900 && platform != ibmmq.MQPL_APPLIANCE {
@@ -143,6 +152,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 			// Don't need the qMgrObject any more
 			qMgrObject.Close(0)
 
+		} else {
+			errorString = "Cannot open queue manager object"
 		}
 	}
 
@@ -189,7 +200,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		mqod.ObjectName = replyQ
 		statusReplyQObj, err = qMgr.Open(mqod, openOptions)
 		if err != nil {
-			errorString = "Cannot open queue" + replyQ
+			errorString = "Cannot open queue " + replyQ
 		}
 	}
 

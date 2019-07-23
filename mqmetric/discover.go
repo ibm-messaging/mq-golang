@@ -81,10 +81,10 @@ type AllMetrics struct {
 }
 
 type QInfo struct {
-	MaxDepth        int64
-	Usage           int64
-	exists          bool // Used during rediscovery
-	firstCollection bool // To indicate discard needed of first stat
+	AttrMaxDepth    int64 // The queue attribute value. Not the max depth reported by RESET QSTATS
+	AttrUsage       int64 // Normal or XMITQ
+	exists          bool  // Used during rediscovery
+	firstCollection bool  // To indicate discard needed of first stat
 }
 
 // QMgrMapKey can never be a real object name and is therefore useful in
@@ -559,7 +559,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			if qInfoElem, ok = qInfoMap[qName]; !ok {
 				qInfoElem = new(QInfo)
 			}
-			qInfoElem.MaxDepth = defaultMaxQDepth
+			qInfoElem.AttrMaxDepth = defaultMaxQDepth
 			qInfoElem.exists = true
 			qInfoMap[qName] = qInfoElem
 		}
@@ -696,7 +696,8 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 				truncation = false
 				cfh, offset := ibmmq.ReadPCFHeader(buf)
 				if cfh.CompCode != ibmmq.MQCC_OK {
-					return objectList, fmt.Errorf("PCF command failed with CC %s [%d] RC %s [%d]",
+					return objectList, fmt.Errorf("PCF command %s [%d] failed with CC %s [%d] RC %s [%d]",
+						ibmmq.MQItoString("CMD", int(cfh.Command)), cfh.Command,
 						ibmmq.MQItoString("CC", int(cfh.CompCode)), cfh.CompCode,
 						ibmmq.MQItoString("RC", int(cfh.Reason)), cfh.Reason)
 				} else {
