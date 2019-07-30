@@ -98,6 +98,23 @@ func NewMQOD() *MQOD {
 	return od
 }
 
+func checkOD(good *MQOD, verb string) error {
+	mqrc := C.MQRC_NONE
+
+	if len(good.AlternateSecurityId) != C.MQ_SECURITY_ID_LENGTH {
+		mqrc = C.MQRC_OD_ERROR
+	}
+
+	if mqrc != C.MQRC_NONE {
+		mqreturn := MQReturn{MQCC: C.MQCC_FAILED,
+			MQRC: int32(mqrc),
+			verb: verb,
+		}
+		return &mqreturn
+	}
+	return nil
+}
+
 /*
  * It is expected that copyXXtoC and copyXXfromC will be called as
  * matching pairs. That means that we can handle the MQCHARV type

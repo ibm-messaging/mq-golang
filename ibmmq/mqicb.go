@@ -145,6 +145,15 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	var mqmd C.MQMD
 	var mqgmo C.MQGMO
 
+	err := checkMD(gomd, "MQCB")
+	if err != nil {
+		return err
+	}
+	err = checkGMO(gogmo, "MQCB")
+	if err != nil {
+		return err
+	}
+
 	mqOperation = C.MQLONG(goOperation)
 	copyCBDtoC(&mqcbd, gocbd)
 	copyMDtoC(&mqmd, gomd)

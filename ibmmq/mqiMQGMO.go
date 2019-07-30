@@ -75,6 +75,23 @@ func NewMQGMO() *MQGMO {
 	return gmo
 }
 
+func checkGMO(gogmo *MQGMO, verb string) error {
+	mqrc := C.MQRC_NONE
+
+	if len(gogmo.MsgToken) != C.MQ_MSG_TOKEN_LENGTH {
+		mqrc = C.MQRC_GMO_ERROR
+	}
+
+	if mqrc != C.MQRC_NONE {
+		mqreturn := MQReturn{MQCC: C.MQCC_FAILED,
+			MQRC: int32(mqrc),
+			verb: verb,
+		}
+		return &mqreturn
+	}
+	return nil
+}
+
 func copyGMOtoC(mqgmo *C.MQGMO, gogmo *MQGMO) {
 	var i int
 

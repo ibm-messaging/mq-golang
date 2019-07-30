@@ -90,6 +90,25 @@ func NewMQSD() *MQSD {
 	return sd
 }
 
+func checkSD(gosd *MQSD, verb string) error {
+	mqrc := C.MQRC_NONE
+
+	if len(gosd.AlternateSecurityId) != C.MQ_SECURITY_ID_LENGTH {
+		mqrc = C.MQRC_SD_ERROR
+	}
+	if len(gosd.PubAccountingToken) != C.MQ_ACCOUNTING_TOKEN_LENGTH {
+		mqrc = C.MQRC_SD_ERROR
+	}
+	if mqrc != C.MQRC_NONE {
+		mqreturn := MQReturn{MQCC: C.MQCC_FAILED,
+			MQRC: int32(mqrc),
+			verb: verb,
+		}
+		return &mqreturn
+	}
+	return nil
+}
+
 /*
 It is expected that copyXXtoC and copyXXfromC will be called as
 matching pairs. That means that we can handle the MQCHARV type

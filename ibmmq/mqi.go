@@ -336,6 +336,11 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 		qMgr: x,
 	}
 
+	err := checkSD(gosd, "MQSUB")
+	if err != nil {
+		return subObject, err
+	}
+
 	copySDtoC(&mqsd, gosd)
 
 	C.MQSUB(x.hConn,
@@ -504,6 +509,11 @@ func (object MQObject) Put(gomd *MQMD,
 	var mqpmo C.MQPMO
 	var ptr C.PMQVOID
 
+	err := checkMD(gomd, "MQPUT")
+	if err != nil {
+		return err
+	}
+
 	bufflen := len(buffer)
 
 	copyMDtoC(&mqmd, gomd)
@@ -549,6 +559,11 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	var mqpmo C.MQPMO
 	var mqod C.MQOD
 	var ptr C.PMQVOID
+
+	err := checkMD(gomd, "MQPUT1")
+	if err != nil {
+		return err
+	}
 
 	copyODtoC(&mqod, good)
 	copyMDtoC(&mqmd, gomd)
@@ -599,6 +614,15 @@ func (object MQObject) Get(gomd *MQMD,
 	var mqgmo C.MQGMO
 	var datalen C.MQLONG
 	var ptr C.PMQVOID
+
+	err := checkMD(gomd, "MQGET")
+	if err != nil {
+		return 0, err
+	}
+	err = checkGMO(gogmo, "MQGET")
+	if err != nil {
+		return 0, err
+	}
 
 	bufflen := len(buffer)
 

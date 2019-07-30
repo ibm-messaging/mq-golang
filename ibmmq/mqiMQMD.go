@@ -103,6 +103,32 @@ func NewMQMD() *MQMD {
 	return md
 }
 
+func checkMD(gomd *MQMD, verb string) error {
+	mqrc := C.MQRC_NONE
+
+	if len(gomd.MsgId) != C.MQ_MSG_ID_LENGTH {
+		mqrc = C.MQRC_MSG_ID_ERROR
+	}
+	if len(gomd.CorrelId) != C.MQ_CORREL_ID_LENGTH {
+		mqrc = C.MQRC_CORREL_ID_ERROR
+	}
+	if len(gomd.GroupId) != C.MQ_GROUP_ID_LENGTH {
+		mqrc = C.MQRC_GROUP_ID_ERROR
+	}
+	if len(gomd.AccountingToken) != C.MQ_ACCOUNTING_TOKEN_LENGTH {
+		mqrc = C.MQRC_MD_ERROR // No specific error defined
+	}
+
+	if mqrc != C.MQRC_NONE {
+		mqreturn := MQReturn{MQCC: C.MQCC_FAILED,
+			MQRC: int32(mqrc),
+			verb: verb,
+		}
+		return &mqreturn
+	}
+	return nil
+}
+
 func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 	var i int
 	setMQIString((*C.char)(&mqmd.StrucId[0]), "MD  ", 4)

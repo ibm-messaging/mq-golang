@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## July 30 2019 - v4.0.10
+* ibmmq - Add error checking to some structure fields (#111)
+
 ## July 22 2019 - v4.0.9
 * mqmetric - Support RESET QSTATS on z/OS queue manager
 * mqmetric - Add a Logger class to enable debug output
