@@ -139,27 +139,64 @@ func mainWithRc() int {
 			msgAvail = false
 		}
 
-		// Create a buffer for the message data. This one is large enough
-		// for the messages put by the amqsput sample.
-		buffer := make([]byte, 1024)
+		// There are now two forms of the Get verb.
+		// The original Get() takes
+		// a buffer and returns the length of the message. The user can then
+		// use a slice operation to extract just the relevant data.
+		//
+		// The new GetSlice() returns the message data pre-sliced as an extra
+		// return value.
+		//
+		// This boolean just determines which Get variation is demonstrated in the sample
+		useGetSlice := true
+		if useGetSlice {
+			// Create a buffer for the message data. This one is large enough
+			// for the messages put by the amqsput sample. Note that in this case
+			// the make() operation is just allocating space - len(buffer)==0 initially.
+			buffer := make([]byte, 0, 1024)
 
-		// Now we can try to get the message
-		datalen, err = qObject.Get(getmqmd, gmo, buffer)
+			// Now we can try to get the message. This operation returns
+			// a buffer that can be used directly.
+			buffer, datalen, err = qObject.GetSlice(getmqmd, gmo, buffer)
 
-		if err != nil {
-			msgAvail = false
-			fmt.Println(err)
-			mqret := err.(*ibmmq.MQReturn)
-			if mqret.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
-				// If there's no message available, then I won't treat that as a real error as
-				// it's an expected situation
-				err = nil
+			if err != nil {
+				msgAvail = false
+				fmt.Println(err)
+				mqret := err.(*ibmmq.MQReturn)
+				if mqret.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
+					// If there's no message available, then I won't treat that as a real error as
+					// it's an expected situation
+					err = nil
+				}
+			} else {
+				// Assume the message is a printable string, which it will be
+				// if it's been created by the amqsput program
+				fmt.Printf("Got message of length %d: ", datalen)
+				fmt.Println(strings.TrimSpace(string(buffer)))
 			}
 		} else {
-			// Assume the message is a printable string, which it will be
-			// if it's been created by the amqsput program
-			fmt.Printf("Got message of length %d: ", datalen)
-			fmt.Println(strings.TrimSpace(string(buffer[:datalen])))
+			// Create a buffer for the message data. This one is large enough
+			// for the messages put by the amqsput sample.
+			buffer := make([]byte, 1024)
+
+			// Now we can try to get the message
+			datalen, err = qObject.Get(getmqmd, gmo, buffer)
+
+			if err != nil {
+				msgAvail = false
+				fmt.Println(err)
+				mqret := err.(*ibmmq.MQReturn)
+				if mqret.MQRC == ibmmq.MQRC_NO_MSG_AVAILABLE {
+					// If there's no message available, then I won't treat that as a real error as
+					// it's an expected situation
+					err = nil
+				}
+			} else {
+				// Assume the message is a printable string, which it will be
+				// if it's been created by the amqsput program
+				fmt.Printf("Got message of length %d: ", datalen)
+				fmt.Println(strings.TrimSpace(string(buffer[:datalen])))
+			}
 		}
 	}
 

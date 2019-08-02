@@ -1,6 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## August 2 2019 - v4.1.0
+* ibmmq - Add new verb GetSlice to mirror Get() but which returns ready-sized buffer (#110)
+  * See updated sample amqsget.go
+* Some comment tidying up. Make CMQC constants constant.
+
 ## July 30 2019 - v4.0.10
 * ibmmq - Add error checking to some structure fields (#111)
 
