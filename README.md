@@ -10,7 +10,7 @@ some monitoring packages. These have now been moved to a
 
 A minimum level of MQ V8 is required to build these packages. However, note that
 the monitoring data published by the queue manager and exploited in the mqmetric package
-is not available before MQ V9.
+is not available before MQ V9. A limited set of metrics can be monitored for MQ V8 instances by setting `ibmmq.usePublications=false`.
 
 ## Health Warning
 
