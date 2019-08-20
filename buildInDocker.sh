@@ -27,6 +27,9 @@ echo "Running as " `id`
 # Build the libraries so they can be used by other programs
 cd $GOPATH/src
 
+echo "Using compiler:"
+go version
+
 for pkg in $ORG/$REPO/ibmmq $ORG/$REPO/mqmetric
 do
   lib=`basename $pkg`
@@ -47,3 +50,4 @@ done
 
 echo "Building program: mqitest"
 go build -o bin/mqitest $srcdir/mqitest/mqitest.go
+

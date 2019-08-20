@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=ubuntu:18.10
+ARG BASE_IMAGE=ubuntu:19.04
 FROM $BASE_IMAGE
 
 ARG GOPATH_ARG="/go"
 
-ENV GOVERSION=1.10 \
+ENV GOVERSION=1.12 \
     GOPATH=$GOPATH_ARG \
-    ORG="github.com/ibm-messaging" \
-    REPO="mq-golang"
+    ORG="github.com/ibm-messaging"
+
 
 # Install the Go compiler and Git
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -67,6 +67,7 @@ RUN chmod 777 $GOPATH/buildInDocker.sh
 
 # Copy the rest of the source tree from this directory into the container
 # And make sure it's readable by the id that will run the compiles (not just root)
+ENV  REPO="mq-golang"
 COPY . $GOPATH/src/$ORG/$REPO
 RUN chmod -R a+rx $GOPATH/src
 
