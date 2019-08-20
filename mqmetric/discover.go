@@ -97,6 +97,10 @@ const defaultMaxQDepth = 5000
 // Metrics is the global variable for the tree of data
 var Metrics AllMetrics
 
+// Only issue the warning about a '/' in queue name once.
+var globalSlashWarning = false;
+var localSlashWarning = false;
+
 var qInfoMap map[string]*QInfo
 var locale string
 var discoveryDone = false
@@ -550,12 +554,28 @@ func discoverQueues(monitoredQueuePatterns string) error {
 		qList, err = inquireObjects(monitoredQueuePatterns, ibmmq.MQOT_Q)
 	}
 
+  localSlashWarning = false
 	if len(qList) > 0 {
 		//fmt.Printf("Monitoring Queues: %v\n", qList)
 		for i := 0; i < len(qList); i++ {
 			var qInfoElem *QInfo
 			var ok bool
 			qName := strings.TrimSpace(qList[i])
+
+      // If the qName contains a '/' - eg "DEV/QUEUE/1" then the queue manager will
+			// not (right now) process resource publications correctly. Hopefully that will get
+			// fixed at some point, but we will issue a warning here. The same problem happens with
+			// amqsrua; there's no workround possible outside of the qmgr code.
+			//
+			// Because of the possible complexities of pattern matching, we don't
+			// actually fail the discovery process, but instead issue a warning and continue with
+			// other queues.
+			if strings.Contains(qName,"/") && globalSlashWarning == false {
+				localSlashWarning = true // First time through, issue the warning for all queues
+				logError("Warning: Cannot subscribe to queue containing '/': %s",qName)
+				continue
+			}
+
 			if qInfoElem, ok = qInfoMap[qName]; !ok {
 				qInfoElem = new(QInfo)
 			}
@@ -576,11 +596,16 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			}
 		}
 
+		if localSlashWarning {
+			globalSlashWarning = true
+		}
+
 		if err != nil {
 			//fmt.Printf("Queue Discovery Error: %v\n", err)
 		}
 		return nil
 	}
+
 	return err
 }
 
@@ -722,7 +747,10 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 								missingPatterns = missingPatterns + " " + pattern
 							}
 							for i := 0; i < len(elem.String); i++ {
-								objectList = append(objectList, strings.TrimSpace(elem.String[i]))
+								s := strings.TrimSpace(elem.String[i])
+
+								  objectList = append(objectList, s)
+
 							}
 						}
 					}

@@ -1,7 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## August 2 2019 - v4.1.0
+## Augest 20 2019 - v4.1.0
+* Update Docker build scripts for newer Go compiler level
+* mqmetric - Issue warning if trying to monitor queues with names containing '/' 
+
+## August 2 2019 - unpublished
 * ibmmq - Add new verb GetSlice to mirror Get() but which returns ready-sized buffer (#110)
   * See updated sample amqsget.go
 * Some comment tidying up. Make CMQC constants constant.

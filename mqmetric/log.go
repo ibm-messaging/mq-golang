@@ -19,6 +19,10 @@ package mqmetric
      Mark Taylor - Initial Contribution
 */
 
+import (
+	"fmt"
+)
+
 type Logger struct {
 	Debug func(string, ...interface{})
 	Info  func(string, ...interface{})
@@ -41,8 +45,11 @@ func logInfo(format string, v ...interface{}) {
 		logger.Info(format, v...)
 	}
 }
+// Errors should be reported always
 func logError(format string, v ...interface{}) {
-	if logger != nil && logger.Info != nil {
+	if logger != nil && logger.Error != nil {
 		logger.Error(format, v...)
+	} else {
+		fmt.Printf(format,v...)
 	}
 }

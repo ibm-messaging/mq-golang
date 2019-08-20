@@ -155,7 +155,13 @@ let me know, via an issue, if you have another project that might be suitable fo
 
 ## Limitations
 
+### Package 'ibmmq'
 All regular MQI verbs are now available through the `ibmmq` package.
+
+### Package 'mqmetric'
+* There is currently a queue manager limitation which does not permit resource publications to
+be made about queues whose name includes '/'. Attempting to monitor such a queue will result in a warning
+logged by the mqmetric package.
 
 ## History
 
