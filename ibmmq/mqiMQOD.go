@@ -44,15 +44,14 @@ type MQOD struct {
 	DynamicQName    string
 	AlternateUserId string
 
-	RecsPresent       int32
-	KnownDestCount    int32
-	UnknownDestCount  int32
-	InvalidDestCount  int32
-	ObjectRecOffset   int32
-	ResponseRecOffset int32
-
-	ObjectRecPtr   C.MQPTR
-	ResponseRecPtr C.MQPTR
+	// TODO: These fields are not currently mapped. The Dist List feature is not
+	// really supported here as Pub/Sub is the recommended approach.
+	//RecsPresent       int32
+	//KnownDestCount    int32
+	//UnknownDestCount  int32
+	//InvalidDestCount  int32
+	//ObjectRec     []MQOR
+	//ResponseRec   []MQOR
 
 	AlternateSecurityId []byte
 	ResolvedQName       string
@@ -76,16 +75,6 @@ func NewMQOD() *MQOD {
 	od.ObjectQMgrName = ""
 	od.DynamicQName = "AMQ.*"
 	od.AlternateUserId = ""
-
-	od.RecsPresent = 0
-	od.KnownDestCount = 0
-	od.UnknownDestCount = 0
-	od.InvalidDestCount = 0
-	od.ObjectRecOffset = 0
-	od.ResponseRecOffset = 0
-
-	od.ObjectRecPtr = nil
-	od.ResponseRecPtr = nil
 
 	od.AlternateSecurityId = bytes.Repeat([]byte{0}, C.MQ_SECURITY_ID_LENGTH)
 	od.ResolvedQName = ""
@@ -137,15 +126,15 @@ func copyODtoC(mqod *C.MQOD, good *MQOD) {
 	setMQIString((*C.char)(&mqod.DynamicQName[0]), good.DynamicQName, C.MQ_OBJECT_NAME_LENGTH)
 	setMQIString((*C.char)(&mqod.AlternateUserId[0]), good.AlternateUserId, C.MQ_USER_ID_LENGTH)
 
-	mqod.RecsPresent = C.MQLONG(good.RecsPresent)
-	mqod.KnownDestCount = C.MQLONG(good.KnownDestCount)
-	mqod.UnknownDestCount = C.MQLONG(good.UnknownDestCount)
-	mqod.InvalidDestCount = C.MQLONG(good.InvalidDestCount)
-	mqod.ObjectRecOffset = C.MQLONG(good.ObjectRecOffset)
-	mqod.ResponseRecOffset = C.MQLONG(good.ResponseRecOffset)
+	mqod.RecsPresent = 0
+	mqod.KnownDestCount = 0
+	mqod.UnknownDestCount = 0
+	mqod.InvalidDestCount = 0
+	mqod.ObjectRecOffset = 0
+	mqod.ResponseRecOffset = 0
 
-	mqod.ObjectRecPtr = good.ObjectRecPtr
-	mqod.ResponseRecPtr = good.ResponseRecPtr
+	mqod.ObjectRecPtr = nil
+	mqod.ResponseRecPtr = nil
 
 	for i = 0; i < C.MQ_SECURITY_ID_LENGTH; i++ {
 		mqod.AlternateSecurityId[i] = C.MQBYTE(good.AlternateSecurityId[i])
@@ -202,15 +191,12 @@ func copyODfromC(mqod *C.MQOD, good *MQOD) {
 	good.DynamicQName = trimStringN((*C.char)(&mqod.DynamicQName[0]), C.MQ_OBJECT_NAME_LENGTH)
 	good.AlternateUserId = trimStringN((*C.char)(&mqod.AlternateUserId[0]), C.MQ_USER_ID_LENGTH)
 
-	good.RecsPresent = int32(mqod.RecsPresent)
-	good.KnownDestCount = int32(mqod.KnownDestCount)
-	good.UnknownDestCount = int32(mqod.UnknownDestCount)
-	good.InvalidDestCount = int32(mqod.InvalidDestCount)
-	good.ObjectRecOffset = int32(mqod.ObjectRecOffset)
-	good.ResponseRecOffset = int32(mqod.ResponseRecOffset)
-
-	good.ObjectRecPtr = mqod.ObjectRecPtr
-	good.ResponseRecPtr = mqod.ResponseRecPtr
+	//good.RecsPresent = int32(mqod.RecsPresent)
+	//good.KnownDestCount = int32(mqod.KnownDestCount)
+	//good.UnknownDestCount = int32(mqod.UnknownDestCount)
+	//good.InvalidDestCount = int32(mqod.InvalidDestCount)
+	//good.ObjectRecPtr = mqod.ObjectRecPtr
+	//good.ResponseRecPtr = mqod.ResponseRecPtr
 
 	for i = 0; i < C.MQ_SECURITY_ID_LENGTH; i++ {
 		good.AlternateSecurityId[i] = (byte)(mqod.AlternateSecurityId[i])
