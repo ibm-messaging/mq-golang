@@ -158,6 +158,9 @@ let me know, via an issue, if you have another project that might be suitable fo
 ### Package 'ibmmq'
 All regular MQI verbs are now available through the `ibmmq` package.
 
+The only unimplemented area of MQI function is the use of Distribution Lists: they were
+rarely used, and the Publish/Subscribe operations provide similar capability.
+
 ### Package 'mqmetric'
 * There is currently a queue manager limitation which does not permit resource publications to
 be made about queues whose name includes '/'. Attempting to monitor such a queue will result in a warning

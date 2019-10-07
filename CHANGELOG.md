@@ -1,9 +1,13 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## October 7 2019 - v4.1.1
+* ibmmq - Enable use of Context in MQPMO structure (#122)
+* ibmmq - Remove unusable fields referring to Distribution List structures
+
 ## Augest 20 2019 - v4.1.0
 * Update Docker build scripts for newer Go compiler level
-* mqmetric - Issue warning if trying to monitor queues with names containing '/' 
+* mqmetric - Issue warning if trying to monitor queues with names containing '/'
 
 ## August 2 2019 - unpublished
 * ibmmq - Add new verb GetSlice to mirror Get() but which returns ready-sized buffer (#110)

@@ -98,8 +98,8 @@ const defaultMaxQDepth = 5000
 var Metrics AllMetrics
 
 // Only issue the warning about a '/' in queue name once.
-var globalSlashWarning = false;
-var localSlashWarning = false;
+var globalSlashWarning = false
+var localSlashWarning = false
 
 var qInfoMap map[string]*QInfo
 var locale string
@@ -554,7 +554,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 		qList, err = inquireObjects(monitoredQueuePatterns, ibmmq.MQOT_Q)
 	}
 
-  localSlashWarning = false
+	localSlashWarning = false
 	if len(qList) > 0 {
 		//fmt.Printf("Monitoring Queues: %v\n", qList)
 		for i := 0; i < len(qList); i++ {
@@ -562,7 +562,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			var ok bool
 			qName := strings.TrimSpace(qList[i])
 
-      // If the qName contains a '/' - eg "DEV/QUEUE/1" then the queue manager will
+			// If the qName contains a '/' - eg "DEV/QUEUE/1" then the queue manager will
 			// not (right now) process resource publications correctly. Hopefully that will get
 			// fixed at some point, but we will issue a warning here. The same problem happens with
 			// amqsrua; there's no workround possible outside of the qmgr code.
@@ -570,9 +570,9 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			// Because of the possible complexities of pattern matching, we don't
 			// actually fail the discovery process, but instead issue a warning and continue with
 			// other queues.
-			if strings.Contains(qName,"/") && globalSlashWarning == false {
+			if strings.Contains(qName, "/") && globalSlashWarning == false {
 				localSlashWarning = true // First time through, issue the warning for all queues
-				logError("Warning: Cannot subscribe to queue containing '/': %s",qName)
+				logError("Warning: Cannot subscribe to queue containing '/': %s", qName)
 				continue
 			}
 
@@ -749,7 +749,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 							for i := 0; i < len(elem.String); i++ {
 								s := strings.TrimSpace(elem.String[i])
 
-								  objectList = append(objectList, s)
+								objectList = append(objectList, s)
 
 							}
 						}
