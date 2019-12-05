@@ -33,6 +33,7 @@ var (
 	qMgr             ibmmq.MQQueueManager
 	cmdQObj          ibmmq.MQObject
 	replyQObj        ibmmq.MQObject
+	qMgrObject       ibmmq.MQObject
 	replyQBaseName   string
 	statusReplyQObj  ibmmq.MQObject
 	getBuffer        = make([]byte, 32768)
@@ -80,6 +81,10 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	// connection mechanism depending on what is installed or configured.
 	if cc.ClientMode {
 		gocno.Options = ibmmq.MQCNO_CLIENT_BINDING
+		// Force reconnection to only be to the same qmgr. Cannot do this with externally
+		// configured (eg MQ_CONNECT_TYPE or client-only installation) connections. But
+		// it is a bad idea to try to reconnect to a different queue manager.
+		gocno.Options |= ibmmq.MQCNO_RECONNECT_Q_MGR
 	}
 	gocno.Options |= ibmmq.MQCNO_HANDLE_SHARE_BLOCK
 
@@ -103,7 +108,6 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	// and the platform type. Also check if it is at least V9 (on Distributed platforms)
 	// so that monitoring will work.
 	if err == nil {
-		var qMgrObject ibmmq.MQObject
 		var v map[int32]interface{}
 
 		useStatus = cc.UseStatus
@@ -149,8 +153,6 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				}
 
 			}
-			// Don't need the qMgrObject any more
-			qMgrObject.Close(0)
 
 		} else {
 			errorString = "Cannot open queue manager object"
@@ -232,6 +234,7 @@ func EndConnection() {
 		cmdQObj.Close(0)
 		replyQObj.Close(0)
 		statusReplyQObj.Close(0)
+		qMgrObject.Close(0)
 	}
 
 	// MQDISC regardless of other errors

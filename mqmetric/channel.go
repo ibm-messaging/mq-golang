@@ -58,6 +58,9 @@ const (
 	ATTR_CHL_XQTIME_SHORT  = "xmitq_time_short"
 	ATTR_CHL_XQTIME_LONG   = "xmitq_time_long"
 
+	ATTR_CHL_MAX_INSTC = "attribute_max_instc"
+	ATTR_CHL_MAX_INST  = "attribute_max_inst"
+
 	SQUASH_CHL_STATUS_STOPPED    = 0
 	SQUASH_CHL_STATUS_TRANSITION = 1
 	SQUASH_CHL_STATUS_RUNNING    = 2
@@ -141,6 +144,16 @@ func ChannelInitAttributes() {
 
 	attr = ATTR_CHL_SINCE_MSG
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
+
+	// These are not really monitoring metrics but it may enable calculations to be made such as %used for
+	// the channel instance availability. It's extracted at startup of the program via INQUIRE_CHL and not updated later 
+	// until rediscovery is done based on a separate schedule.
+
+	attr = ATTR_CHL_MAX_INST
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "MaxInst", -1)
+	attr = ATTR_CHL_MAX_INSTC
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "MaxInstC", -1)
+
 }
 
 // If we need to list the channels that match a pattern. Not needed for
@@ -303,6 +316,12 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 	}
 
+	// Prometheus was ignoring a blank string which then got translated into "0.00" in Grafana
+	// So if there is no remote qmgr, force a non-empty string value in there
+	if rqmName == "" {
+		rqmName = "-"
+	}
+
 	// Create a unique key for this channel instance
 	//
 	// The jobName does not exist on z/OS so it cannot be used to distinguish
@@ -357,6 +376,13 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
 	ChannelStatus.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
 
+	if s, ok := chlInfoMap[chlName]; ok {
+		maxInstC := s.AttrMaxInstC
+		ChannelStatus.Attributes[ATTR_CHL_MAX_INSTC].Values[key] = newStatusValueInt64(maxInstC)
+		maxInst := s.AttrMaxInst
+		ChannelStatus.Attributes[ATTR_CHL_MAX_INST].Values[key] = newStatusValueInt64(maxInst)
+	}
+
 	return key
 }
 
@@ -404,4 +430,143 @@ func ChannelNormalise(attr *StatusAttribute, v int64) float64 {
 		}
 	}
 	return f
+}
+
+// Issue the INQUIRE_Q call for wildcarded queue names and
+// extract the required attributes - currently, just the
+// Maximum Queue Depth
+func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*ObjInfo) error {
+	var err error
+
+	statusClearReplyQ()
+
+	if objectPatternsList == "" {
+		return err
+	}
+
+	objectPatterns := strings.Split(strings.TrimSpace(objectPatternsList), ",")
+	for i := 0; i < len(objectPatterns) && err == nil; i++ {
+		var buf []byte
+		pattern := strings.TrimSpace(objectPatterns[i])
+		if len(pattern) == 0 {
+			continue
+		}
+		putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+
+		// Can allow all the other fields to default
+		cfh.Command = ibmmq.MQCMD_INQUIRE_CHANNEL
+		cfh.ParameterCount = 0
+
+		// Add the parameters one at a time into a buffer
+		pcfparm := new(ibmmq.PCFParameter)
+		pcfparm.Type = ibmmq.MQCFT_STRING
+		pcfparm.Parameter = ibmmq.MQCACH_CHANNEL_NAME
+		pcfparm.String = []string{pattern}
+		cfh.ParameterCount++
+		buf = append(buf, pcfparm.Bytes()...)
+
+		// Add the parameters one at a time into a buffer
+		pcfparm = new(ibmmq.PCFParameter)
+		pcfparm.Type = ibmmq.MQCFT_INTEGER
+		pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_SVRCONN)}
+		cfh.ParameterCount++
+		buf = append(buf, pcfparm.Bytes()...)
+
+		pcfparm = new(ibmmq.PCFParameter)
+		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
+		pcfparm.Parameter = ibmmq.MQIACF_CHANNEL_ATTRS
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIACH_MAX_INSTANCES), int64(ibmmq.MQIACH_MAX_INSTS_PER_CLIENT)}
+		cfh.ParameterCount++
+		buf = append(buf, pcfparm.Bytes()...)
+
+		// Once we know the total number of parameters, put the
+		// CFH header on the front of the buffer.
+		buf = append(cfh.Bytes(), buf...)
+
+		// And now put the command to the queue
+		err = cmdQObj.Put(putmqmd, pmo, buf)
+		if err != nil {
+			return err
+		}
+
+		for allReceived := false; !allReceived; {
+			cfh, buf, allReceived, err = statusGetReply()
+			if buf != nil {
+				parseChannelAttrData(cfh, buf, infoMap)
+			}
+		}
+	}
+	return nil
+}
+
+func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjInfo) {
+	var elem *ibmmq.PCFParameter
+	var ci *ObjInfo
+	var ok bool
+
+	chlName := ""
+
+	parmAvail := true
+	bytesRead := 0
+	offset := 0
+	datalen := len(buf)
+	if cfh.ParameterCount == 0 {
+		return
+	}
+	// Parse it once to extract the fields that are needed for the map key
+	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+		offset += bytesRead
+		// Have we now reached the end of the message
+		if offset >= datalen {
+			parmAvail = false
+		}
+
+		// Only one field needed for queues
+		switch elem.Parameter {
+		case ibmmq.MQCACH_CHANNEL_NAME:
+			chlName = strings.TrimSpace(elem.String[0])
+		}
+	}
+
+	// And then re-parse the message so we can store the metrics now knowing the map key
+	parmAvail = true
+	offset = 0
+	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+		offset += bytesRead
+		// Have we now reached the end of the message
+		if offset >= datalen {
+			parmAvail = false
+		}
+
+		switch elem.Parameter {
+		case ibmmq.MQIACH_MAX_INSTANCES:
+			v := elem.Int64Value[0]
+			if v > 0 {
+				if ci, ok = infoMap[chlName]; !ok {
+					ci = new(ObjInfo)
+					infoMap[chlName] = ci
+				}
+				ci.AttrMaxInst = v
+				ci.exists = true
+
+			}
+		case ibmmq.MQIACH_MAX_INSTS_PER_CLIENT:
+			v := elem.Int64Value[0]
+			if v > 0 {
+				if ci, ok = infoMap[chlName]; !ok {
+					ci = new(ObjInfo)
+					infoMap[chlName] = ci
+				}
+				ci.AttrMaxInstC = v
+				ci.exists = true
+
+			}
+		}
+
+	}
+
+	return
 }

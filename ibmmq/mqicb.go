@@ -103,7 +103,7 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	// the map associated with the hConn and call its registered function with
 	// a dummy hObj.
 	if !ok {
-		if gocbc.CallType == MQCBCT_EVENT_CALL && mqcbc.Hobj == 0 {
+		if gocbc.CallType == MQCBCT_EVENT_CALL && mqcbc.Hobj == C.MQHO_NONE {
 			key = makePartialKey(hConn)
 			for k, i := range cbMap {
 				if strings.HasPrefix(k, key) {
@@ -135,8 +135,10 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 }
 
 /*
-CB is the function to register/unregister a callback function for a queue, based on
-criteria in the message descriptor and get-message-options
+CB is the function to register/unregister a callback function for an object, based on
+criteria in the message descriptor and get-message-options. There are 2 variations of
+the function - one for queue-based and one for an hConn-wide event handler that does not
+require an hObj.
 */
 func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *MQGMO) error {
 	var mqrc C.MQLONG
@@ -187,6 +189,51 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	case C.MQOP_REGISTER:
 		// Stash the hObj and real function to be called
 		info := &cbInfo{hObj: object,
+			callbackFunction: gocbd.CallbackFunction,
+			connectionArea:   nil,
+			callbackArea:     gocbd.CallbackArea}
+		cbMap[key] = info
+	default: // Other values leave the map alone
+	}
+
+	return nil
+}
+
+func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
+	var mqrc C.MQLONG
+	var mqcc C.MQLONG
+	var mqOperation C.MQLONG
+	var mqcbd C.MQCBD
+
+	mqOperation = C.MQLONG(goOperation)
+	copyCBDtoC(&mqcbd, gocbd)
+
+	key := makeKey(object.hConn, C.MQHO_NONE)
+
+	// The callback function is a C function that is a proxy for the MQCALLBACK_Go function
+	// defined here. And that in turn will call the user's callback function
+	mqcbd.CallbackFunction = (C.MQPTR)(unsafe.Pointer(C.MQCALLBACK_C))
+
+	C.MQCB(object.hConn, mqOperation, (C.PMQVOID)(unsafe.Pointer(&mqcbd)),
+		C.MQHO_NONE, nil, nil,
+		&mqcc, &mqrc)
+
+	mqreturn := MQReturn{MQCC: int32(mqcc),
+		MQRC: int32(mqrc),
+		verb: "MQCB",
+	}
+
+	if mqcc != C.MQCC_OK {
+		return &mqreturn
+	}
+
+	// Add or remove the control information in the map used by the callback routines
+	switch mqOperation {
+	case C.MQOP_DEREGISTER:
+		delete(cbMap, key)
+	case C.MQOP_REGISTER:
+		// Stash an hObj and real function to be called
+		info := &cbInfo{hObj: &MQObject{qMgr: object, Name: ""},
 			callbackFunction: gocbd.CallbackFunction,
 			connectionArea:   nil,
 			callbackArea:     gocbd.CallbackArea}

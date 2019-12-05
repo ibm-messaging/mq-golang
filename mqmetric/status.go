@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2018
+  Copyright (c) IBM Corporation 2016, 2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import (
 )
 
 var statusDummy = fmt.Sprintf("dummy")
+var timeTravelWarningIssued = false
 
 /*
 This file defines types and constructors for elements related to status
@@ -125,8 +126,10 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 			diff := now.Sub(parsedT).Seconds() + tzOffsetSecs
 
 			if diff < 0 { // Cannot have status from the future
-				// TODO: Perhaps issue a one-time warning as it might indicate timezone offsets
-				// are mismatched between the qmgr and this program
+				if !timeTravelWarningIssued {
+					logError("Status reports appear to be from the future. Check the TZ Offset value in the program configuration.")
+					timeTravelWarningIssued = true
+				}
 				diff = 0
 			}
 			rc = int64(diff)

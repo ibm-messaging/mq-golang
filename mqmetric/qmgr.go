@@ -36,12 +36,15 @@ import (
 )
 
 const (
-	ATTR_QMGR_NAME              = "name"
-	ATTR_QMGR_CONNECTION_COUNT  = "connection_count"
-	ATTR_QMGR_CHINIT_STATUS     = "channel_initiator_status"
-	ATTR_QMGR_CMD_SERVER_STATUS = "command_server_status"
-	ATTR_QMGR_STATUS            = "status"
-	ATTR_QMGR_UPTIME            = "uptime"
+	ATTR_QMGR_NAME                = "name"
+	ATTR_QMGR_CONNECTION_COUNT    = "connection_count"
+	ATTR_QMGR_CHINIT_STATUS       = "channel_initiator_status"
+	ATTR_QMGR_CMD_SERVER_STATUS   = "command_server_status"
+	ATTR_QMGR_STATUS              = "status"
+	ATTR_QMGR_UPTIME              = "uptime"
+	ATTR_QMGR_MAX_CHANNELS        = "max_channels"
+	ATTR_QMGR_MAX_ACTIVE_CHANNELS = "max_active_channels"
+	ATTR_QMGR_MAX_TCP_CHANNELS    = "max_tcp_channels"
 )
 
 var QueueManagerStatus StatusSet
@@ -64,21 +67,30 @@ func QueueManagerInitAttributes() {
 	attr := ATTR_QMGR_NAME
 	QueueManagerStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Manager Name")
 
-	attr = ATTR_QMGR_UPTIME
-	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Up time", -1)
+	if GetPlatform() != ibmmq.MQPL_ZOS {
+		attr = ATTR_QMGR_UPTIME
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Up time", -1)
 
-	// These are the integer status fields that are of interest
-	attr = ATTR_QMGR_CONNECTION_COUNT
-	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Connection Count", ibmmq.MQIACF_CONNECTION_COUNT)
-	attr = ATTR_QMGR_CHINIT_STATUS
-	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Initiator Status", ibmmq.MQIACF_CHINIT_STATUS)
-	attr = ATTR_QMGR_CMD_SERVER_STATUS
-	QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
+		// These are the integer status fields that are of interest
+		attr = ATTR_QMGR_CONNECTION_COUNT
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Connection Count", ibmmq.MQIACF_CONNECTION_COUNT)
+		attr = ATTR_QMGR_CHINIT_STATUS
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Initiator Status", ibmmq.MQIACF_CHINIT_STATUS)
+		attr = ATTR_QMGR_CMD_SERVER_STATUS
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
 
-	// The qmgr status is pointless - if we can't connect to the qmgr, then we can't report on it. And if we can, it's up.
-	// I'll leave this in as a reminder of why it's not being collected.
-	//attr = ATTR_QMGR_STATUS
-	//QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
+		// The qmgr status is pointless - if we can't connect to the qmgr, then we can't report on it. And if we can, it's up.
+		// I'll leave this in as a reminder of why it's not being collected.
+		//attr = ATTR_QMGR_STATUS
+		//QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
+	} else {
+		attr = ATTR_QMGR_MAX_CHANNELS
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Max Channels", -1)
+		attr = ATTR_QMGR_MAX_TCP_CHANNELS
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Max TCP Channels", -1)
+		attr = ATTR_QMGR_MAX_ACTIVE_CHANNELS
+		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Max Active Channels", -1)
+	}
 
 	qMgrAttrsInit = true
 }
@@ -87,19 +99,45 @@ func CollectQueueManagerStatus() error {
 	var err error
 
 	QueueManagerInitAttributes()
-
-	// Empty any collected values
 	for k := range QueueManagerStatus.Attributes {
 		QueueManagerStatus.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
-	err = collectQueueManagerStatus(ibmmq.MQOT_Q_MGR)
-
+	// Empty any collected values
+	if GetPlatform() == ibmmq.MQPL_ZOS {
+		err = collectQueueManagerAttrs()
+	} else {
+		err = collectQueueManagerStatus(ibmmq.MQOT_Q_MGR)
+	}
 	return err
 
 }
 
-// Issue the INQUIRE_Q_MGR_STATUS command for a queue or wildcarded queue name
+// On z/OS there are a couple of static-ish values that might be helpful.
+// They can be obtained via MQINQ and do not need a PCF flow.
+// We can't get these on Distributed because equivalents are in qm.ini
+func collectQueueManagerAttrs() error {
+	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
+		ibmmq.MQIA_ACTIVE_CHANNELS,
+		ibmmq.MQIA_TCP_CHANNELS,
+		ibmmq.MQIA_MAX_CHANNELS}
+
+	v, err := qMgrObject.Inq(selectors)
+	if err == nil {
+		maxchls := v[ibmmq.MQIA_MAX_CHANNELS].(int32)
+		maxact := v[ibmmq.MQIA_ACTIVE_CHANNELS].(int32)
+		maxtcp := v[ibmmq.MQIA_TCP_CHANNELS].(int32)
+		key := v[ibmmq.MQCA_Q_MGR_NAME].(string)
+		QueueManagerStatus.Attributes[ATTR_QMGR_MAX_ACTIVE_CHANNELS].Values[key] = newStatusValueInt64(int64(maxact))
+		QueueManagerStatus.Attributes[ATTR_QMGR_MAX_CHANNELS].Values[key] = newStatusValueInt64(int64(maxchls))
+		QueueManagerStatus.Attributes[ATTR_QMGR_MAX_TCP_CHANNELS].Values[key] = newStatusValueInt64(int64(maxtcp))
+		QueueManagerStatus.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
+
+	}
+	return err
+}
+
+// Issue the INQUIRE_Q_MGR_STATUS command for the queue mgr.
 // Collect the responses and build up the statistics
 func collectQueueManagerStatus(instanceType int32) error {
 	var err error

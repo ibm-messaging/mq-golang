@@ -1,11 +1,18 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## December 05 2019 - v4.1.2
+* Update for MQ 9.1.4 - No new base API function introduced
+* Add amqsgbr sample for browse option
+* ibmmq - Add qmgr variant of the CB function for event handlers (#128)
+* mqmetric - Add MaxChannels/MaxActiveChannels for z/OS (#129)
+* mqmetric - Add MaxInst/MaxInst for SVRCONN channels (ibm-messaging/mq-metric-samples#21)
+
 ## October 7 2019 - v4.1.1
 * ibmmq - Enable use of Context in MQPMO structure (#122)
 * ibmmq - Remove unusable fields referring to Distribution List structures
 
-## Augest 20 2019 - v4.1.0
+## August 20 2019 - v4.1.0
 * Update Docker build scripts for newer Go compiler level
 * mqmetric - Issue warning if trying to monitor queues with names containing '/'
 

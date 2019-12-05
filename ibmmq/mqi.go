@@ -234,17 +234,18 @@ func (x *MQQueueManager) Disc() error {
 
 	savedConn := x.hConn
 	C.MQDISC(&x.hConn, &mqcc, &mqrc)
-
 	mqreturn := MQReturn{MQCC: int32(mqcc),
 		MQRC: int32(mqrc),
 		verb: "MQDISC",
 	}
 
+	if int32(mqrc) != C.MQRC_HCONN_ERROR {
+		cbRemoveConnection(savedConn)
+	}
+
 	if mqcc != C.MQCC_OK {
 		return &mqreturn
 	}
-
-	cbRemoveConnection(savedConn)
 
 	return nil
 }

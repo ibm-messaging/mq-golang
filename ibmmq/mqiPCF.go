@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2018
+  Copyright (c) IBM Corporation 2016,2019
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"runtime/debug"
 )
 
 /*
@@ -121,7 +122,12 @@ func (cfh *MQCFH) Bytes() []byte {
 
 /*
 Bytes serialises a PCFParameter into the C structure
-corresponding to its type
+corresponding to its type.
+
+TODO: Only a subset of the PCF
+parameter types are handled here - those needed for
+command queries. Other types could be added if
+necessary later.
 */
 func (p *PCFParameter) Bytes() []byte {
 	var buf []byte
@@ -173,7 +179,7 @@ func (p *PCFParameter) Bytes() []byte {
 		offset += 4
 		copy(buf[offset:], []byte(p.String[0]))
 	default:
-		fmt.Println("mqiPCF.go: Trying to serialise PCF parameter. Unknown PCF type ", p.Type)
+		fmt.Printf("mqiPCF.go: Trying to serialise PCF parameter. Unknown PCF type %d\n", p.Type)
 	}
 	return buf
 }
@@ -224,8 +230,8 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 	binary.Read(p, endian, &pcfParm.strucLength)
 
 	switch pcfParm.Type {
-	// There are more PCF element types but the samples only
-	// needed a subset
+	// There are more PCF element types but the monitoring packages only
+	// needed a subset. We can add the others later if necessary.
 	case C.MQCFT_INTEGER:
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &i32)
@@ -289,7 +295,14 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		p.Next(int(pcfParm.strucLength - offset))
 
 	default:
-		fmt.Println("mqiPCF.go: Unknown PCF type ", pcfParm.Type)
+		// This should not happen, but if it does then dump various pieces of
+		// debug information that might help solve the problem.
+		// TODO: Put this in something like an environment variable control option
+		localerr := fmt.Errorf("mqiPCF.go: Unknown PCF type %d", pcfParm.Type)
+		fmt.Println("Error: ", localerr)
+		fmt.Println("Buffer: ", buf)
+		debug.PrintStack()
+		// After dumping the stack, we will try to carry on regardless.
 		// Skip the remains of this structure, assuming it really is
 		// PCF and we just don't know how to process the element type
 		p.Next(int(pcfParm.strucLength - 8))

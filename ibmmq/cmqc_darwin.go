@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  6/28/19 2:38 PM
-*   Build Level:   p913-L190628
+*   Generated on:  11/19/19 1:20 PM
+*   Build Level:   p914-L191119
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1002,7 +1002,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 913
+	MQCMDL_CURRENT_LEVEL           int32  = 914
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1041,6 +1041,7 @@ const (
 	MQCMDL_LEVEL_911               int32  = 911
 	MQCMDL_LEVEL_912               int32  = 912
 	MQCMDL_LEVEL_913               int32  = 913
+	MQCMDL_LEVEL_914               int32  = 914
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1764,6 +1765,7 @@ const (
 	MQIACF_DESTINATION_CLASS       int32  = 1273
 	MQIACF_DISCONNECT_TIME         int32  = 1381
 	MQIACF_DISCONTINUITY_COUNT     int32  = 1237
+	MQIACF_DS_ENCRYPTED            int32  = 1436
 	MQIACF_DURABLE_SUBSCRIPTION    int32  = 1274
 	MQIACF_ENCODING                int32  = 1243
 	MQIACF_ENTITY_TYPE             int32  = 1118
@@ -1796,7 +1798,7 @@ const (
 	MQIACF_INVALID_DEST_COUNT      int32  = 1371
 	MQIACF_ITEM_COUNT              int32  = 1378
 	MQIACF_KNOWN_DEST_COUNT        int32  = 1369
-	MQIACF_LAST_USED               int32  = 1435
+	MQIACF_LAST_USED               int32  = 1436
 	MQIACF_LDAP_CONNECTION_STATUS  int32  = 1409
 	MQIACF_LISTENER_ATTRS          int32  = 1222
 	MQIACF_LISTENER_STATUS_ATTRS   int32  = 1223
@@ -4260,6 +4262,7 @@ const (
 	MQSECPROT_SSLV30               int32  = 1
 	MQSECPROT_TLSV10               int32  = 2
 	MQSECPROT_TLSV12               int32  = 4
+	MQSECPROT_TLSV13               int32  = 8
 	MQSECSW_ALTERNATE_USER         int32  = 7
 	MQSECSW_COMMAND                int32  = 8
 	MQSECSW_COMMAND_RESOURCES      int32  = 11

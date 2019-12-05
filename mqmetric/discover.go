@@ -80,16 +80,25 @@ type AllMetrics struct {
 	Classes map[int]*MonClass
 }
 
-type QInfo struct {
-	AttrMaxDepth    int64 // The queue attribute value. Not the max depth reported by RESET QSTATS
-	AttrUsage       int64 // Normal or XMITQ
-	exists          bool  // Used during rediscovery
-	firstCollection bool  // To indicate discard needed of first stat
+// This structure contains additional info about any object type that may need to be held.
+// The first fields are used for all object types. Following fields will apply to different
+// object types. Currently only queues need this information.
+type ObjInfo struct {
+	exists          bool // Used during rediscovery
+	firstCollection bool // To indicate discard needed of first stat
+	// These are used for queue information
+	AttrMaxDepth int64 // The queue attribute value. Not the max depth reported by RESET QSTATS
+	AttrUsage    int64 // Normal or XMITQ
+	// Some channel information
+	AttrMaxInst  int64
+	AttrMaxInstC int64
 }
 
 // QMgrMapKey can never be a real object name and is therefore useful in
 // maps that may contain only this single entry
 const QMgrMapKey = "@self"
+
+const ClassNameQ = "STATQ"
 
 const maxBufSize = 100 * 1024 * 1024 // 100 MB
 const defaultMaxQDepth = 5000
@@ -97,11 +106,13 @@ const defaultMaxQDepth = 5000
 // Metrics is the global variable for the tree of data
 var Metrics AllMetrics
 
-// Only issue the warning about a '/' in queue name once.
+// Only issue the warning about a '/' in an object name once.
 var globalSlashWarning = false
 var localSlashWarning = false
 
-var qInfoMap map[string]*QInfo
+var qInfoMap map[string]*ObjInfo
+var chlInfoMap map[string]*ObjInfo
+
 var locale string
 var discoveryDone = false
 
@@ -176,7 +187,8 @@ issuing the MQSUB calls to collect the data
 func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
 	discoveryDone = true
 	redo := false
-	qInfoMap = make(map[string]*QInfo)
+
+	qInfoMap = make(map[string]*ObjInfo)
 
 	err := discoverAndSubscribe(queueList, checkQueueList, metaPrefix, redo)
 	return err
@@ -193,10 +205,38 @@ func RediscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix st
 
 	err := discoverAndSubscribe(queueList, checkQueueList, metaPrefix, redo)
 
-	// We now know if a queue still exists; remove it from the map if not.
+	// We now know if an object still exists; remove it from the map if not.
 	for key, qi := range qInfoMap {
 		if !qi.exists {
 			delete(qInfoMap, key)
+		}
+	}
+
+	return err
+}
+
+func RediscoverAttributes(objectType int32, objectPatterns string) error {
+	var err error
+	var infoMap map[string](*ObjInfo)
+	var fn func(string, map[string](*ObjInfo)) error
+
+	switch objectType {
+	case ibmmq.MQOT_CHANNEL:
+		// Always start with a clean slate for these maps
+		chlInfoMap = make(map[string]*ObjInfo)
+		infoMap = chlInfoMap
+		fn = inquireChannelAttributes
+	default:
+		err = fmt.Errorf("Unsupported object type: ", objectType)
+	}
+
+	if err == nil {
+		err = fn(objectPatterns, infoMap)
+
+		for key, ci := range infoMap {
+			if !ci.exists {
+				delete(infoMap, key)
+			}
 		}
 	}
 	return err
@@ -220,7 +260,7 @@ func discoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 			// Make sure the names are reasonably valid
 			for i := 0; i < len(qList); i++ {
 				key := strings.TrimSpace(qList[i])
-				qInfoMap[key] = new(QInfo)
+				qInfoMap[key] = new(ObjInfo)
 			}
 		}
 
@@ -281,6 +321,7 @@ func discoverClasses(metaPrefix string) error {
 					return fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
 				}
 			}
+
 			Metrics.Classes[classIndex] = cl
 		}
 	}
@@ -558,7 +599,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 	if len(qList) > 0 {
 		//fmt.Printf("Monitoring Queues: %v\n", qList)
 		for i := 0; i < len(qList); i++ {
-			var qInfoElem *QInfo
+			var qInfoElem *ObjInfo
 			var ok bool
 			qName := strings.TrimSpace(qList[i])
 
@@ -577,7 +618,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			}
 
 			if qInfoElem, ok = qInfoMap[qName]; !ok {
-				qInfoElem = new(QInfo)
+				qInfoElem = new(ObjInfo)
 			}
 			qInfoElem.AttrMaxDepth = defaultMaxQDepth
 			qInfoElem.exists = true
@@ -787,17 +828,20 @@ func createSubscriptions() error {
 		for _, ty := range cl.Types {
 
 			if strings.Contains(ty.ObjectTopic, "%s") {
-				for key, _ := range qInfoMap {
+				im := qInfoMap
+
+				for key, _ := range im {
 					if len(key) == 0 {
 						continue
 					}
 
 					// See if we've already got a subscription
-					// for this object
+					// for this object. I
 					if s, ok := ty.subHobj[key]; ok {
-						if qInfoMap[key].exists {
+						if im[key].exists {
 							// leave alone
 						} else {
+							logDebug("Closing subscription for %s", key)
 							s.Close(0)
 							delete(ty.subHobj, key)
 						}
@@ -806,7 +850,7 @@ func createSubscriptions() error {
 						sub, err = subscribe(topic, &replyQObj)
 						if err == nil {
 							ty.subHobj[key] = sub
-							qInfoMap[key].firstCollection = true
+							im[key].firstCollection = true
 						}
 					}
 				}
@@ -843,7 +887,8 @@ func ProcessPublications() error {
 	var err error
 	var data []byte
 
-	var qName string
+	var objName string
+	var objType int32
 	var classidx int
 	var typeidx int
 	var elementidx int
@@ -872,20 +917,21 @@ func ProcessPublications() error {
 			// This map contains those element indexes and values from each message
 			values := make(map[int]int64)
 
-			qName = ""
+			objName = ""
 
 			for i := 0; i < len(elemList); i++ {
 				switch elemList[i].Parameter {
 				case ibmmq.MQCA_Q_MGR_NAME:
 					_ = strings.TrimSpace(elemList[i].String[0])
 				case ibmmq.MQCA_Q_NAME:
-					qName = strings.TrimSpace(elemList[i].String[0])
+					objName = strings.TrimSpace(elemList[i].String[0])
+					objType = ibmmq.MQOT_Q
 				case ibmmq.MQCA_TOPIC_NAME:
-					qName = strings.TrimSpace(elemList[i].String[0])
+					objName = strings.TrimSpace(elemList[i].String[0])
+					objType = ibmmq.MQOT_TOPIC
 				case ibmmq.MQIACF_OBJECT_TYPE:
-					// Will need to use this as part of the object key and
-					// labelling if/when MQ starts to produce stats for other types
-					// such as a topic. But for now we can ignore it.
+					// May need to use this as part of the object key and
+					// labelling But for now we can ignore it.
 					_ = ibmmq.MQItoString("OT", int(elemList[i].Int64Value[0]))
 				case ibmmq.MQIAMO_MONITOR_CLASS:
 					classidx = int(elemList[i].Int64Value[0])
@@ -922,7 +968,7 @@ func ProcessPublications() error {
 			// use the latest value.
 			for key, newValue := range values {
 				if elem, ok := Metrics.Classes[classidx].Types[typeidx].Elements[key]; ok {
-					objectName := qName
+					objectName := objName
 
 					if objectName == "" {
 						objectName = QMgrMapKey
@@ -930,16 +976,20 @@ func ProcessPublications() error {
 						// If we've unsubscribed and resubscribed to the same queue (unusual
 						// but a dynamic resub nature may permit that) then discard the first metric
 						// from a queue in case it's got a running total instead of the last interval.
-						if qi, ok := qInfoMap[qName]; ok {
+						objectInfoMap := qInfoMap
+						if objType == ibmmq.MQOT_Q {
+							objectInfoMap = qInfoMap
+						}
+						if qi, ok := objectInfoMap[objName]; ok {
 							if qi.firstCollection {
 								continue
 							}
 							if !qi.exists {
-								//fmt.Printf("Data for untracked queue %s being ignored\n", qName)
+								//logDebug("Data for untracked object %s being ignored", objName)
 								continue
 							}
 						} else {
-							//fmt.Printf("Data for unknown queue %s being ignored\n", qName)
+							//logDebug("Data for unknown object %s being ignored", objName)
 							continue
 						}
 					}
@@ -970,6 +1020,7 @@ func ProcessPublications() error {
 	for _, qi := range qInfoMap {
 		qi.firstCollection = false
 	}
+
 	return nil
 }
 
@@ -995,6 +1046,9 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 	// the number of bytes read so we know where to start
 	// looking for the next element
 	cfh, offset := ibmmq.ReadPCFHeader(buf)
+	if cfh == nil {
+		return elemList, true
+	}
 
 	// If the command succeeded, loop through the remainder of the
 	// message to decode each parameter.
