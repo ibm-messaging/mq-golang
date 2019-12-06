@@ -146,7 +146,7 @@ func ChannelInitAttributes() {
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
 
 	// These are not really monitoring metrics but it may enable calculations to be made such as %used for
-	// the channel instance availability. It's extracted at startup of the program via INQUIRE_CHL and not updated later 
+	// the channel instance availability. It's extracted at startup of the program via INQUIRE_CHL and not updated later
 	// until rediscovery is done based on a separate schedule.
 
 	attr = ATTR_CHL_MAX_INST
