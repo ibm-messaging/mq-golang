@@ -86,6 +86,7 @@ type AllMetrics struct {
 type ObjInfo struct {
 	exists          bool // Used during rediscovery
 	firstCollection bool // To indicate discard needed of first stat
+	Description     string
 	// These are used for queue information
 	AttrMaxDepth int64 // The queue attribute value. Not the max depth reported by RESET QSTATS
 	AttrUsage    int64 // Normal or XMITQ
@@ -1348,4 +1349,21 @@ func patternMatch(s string, r string) bool {
 
 	//	fmt.Printf("Comparing %s with %s %v\n",s,r,rc)
 	return rc
+}
+
+func GetObjectDescription(key string, objectType int32) string {
+	var o *ObjInfo
+	ok := false
+	switch objectType {
+	case ibmmq.MQOT_Q:
+		o, ok = qInfoMap[key]
+	case ibmmq.MQOT_CHANNEL:
+		o, ok = chlInfoMap[key]
+	}
+
+	if ok {
+		return o.Description
+	} else {
+		return ""
+	}
 }

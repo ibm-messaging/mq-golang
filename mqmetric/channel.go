@@ -465,18 +465,21 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
-		// Add the parameters one at a time into a buffer
-		pcfparm = new(ibmmq.PCFParameter)
-		pcfparm.Type = ibmmq.MQCFT_INTEGER
-		pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_SVRCONN)}
-		cfh.ParameterCount++
-		buf = append(buf, pcfparm.Bytes()...)
+		// The original version of this function was only relevant for SVRCONN channels but DESCR is now being asked
+		// for which applies to all channel types. It's OK to ask for attributes for the wrong type of channel though;
+		// they are simply not returned.
+
+		//pcfparm = new(ibmmq.PCFParameter)
+		//pcfparm.Type = ibmmq.MQCFT_INTEGER
+		//pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
+		//pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_SVRCONN)}
+		//cfh.ParameterCount++
+		//buf = append(buf, pcfparm.Bytes()...)
 
 		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_CHANNEL_ATTRS
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIACH_MAX_INSTANCES), int64(ibmmq.MQIACH_MAX_INSTS_PER_CLIENT)}
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIACH_MAX_INSTANCES), int64(ibmmq.MQIACH_MAX_INSTS_PER_CLIENT), int64(ibmmq.MQCACH_DESC)}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -564,8 +567,18 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 				ci.exists = true
 
 			}
-		}
 
+		case ibmmq.MQCACH_DESC:
+			v := elem.String[0]
+			if v != "" {
+				if ci, ok = infoMap[chlName]; !ok {
+					ci = new(ObjInfo)
+					infoMap[chlName] = ci
+				}
+				ci.Description = v
+				ci.exists = true
+			}
+		}
 	}
 
 	return

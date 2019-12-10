@@ -305,7 +305,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE)}
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQCA_Q_DESC)}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -513,6 +513,13 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 			if v > 0 {
 				if qInfo, ok := qInfoMap[qName]; ok {
 					qInfo.AttrUsage = v
+				}
+			}
+		case ibmmq.MQCA_Q_DESC:
+			v := elem.String[0]
+			if v != "" {
+				if qInfo, ok := qInfoMap[qName]; ok {
+					qInfo.Description = v
 				}
 			}
 		}
