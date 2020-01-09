@@ -730,6 +730,17 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 			pcfparm.Int64Value = []int64{int64(ibmmq.MQQT_LOCAL)}
 			cfh.ParameterCount++
 			buf = append(buf, pcfparm.Bytes()...)
+
+			// We don't see shared queues in the returned set unless explicitly asked for.
+			// MQQSGD_ALL returns all locals, and (if qmgr in a QSG) also shared queues.
+			if platform == ibmmq.MQPL_ZOS {
+				pcfparm = new(ibmmq.PCFParameter)
+				pcfparm.Type = ibmmq.MQCFT_INTEGER
+				pcfparm.Parameter = ibmmq.MQIA_QSG_DISP
+				pcfparm.Int64Value = []int64{int64(ibmmq.MQQSGD_ALL)}
+				cfh.ParameterCount++
+				buf = append(buf, pcfparm.Bytes()...)
+			}
 		}
 		// Once we know the total number of parameters, put the
 		// CFH header on the front of the buffer.
@@ -1361,9 +1372,10 @@ func GetObjectDescription(key string, objectType int32) string {
 		o, ok = chlInfoMap[key]
 	}
 
-	if ok {
-		return o.Description
+	if !ok || strings.TrimSpace(o.Description) == "" {
+		// return something so Prometheus doesn't turn it into "0.0"
+		return "-"
 	} else {
-		return ""
+		return o.Description
 	}
 }

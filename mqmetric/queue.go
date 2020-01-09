@@ -161,7 +161,6 @@ func CollectQueueStatus(patterns string) error {
 			if len(qName) == 0 || !qi.exists {
 				continue
 			}
-			//fmt.Printf("Collecting qStatus for %s\n",qName)
 			err = collectQueueStatus(qName, ibmmq.MQOT_Q)
 			if err == nil && useResetQStats {
 				err = collectResetQStats(qName)
@@ -173,6 +172,7 @@ func CollectQueueStatus(patterns string) error {
 			if len(pattern) == 0 {
 				continue
 			}
+
 			err = collectQueueStatus(pattern, ibmmq.MQOT_Q)
 			if err == nil && useResetQStats {
 				err = collectResetQStats(pattern)
@@ -367,7 +367,6 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	// Create a unique key for this instance
 	key = qName
-
 	QueueStatus.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key

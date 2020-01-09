@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## January 09 2020 - v4.1.3
+* mqmetric - Discovery of shared queues (ibm-messaging/mq-metric-samples#26)
+* mqmetric - Add DESCR attribute from queues and channels to permit labelling in metrics (ibm-messaging/mq-metric-samples#16)
+
 ## December 05 2019 - v4.1.2
 * Update for MQ 9.1.4 - No new base API function introduced
 * Add amqsgbr sample for browse option

@@ -64,6 +64,8 @@ const (
 	SQUASH_CHL_STATUS_STOPPED    = 0
 	SQUASH_CHL_STATUS_TRANSITION = 1
 	SQUASH_CHL_STATUS_RUNNING    = 2
+
+	DUMMY_STRING = "-" // To provide a non-empty value for certain fields
 )
 
 var ChannelStatus StatusSet
@@ -317,9 +319,14 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	// Prometheus was ignoring a blank string which then got translated into "0.00" in Grafana
-	// So if there is no remote qmgr, force a non-empty string value in there
+	// So if there is no remote qmgr, force a non-empty string value in there. Similarly, the jobname for
+	// inactive channels often arrives looking like "00000" but not filling the entire length
+	// allowed. So reset that one too.
 	if rqmName == "" {
-		rqmName = "-"
+		rqmName = DUMMY_STRING
+	}
+	if jobName == "" || allZero(jobName) {
+		jobName = DUMMY_STRING
 	}
 
 	// Create a unique key for this channel instance
@@ -329,7 +336,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	// the channel start timestamp. That may still be wrong if lots of channel
 	// instances start at the same time, but it's a lot better than combining the
 	// instances badly.
-	if jobName == "" && platform == ibmmq.MQPL_ZOS {
+	if jobName == DUMMY_STRING && platform == ibmmq.MQPL_ZOS {
 		jobName = startDate + ":" + startTime
 	}
 	key = chlName + "/" + connName + "/" + rqmName + "/" + jobName
@@ -582,4 +589,14 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 	}
 
 	return
+}
+
+func allZero(s string) bool {
+	rc := true
+	for i := 0; i < len(s); i++ {
+		if s[i] != '0' {
+			return false
+		}
+	}
+	return rc
 }
