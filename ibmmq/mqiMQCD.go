@@ -56,6 +56,8 @@ type MQCD struct {
 	ConnectionAffinity   int32
 	DefReconnect         int32
 	CertificateLabel     string
+	HdrCompList          [2]int32
+	MsgCompList          [16]int32
 }
 
 /*
@@ -83,6 +85,15 @@ func NewMQCD() *MQCD {
 	cd.ConnectionAffinity = int32(C.MQCAFTY_PREFERRED)
 	cd.DefReconnect = int32(C.MQRCN_NO)
 	cd.CertificateLabel = ""
+
+	cd.HdrCompList[0] = int32(C.MQCOMPRESS_NONE)
+	for i := 1; i < 2; i++ {
+		cd.HdrCompList[i] = int32(C.MQCOMPRESS_NOT_AVAILABLE)
+	}
+	cd.MsgCompList[0] = int32(C.MQCOMPRESS_NONE)
+	for i := 1; i < 16; i++ {
+		cd.MsgCompList[i] = int32(C.MQCOMPRESS_NOT_AVAILABLE)
+	}
 
 	return cd
 }
@@ -173,10 +184,10 @@ func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 	setMQIString((*C.char)(&mqcd.LocalAddress[0]), "", C.MQ_LOCAL_ADDRESS_LENGTH)
 	mqcd.BatchHeartbeat = 0
 	for i := 0; i < 2; i++ {
-		mqcd.HdrCompList[i] = C.MQCOMPRESS_NOT_AVAILABLE
+		mqcd.HdrCompList[i] = C.MQLONG(gocd.HdrCompList[i])
 	}
 	for i := 0; i < 16; i++ {
-		mqcd.MsgCompList[i] = C.MQCOMPRESS_NOT_AVAILABLE
+		mqcd.MsgCompList[i] = C.MQLONG(gocd.MsgCompList[i])
 	}
 	mqcd.CLWLChannelRank = 0
 	mqcd.CLWLChannelPriority = 0
