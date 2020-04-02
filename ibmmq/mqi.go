@@ -125,6 +125,15 @@ func (e *MQReturn) Error() string {
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
 const space8 = "        "
 
+// This function is executed once before any other code in the package
+func init() {
+	if C.MQENC_NATIVE%2 == 0 {
+		endian = binary.LittleEndian
+	} else {
+		endian = binary.BigEndian
+	}
+}
+
 /*
  * Copy a Go string in "strings"
  * to a fixed-size C char array such as MQCHAR12
@@ -172,12 +181,6 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqcno C.MQCNO
-
-	if (C.MQENC_NATIVE % 2) == 0 { // May be needed for conversion later
-		endian = binary.LittleEndian
-	} else {
-		endian = binary.BigEndian
-	}
 
 	// MQ normally sets signal handlers that turn out to
 	// get in the way of Go programs. In particular SEGV.

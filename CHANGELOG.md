@@ -1,6 +1,13 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Apr 02 2020 - v4.1.4
+* Update for MQ 9.1.5                                           
+* ibmmq - Add message and header compression for MQCD (#137)
+* ibmmq - Set endianness just once (#140)
+* mqmetric - Add better diagnostics when running out of object handles
+* mqmetric - Make sure strings don't include embedded nulls
+
 ## January 09 2020 - v4.1.3
 * mqmetric - Discovery of shared queues (ibm-messaging/mq-metric-samples#26)
 * mqmetric - Add DESCR attribute from queues and channels to permit labelling in metrics (ibm-messaging/mq-metric-samples#16)

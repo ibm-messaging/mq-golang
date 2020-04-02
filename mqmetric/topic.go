@@ -237,7 +237,7 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 		switch elem.Parameter {
 		case ibmmq.MQCA_TOPIC_STRING:
-			tpName = strings.TrimSpace(elem.String[0])
+			tpName = trimToNull(elem.String[0])
 		}
 	}
 

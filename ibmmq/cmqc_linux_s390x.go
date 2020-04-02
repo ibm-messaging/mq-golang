@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2019
+* Copyright (c) IBM Corporation 1993, 2020
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  11/19/19 1:20 PM
-*   Build Level:   p914-L191119
+*   Generated on:  3/16/20 3:14 PM
+*   Build Level:   p915-L200316
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1002,7 +1002,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 914
+	MQCMDL_CURRENT_LEVEL           int32  = 915
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1042,6 +1042,7 @@ const (
 	MQCMDL_LEVEL_912               int32  = 912
 	MQCMDL_LEVEL_913               int32  = 913
 	MQCMDL_LEVEL_914               int32  = 914
+	MQCMDL_LEVEL_915               int32  = 915
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1760,6 +1761,8 @@ const (
 	MQIACF_CONN_INFO_TYPE          int32  = 1110
 	MQIACF_CONV_REASON_CODE        int32  = 1072
 	MQIACF_CTL_OPERATION           int32  = 1366
+	MQIACF_CUR_MAX_FILE_SIZE       int32  = 1438
+	MQIACF_CUR_Q_FILE_SIZE         int32  = 1437
 	MQIACF_DB2_CONN_STATUS         int32  = 1150
 	MQIACF_DELETE_OPTIONS          int32  = 1092
 	MQIACF_DESTINATION_CLASS       int32  = 1273
@@ -1798,7 +1801,7 @@ const (
 	MQIACF_INVALID_DEST_COUNT      int32  = 1371
 	MQIACF_ITEM_COUNT              int32  = 1378
 	MQIACF_KNOWN_DEST_COUNT        int32  = 1369
-	MQIACF_LAST_USED               int32  = 1436
+	MQIACF_LAST_USED               int32  = 1438
 	MQIACF_LDAP_CONNECTION_STATUS  int32  = 1409
 	MQIACF_LISTENER_ATTRS          int32  = 1222
 	MQIACF_LISTENER_STATUS_ATTRS   int32  = 1223
@@ -2446,7 +2449,7 @@ const (
 	MQIA_IP_ADDRESS_VERSION        int32  = 93
 	MQIA_KEY_REUSE_COUNT           int32  = 267
 	MQIA_LAST                      int32  = 2000
-	MQIA_LAST_USED                 int32  = 273
+	MQIA_LAST_USED                 int32  = 274
 	MQIA_LDAP_AUTHORMD             int32  = 263
 	MQIA_LDAP_NESTGRP              int32  = 264
 	MQIA_LDAP_SECURE_COMM          int32  = 261
@@ -2466,6 +2469,7 @@ const (
 	MQIA_MAX_PRIORITY              int32  = 14
 	MQIA_MAX_PROPERTIES_LENGTH     int32  = 192
 	MQIA_MAX_Q_DEPTH               int32  = 15
+	MQIA_MAX_Q_FILE_SIZE           int32  = 274
 	MQIA_MAX_Q_TRIGGERS            int32  = 90
 	MQIA_MAX_RECOVERY_TASKS        int32  = 171
 	MQIA_MAX_RESPONSES             int32  = 230
@@ -3088,6 +3092,7 @@ const (
 	MQQDT_PREDEFINED               int32  = 1
 	MQQDT_SHARED_DYNAMIC           int32  = 4
 	MQQDT_TEMPORARY_DYNAMIC        int32  = 3
+	MQQFS_DEFAULT                  int32  = -1
 	MQQF_CLWL_USEQ_ANY             int32  = 64
 	MQQF_CLWL_USEQ_LOCAL           int32  = 128
 	MQQF_LOCAL_Q                   int32  = 1

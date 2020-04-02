@@ -186,9 +186,9 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 
 		switch elem.Parameter {
 		case ibmmq.MQBACF_SUB_ID:
-			subId = strings.TrimSpace(elem.String[0])
+			subId = trimToNull(elem.String[0])
 		case ibmmq.MQCA_TOPIC_STRING:
-			topicString = strings.TrimSpace(elem.String[0])
+			topicString = trimToNull(elem.String[0])
 		}
 	}
 
@@ -215,9 +215,9 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 			case ibmmq.MQCACF_LAST_MSG_DATE:
 				lastDate = strings.TrimSpace(elem.String[0])
 			case ibmmq.MQCA_TOPIC_STRING:
-				topicString = strings.TrimSpace(elem.String[0])
+				topicString = trimToNull(elem.String[0])
 			case ibmmq.MQCACF_SUB_NAME:
-				subName = strings.TrimSpace(elem.String[0])
+				subName = trimToNull(elem.String[0])
 			}
 		}
 	}

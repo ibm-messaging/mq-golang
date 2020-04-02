@@ -267,6 +267,16 @@ func discoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 
 	}
 
+	if err == nil {
+		// Recommended handles are based on the number of MQSUB calls we make - as above when checking for maxQDepth
+		// we round up the number of qmgr subs and per-queue subs. This will need extension if more object types are supported
+		// in the amqsrua-style of resource subscriptions. Add a few extra just in case.
+		recommendedHandles := 20 + len(qInfoMap)*5 + 10
+		if maxHandles < int32(recommendedHandles) && usePublications {
+			err = fmt.Errorf("MAXHANDS attribute on queue manager needs increasing. Current value = %d. Recommended minimum based on number of monitored queues = %d", maxHandles, recommendedHandles)
+		}
+	}
+
 	// Subscribe to all of the various topics
 	if err == nil {
 		err = createSubscriptions()
@@ -1378,4 +1388,16 @@ func GetObjectDescription(key string, objectType int32) string {
 	} else {
 		return o.Description
 	}
+}
+
+func trimToNull(s string) string {
+	var rc string
+	i := strings.IndexByte(s, 0)
+	if i == -1 {
+		rc = s
+	} else {
+		rc = s[0:i]
+	}
+	return strings.TrimSpace(rc)
+
 }

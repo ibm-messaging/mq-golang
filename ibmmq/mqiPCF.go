@@ -32,6 +32,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"runtime/debug"
+	"strings"
 )
 
 /*
@@ -80,12 +81,6 @@ func NewMQCFH() *MQCFH {
 	cfh.CompCode = C.MQCC_OK
 	cfh.Reason = C.MQRC_NONE
 	cfh.ParameterCount = 0
-
-	if (C.MQENC_NATIVE % 2) == 0 {
-		endian = binary.LittleEndian
-	} else {
-		endian = binary.BigEndian
-	}
 
 	return cfh
 }
@@ -265,6 +260,7 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		binary.Read(p, endian, &pcfParm.CodedCharSetId)
 		binary.Read(p, endian, &pcfParm.stringLength)
 		s := string(buf[offset : pcfParm.stringLength+offset])
+		s = trimToNull(s)
 		pcfParm.String = append(pcfParm.String, s)
 		p.Next(int(pcfParm.strucLength - offset))
 
@@ -276,6 +272,7 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		for i := 0; i < int(count); i++ {
 			offset := C.MQCFSL_STRUC_LENGTH_FIXED + i*int(pcfParm.stringLength)
 			s := string(buf[offset : int(pcfParm.stringLength)+offset])
+			s = trimToNull(s)
 			pcfParm.String = append(pcfParm.String, s)
 		}
 		p.Next(int(pcfParm.strucLength - C.MQCFSL_STRUC_LENGTH_FIXED))
@@ -314,4 +311,15 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 
 func roundTo4(u int32) int32 {
 	return ((u) + ((4 - ((u) % 4)) % 4))
+}
+
+func trimToNull(s string) string {
+	var rc string
+	i := strings.IndexByte(s, 0)
+	if i == -1 {
+		rc = s
+	} else {
+		rc = s[0:i]
+	}
+	return strings.TrimSpace(rc)
 }

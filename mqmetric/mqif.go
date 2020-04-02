@@ -39,6 +39,7 @@ var (
 	getBuffer        = make([]byte, 32768)
 	platform         int32
 	commandLevel     int32
+	maxHandles       int32
 	resolvedQMgrName string
 
 	tzOffsetSecs float64
@@ -124,6 +125,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 			selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
 				ibmmq.MQIA_COMMAND_LEVEL,
 				ibmmq.MQIA_PERFORMANCE_EVENT,
+				ibmmq.MQIA_MAX_HANDLES,
 				ibmmq.MQIA_PLATFORM}
 
 			v, err = qMgrObject.InqMap(selectors)
@@ -131,6 +133,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
 				platform = v[ibmmq.MQIA_PLATFORM].(int32)
 				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
+				maxHandles = v[ibmmq.MQIA_MAX_HANDLES].(int32)
 				if platform == ibmmq.MQPL_ZOS {
 					usePublications = false
 					useResetQStats = cc.UseResetQStats
@@ -313,7 +316,13 @@ func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (
 
 	subObj, err := qMgr.Sub(mqsd, pubQObj)
 	if err != nil {
-		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v", topic, err)
+		extraInfo := ""
+		mqrc := err.(*ibmmq.MQReturn).MQRC
+		switch mqrc {
+		case ibmmq.MQRC_HANDLE_NOT_AVAILABLE:
+			extraInfo = "You may need to increase the MAXHANDS attribute on the queue manager."
+		}
+		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v %s", topic, err, extraInfo)
 	}
 
 	return subObj, err
