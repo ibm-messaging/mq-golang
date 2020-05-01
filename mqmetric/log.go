@@ -26,6 +26,7 @@ import (
 type Logger struct {
 	Debug func(string, ...interface{})
 	Info  func(string, ...interface{})
+	Warn  func(string, ...interface{})
 	Error func(string, ...interface{})
 }
 
@@ -43,6 +44,11 @@ func logDebug(format string, v ...interface{}) {
 func logInfo(format string, v ...interface{}) {
 	if logger != nil && logger.Info != nil {
 		logger.Info(format, v...)
+	}
+}
+func logWarn(format string, v ...interface{}) {
+	if logger != nil && logger.Warn != nil {
+		logger.Warn(format, v...)
 	}
 }
 
