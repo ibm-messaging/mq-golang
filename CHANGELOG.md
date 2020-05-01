@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## May 01 2020 - v5.0.0-alpha
+* Initial migration for Go modules (requires new major number)
+
 ## Apr 02 2020 - v4.1.4
 * Update for MQ 9.1.5                                           
 * ibmmq - Add message and header compression for MQCD (#137)

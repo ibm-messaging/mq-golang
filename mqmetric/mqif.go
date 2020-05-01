@@ -26,7 +26,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 
 import (
 	"fmt"
-	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 var (
