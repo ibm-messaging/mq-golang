@@ -44,10 +44,12 @@ const (
 	ATTR_Q_QTIME_SHORT = "qtime_short"
 	ATTR_Q_QTIME_LONG  = "qtime_long"
 	ATTR_Q_DEPTH       = "depth"
+	ATTR_Q_CURFSIZE    = "qfile_current_size"
 	ATTR_Q_SINCE_PUT   = "time_since_put"
 	ATTR_Q_SINCE_GET   = "time_since_get"
 	ATTR_Q_MAX_DEPTH   = "attribute_max_depth"
 	ATTR_Q_USAGE       = "attribute_usage"
+	ATTR_Q_CURMAXFSIZE = "qfile_max_size"
 
 	// The next two attributes are given the same name
 	// as the published statistics from the amqsrua-style
@@ -93,6 +95,14 @@ func QueueInitAttributes() {
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
 	attr = ATTR_Q_OPPROCS
 	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+
+	// QFile sizes - current, and the "current maximum" which may not be
+	// the same as the qdefinition but is the one in effect for now until
+	// the qfile empties
+	attr = ATTR_Q_CURFSIZE
+	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue File Current Size", ibmmq.MQIACF_CUR_Q_FILE_SIZE)
+	attr = ATTR_Q_CURMAXFSIZE
+	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue File Maximum Size", ibmmq.MQIACF_CUR_MAX_FILE_SIZE)
 
 	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response
 	if !usePublications {

@@ -185,16 +185,16 @@ DiscoverAndSubscribe does the work of finding the
 different resources available from a queue manager and
 issuing the MQSUB calls to collect the data
 */
-func DiscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
+func DiscoverAndSubscribe(dc DiscoverConfig) error {
 	discoveryDone = true
 	redo := false
 
 	qInfoMap = make(map[string]*ObjInfo)
 
-	err := discoverAndSubscribe(queueList, checkQueueList, metaPrefix, redo)
+	err := discoverAndSubscribe(dc, redo)
 	return err
 }
-func RediscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string) error {
+func RediscoverAndSubscribe(dc DiscoverConfig) error {
 	discoveryDone = true
 	redo := true
 
@@ -204,7 +204,7 @@ func RediscoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix st
 		qi.exists = false
 	}
 
-	err := discoverAndSubscribe(queueList, checkQueueList, metaPrefix, redo)
+	err := discoverAndSubscribe(dc, redo)
 
 	// We now know if an object still exists; remove it from the map if not.
 	for key, qi := range qInfoMap {
@@ -243,21 +243,21 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 	return err
 }
 
-func discoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix string, redo bool) error {
+func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 	var err error
 
 	// What metrics can the queue manager provide?
 	if err == nil && redo == false {
-		err = discoverStats(metaPrefix)
+		err = discoverStats(dc)
 	}
 
 	// Which queues have we been asked to monitor? Expand wildcards
 	// to explicit names so that subscriptions work.
 	if err == nil {
-		if checkQueueList {
-			err = discoverQueues(queueList)
+		if dc.MonitoredQueues.UseWildcard {
+			err = discoverQueues(dc.MonitoredQueues.ObjectNames)
 		} else {
-			qList := strings.Split(queueList, ",")
+			qList := strings.Split(dc.MonitoredQueues.ObjectNames, ",")
 			// Make sure the names are reasonably valid
 			for i := 0; i < len(qList); i++ {
 				key := strings.TrimSpace(qList[i])
@@ -285,7 +285,7 @@ func discoverAndSubscribe(queueList string, checkQueueList bool, metaPrefix stri
 	return err
 }
 
-func discoverClasses(metaPrefix string) error {
+func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 	var data []byte
 	var sub ibmmq.MQObject
 	var metaReplyQObj ibmmq.MQObject
@@ -332,8 +332,11 @@ func discoverClasses(metaPrefix string) error {
 					return fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
 				}
 			}
-
-			Metrics.Classes[classIndex] = cl
+			if cl.Name != "STATAPP" {
+				Metrics.Classes[classIndex] = cl
+			} else {
+				logDebug("Not subscribing to Class STATAPP resources")
+			}
 		}
 	}
 
@@ -341,7 +344,7 @@ func discoverClasses(metaPrefix string) error {
 	return err
 }
 
-func discoverTypes(cl *MonClass) error {
+func discoverTypes(dc DiscoverConfig, cl *MonClass) error {
 	var data []byte
 	var sub ibmmq.MQObject
 	var metaReplyQObj ibmmq.MQObject
@@ -383,13 +386,21 @@ func discoverTypes(cl *MonClass) error {
 					return fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
 				}
 			}
-			cl.Types[typeIndex] = ty
+			if ty.Parent.Name == "STATQ" && dc.MonitoredQueues.SubscriptionSelector != "" {
+				if strings.Contains(dc.MonitoredQueues.SubscriptionSelector, ty.Name) {
+					cl.Types[typeIndex] = ty
+				} else {
+					logDebug("Not subscribing to Class STATQ Type %s resources", ty.Name)
+				}
+			} else {
+				cl.Types[typeIndex] = ty
+			}
 		}
 	}
 	return err
 }
 
-func discoverElements(ty *MonType) error {
+func discoverElements(dc DiscoverConfig, ty *MonType) error {
 	var err error
 	var data []byte
 	var sub ibmmq.MQObject
@@ -447,7 +458,7 @@ func discoverElements(ty *MonType) error {
 // Rerun the subscription for elements, but this time adding a locale into the topic
 // so that we can get the translated description. It's up to the collector program to
 // then make use of that description.
-func discoverElementsNLS(ty *MonType, locale string) error {
+func discoverElementsNLS(dc DiscoverConfig, ty *MonType, locale string) error {
 	var err error
 	var data []byte
 	var sub ibmmq.MQObject
@@ -457,7 +468,7 @@ func discoverElementsNLS(ty *MonType, locale string) error {
 		return nil
 	}
 
-	sub, err = subscribe(ty.elementTopic+"/"+locale, &metaReplyQObj)
+	sub, err = subscribeManaged(ty.elementTopic+"/"+locale, &metaReplyQObj)
 	if err == nil {
 		// Don't wait - if there's nothing on that topic, then get out fast
 		data, err = getMessageWithHObj(false, metaReplyQObj)
@@ -514,9 +525,10 @@ by working through the classes, types and individual elements.
 
 Then discover the list of individual queues we have been asked for.
 */
-func discoverStats(metaPrefix string) error {
+func discoverStats(dc DiscoverConfig) error {
 	var err error
 
+	metaPrefix := dc.MetaPrefix
 	// Start with an empty set of information about the available stats
 	Metrics.Classes = make(map[int]*MonClass)
 
@@ -526,18 +538,18 @@ func discoverStats(metaPrefix string) error {
 	}
 
 	// Then get the list of CLASSES
-	err = discoverClasses(metaPrefix)
+	err = discoverClasses(dc, metaPrefix)
 
 	// For each CLASS, discover the TYPEs of data available
 	if err == nil {
 		for _, cl := range Metrics.Classes {
-			err = discoverTypes(cl)
+			err = discoverTypes(dc, cl)
 			// And for each CLASS, discover the actual statistics elements
 			if err == nil {
 				for _, ty := range cl.Types {
-					err = discoverElements(ty)
+					err = discoverElements(dc, ty)
 					if err == nil && locale != "" {
-						err = discoverElementsNLS(ty, locale)
+						err = discoverElementsNLS(dc, ty, locale)
 					}
 				}
 			}

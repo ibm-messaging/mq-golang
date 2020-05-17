@@ -67,7 +67,7 @@ when building a program then it is likely you need to upgrade your compiler.
   export GOPATH=$HOME/gowork
 ```
 
-* On Linux, you must set environment variables to permit some compile/link flags. This is due to a security fix in the compiler.
+* On Linux, some versions of the compiler have required that you set environment variables to permit some compile/link flags. Recent versions of Go seem to effectively include this fix in the compiler so that the export is no longer necessary.
 
 ```
 export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
@@ -193,4 +193,4 @@ in the CLA.
 
 ## Copyright
 
-© Copyright IBM Corporation 2016, 2019
+© Copyright IBM Corporation 2016, 2020

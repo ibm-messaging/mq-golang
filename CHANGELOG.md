@@ -1,8 +1,13 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## May 01 2020 - v5.0.0-alpha
-* Initial migration for Go modules (requires new major number)
+## May 17 2020 - v5.0.0-beta
+* Migration for Go modules (requires new major number) (#138)
+* ibmmq - Add all string mapping functions from cmqstrc (#142)
+* ibmmq - Add AIX platform header  
+* mqmetric - Permit selection of which statistics to gather for STATQ (ibm-messaging/mq-metric-samples#34)
+* mqmetric - Do not try to subscribe to application resource statistics (STATAPP) for now
+* mqmetric - Add QFile usage status available from MQ 9.1.5
 
 ## Apr 02 2020 - v4.1.4
 * Update for MQ 9.1.5                                           
