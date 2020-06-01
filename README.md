@@ -120,7 +120,7 @@ For example,
 ```
 
 * Compile the `ibmmq` component:
-* 
+*
   `go install ./src/github.com/ibm-messaging/mq-golang/ibmmq`
 
 * If you plan to use monitoring functions, then compile the `mqmetric` component:
@@ -147,6 +147,29 @@ the root of the repository. This required a major version bump in the release st
 Support for modules started to be introduced around Go 1.11 and has been firmed up in various
 modification level updates in each of the compiler levels since then. The module changes for this
 package were developed and tested with Go 1.13.6.
+
+To use the MQ module in your application, your `go.mod` file contains
+
+```
+  require (
+    github.com/ibm-messaging/mq-golang/v5 v5.0.0
+  )
+```
+
+and your application code will include
+
+```
+  import ibmmq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
+```
+
+If you have not moved to using modules in your application, you should continue using the older levels
+of these packages. For example, you can continue to use `dep` with `Gopkg.toml` referring to
+
+```
+[[constraint]]
+  name = "github.com/ibm-messaging/mq-golang"
+  version = "4.1.4"
+```
 
 ## Related Projects
 

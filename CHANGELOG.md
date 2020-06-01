@@ -1,7 +1,7 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## May 17 2020 - v5.0.0-beta
+## June 1 2020 - v5.0.0
 * Migration for Go modules (requires new major number) (#138)
 * ibmmq - Add all string mapping functions from cmqstrc (#142)
 * ibmmq - Add AIX platform header  
