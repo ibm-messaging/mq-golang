@@ -2,9 +2,7 @@
 
 This repository demonstrates how you can call IBM MQ from applications written in the Go language.
 
-> **NOTICE**: Please ensure that you use a dependency management tool such as [dep](https://github.com/golang/dep) or [Glide](http://glide.sh/), and add a specific version dependency.
-
-This repository previously contained sample programs that exported MQ statistics to
+This repository previously contained programs that exported MQ statistics to
 some monitoring packages. These have now been moved to a
 [GitHub repository called mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
@@ -56,8 +54,7 @@ but subsequent steps are independent of the platform.
 ### Linux
 
 * Install the Go runtime and compiler. On Linux, the packaging may vary but a typical
-directory for the code is `/usr/lib/golang`.
-The compiler should be at least version 10. If you see an error similar to "ld: NULL not defined"
+directory for the code is `/usr/lib/golang`. If you see an error similar to "ld: NULL not defined"
 when building a program then it is likely you need to upgrade your compiler.
 
 
@@ -70,7 +67,7 @@ when building a program then it is likely you need to upgrade your compiler.
   export GOPATH=$HOME/gowork
 ```
 
-* On Linux, you must set environment variables to permit some compile/link flags. This is due to a security fix in the compiler.
+* On Linux, some versions of the compiler have required that you set environment variables to permit some compile/link flags. Recent versions of Go seem to effectively include this fix in the compiler so that the export is no longer necessary.
 
 ```
 export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
@@ -123,7 +120,7 @@ For example,
 ```
 
 * Compile the `ibmmq` component:
-
+*
   `go install ./src/github.com/ibm-messaging/mq-golang/ibmmq`
 
 * If you plan to use monitoring functions, then compile the `mqmetric` component:
@@ -137,8 +134,42 @@ For example,
 At this point, you should have a compiled copy of the program in `$GOPATH/bin`. See the
 `samples` directory for more sample programs.
 
+## Building in a container
 The `buildSamples.sh` script in this directory can also be used to create a container which will
-compile the samples and copy them to a local directory.
+compile the samples and copy them to a local directory. If you use this approach, you do not need
+to install a local copy of the compiler and associated toold, though you will still need a copy of
+the MQ runtime libraries for wherever you execute the programs.
+
+## Go Modules
+The packages in this repository are now set up to be used as Go modules. See the `go.mod` file in
+the root of the repository. This required a major version bump in the release stream.
+
+Support for modules started to be introduced around Go 1.11 and has been firmed up in various
+modification level updates in each of the compiler levels since then. The module changes for this
+package were developed and tested with Go 1.13.6.
+
+To use the MQ module in your application, your `go.mod` file contains
+
+```
+  require (
+    github.com/ibm-messaging/mq-golang/v5 v5.0.0
+  )
+```
+
+and your application code will include
+
+```
+  import ibmmq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
+```
+
+If you have not moved to using modules in your application, you should continue using the older levels
+of these packages. For example, you can continue to use `dep` with `Gopkg.toml` referring to
+
+```
+[[constraint]]
+  name = "github.com/ibm-messaging/mq-golang"
+  version = "4.1.4"
+```
 
 ## Related Projects
 
@@ -185,4 +216,4 @@ in the CLA.
 
 ## Copyright
 
-© Copyright IBM Corporation 2016, 2019
+© Copyright IBM Corporation 2016, 2020

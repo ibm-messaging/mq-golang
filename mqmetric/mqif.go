@@ -26,7 +26,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 
 import (
 	"fmt"
-	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 var (
@@ -64,6 +64,32 @@ type ConnectionConfig struct {
 	UseResetQStats  bool
 }
 
+// Which objects are available for subscription. How
+// do we define which ones to subscribe to and filter the
+// specific subscriptions.
+
+type DiscoverObject struct {
+	ObjectNames          string
+	UseWildcard          bool
+	SubscriptionSelector string
+}
+
+// For now, only queues are subscribable through this interface
+// but there are now Application resources that might be relevant
+// at some time.
+type DiscoverConfig struct {
+	MetaPrefix      string // Root of all meta-data discovery
+	MonitoredQueues DiscoverObject
+}
+
+type MQMetricError struct {
+	Err      string
+	MQReturn *ibmmq.MQReturn
+}
+
+func (e MQMetricError) Error() string { return e.Err + " : " + e.MQReturn.Error() }
+func (e MQMetricError) Unwrap() error { return e.MQReturn }
+
 /*
 InitConnection connects to the queue manager, and then
 opens both the command queue and a dynamic reply queue
@@ -71,6 +97,7 @@ to be used for all responses including the publications
 */
 func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error {
 	var err error
+	var mqreturn *ibmmq.MQReturn
 	var errorString = ""
 
 	gocno := ibmmq.NewMQCNO()
@@ -103,6 +130,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		qmgrConnected = true
 	} else {
 		errorString = "Cannot connect to queue manager " + qMgrName
+		mqreturn = err.(*ibmmq.MQReturn)
 	}
 
 	// Discover important information about the qmgr - its real name
@@ -159,6 +187,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 
 		} else {
 			errorString = "Cannot open queue manager object"
+			mqreturn = err.(*ibmmq.MQReturn)
 		}
 	}
 
@@ -177,6 +206,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		cmdQObj, err = qMgr.Open(mqod, openOptions)
 		if err != nil {
 			errorString = "Cannot open queue " + mqod.ObjectName
+			mqreturn = err.(*ibmmq.MQReturn)
 		}
 
 	}
@@ -194,6 +224,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 			queuesOpened = true
 		} else {
 			errorString = "Cannot open queue " + replyQ
+			mqreturn = err.(*ibmmq.MQReturn)
 		}
 	}
 
@@ -206,11 +237,12 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		statusReplyQObj, err = qMgr.Open(mqod, openOptions)
 		if err != nil {
 			errorString = "Cannot open queue " + replyQ
+			mqreturn = err.(*ibmmq.MQReturn)
 		}
 	}
 
 	if err != nil {
-		return fmt.Errorf(errorString+". Error: %v", err)
+		return MQMetricError{Err: errorString, MQReturn: mqreturn}
 	}
 
 	return err

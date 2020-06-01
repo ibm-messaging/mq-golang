@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=ubuntu:19.04
+ARG BASE_IMAGE=ubuntu:19.10
 FROM $BASE_IMAGE
 
 ARG GOPATH_ARG="/go"
 
-ENV GOVERSION=1.12 \
+ENV GOVERSION=1.13 \
     GOPATH=$GOPATH_ARG \
     ORG="github.com/ibm-messaging"
 

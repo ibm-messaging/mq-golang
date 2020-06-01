@@ -35,7 +35,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 var qMgrObject ibmmq.MQObject

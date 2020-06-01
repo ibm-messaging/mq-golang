@@ -26,7 +26,7 @@ package mqmetric
 
 import (
 	"fmt"
-	ibmmq "github.com/ibm-messaging/mq-golang/ibmmq"
+	ibmmq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strings"
 	"time"
 )

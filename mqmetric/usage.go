@@ -31,7 +31,7 @@ about MQ on z/OS pageset and bufferpool use.
 
 import (
 	//	"fmt"
-	"github.com/ibm-messaging/mq-golang/ibmmq"
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strconv"
 )
 
