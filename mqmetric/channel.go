@@ -214,6 +214,37 @@ func CollectChannelStatus(patterns string) error {
 			}
 		}
 	}
+
+	// If someone has asked to see all the channel definitions, not just those that have a valid
+	// CHSTATUS response, then we can look through the list of all known channels that match
+	// our patterns (chlInfoMap) and add some dummy values to the status maps if the channel
+	// is not already there. Some of the fields do need to be faked up as we don't know anything about
+	// the "partner"
+	if err == nil && showInactiveChannels {
+		for chlName, v := range chlInfoMap {
+			found := false
+			chlPrefix := chlName + "/"
+			for k, _ := range ChannelStatus.Attributes[ATTR_CHL_STATUS].Values {
+				if strings.HasPrefix(k, chlPrefix) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// A channel key is normally made up of 4 elements but we only know 1
+				key := chlName + "/" + DUMMY_STRING + "/" + DUMMY_STRING + "/" + DUMMY_STRING
+
+				ChannelStatus.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
+				ChannelStatus.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(DUMMY_STRING)
+				ChannelStatus.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(DUMMY_STRING)
+				ChannelStatus.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(DUMMY_STRING)
+
+				ChannelStatus.Attributes[ATTR_CHL_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQCHS_INACTIVE))
+				ChannelStatus.Attributes[ATTR_CHL_STATUS_SQUASH].Values[key] = newStatusValueInt64(SQUASH_CHL_STATUS_STOPPED)
+				ChannelStatus.Attributes[ATTR_CHL_TYPE].Values[key] = newStatusValueInt64(v.AttrChlType)
+			}
+		}
+	}
 	return err
 
 }
@@ -486,7 +517,7 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_CHANNEL_ATTRS
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIACH_MAX_INSTANCES), int64(ibmmq.MQIACH_MAX_INSTS_PER_CLIENT), int64(ibmmq.MQCACH_DESC)}
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIACH_MAX_INSTANCES), int64(ibmmq.MQIACH_MAX_INSTS_PER_CLIENT), int64(ibmmq.MQCACH_DESC), int64(ibmmq.MQIACH_CHANNEL_TYPE)}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -571,6 +602,18 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 					infoMap[chlName] = ci
 				}
 				ci.AttrMaxInstC = v
+				ci.exists = true
+
+			}
+
+		case ibmmq.MQIACH_CHANNEL_TYPE:
+			v := elem.Int64Value[0]
+			if v > 0 {
+				if ci, ok = infoMap[chlName]; !ok {
+					ci = new(ObjInfo)
+					infoMap[chlName] = ci
+				}
+				ci.AttrChlType = v
 				ci.exists = true
 
 			}

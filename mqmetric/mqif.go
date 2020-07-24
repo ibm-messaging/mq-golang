@@ -48,9 +48,10 @@ var (
 	queuesOpened  = false
 	subsOpened    = false
 
-	usePublications = true
-	useStatus       = false
-	useResetQStats  = false
+	usePublications      = true
+	useStatus            = false
+	useResetQStats       = false
+	showInactiveChannels = false
 )
 
 type ConnectionConfig struct {
@@ -59,9 +60,14 @@ type ConnectionConfig struct {
 	Password     string
 	TZOffsetSecs float64
 
-	UsePublications bool
-	UseStatus       bool
-	UseResetQStats  bool
+	UsePublications      bool
+	UseStatus            bool
+	UseResetQStats       bool
+	ShowInactiveChannels bool
+
+	CcdtUrl  string
+	ConnName string
+	Channel  string
 }
 
 // Which objects are available for subscription. How
@@ -97,15 +103,29 @@ to be used for all responses including the publications
 */
 func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error {
 	var err error
+	var gocd *ibmmq.MQCD
 	var mqreturn *ibmmq.MQReturn
 	var errorString = ""
 
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
 
+	// Copy initialisation configuraton information to global vars
 	tzOffsetSecs = cc.TZOffsetSecs
+	showInactiveChannels = cc.ShowInactiveChannels
 
 	// Explicitly force client mode if requested. Otherwise use the "default"
+	// Client mode can be come from a simple boolean, or from having
+	// common configurations with the CCDT or ConnName/Channel being set.
+	if cc.CcdtUrl != "" {
+		cc.ClientMode = true
+	} else if cc.ConnName != "" || cc.Channel != "" {
+		cc.ClientMode = true
+		gocd = ibmmq.NewMQCD()
+		gocd.ChannelName = cc.Channel
+		gocd.ConnectionName = cc.ConnName
+	}
+
 	// connection mechanism depending on what is installed or configured.
 	if cc.ClientMode {
 		gocno.Options = ibmmq.MQCNO_CLIENT_BINDING
@@ -113,6 +133,15 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		// configured (eg MQ_CONNECT_TYPE or client-only installation) connections. But
 		// it is a bad idea to try to reconnect to a different queue manager.
 		gocno.Options |= ibmmq.MQCNO_RECONNECT_Q_MGR
+		if cc.CcdtUrl != "" {
+			gocno.CCDTUrl = cc.CcdtUrl
+			logInfo("Trying to connect as client using CCDT: %s", gocno.CCDTUrl)
+		} else if gocd != nil {
+			gocno.ClientConn = gocd
+			logInfo("Trying to connect as client using ConnName: %s, Channel: %s", gocd.ConnectionName, gocd.ChannelName)
+		} else {
+			logInfo("Trying to connect as client with external configuration")
+		}
 	}
 	gocno.Options |= ibmmq.MQCNO_HANDLE_SHARE_BLOCK
 

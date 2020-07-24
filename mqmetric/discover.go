@@ -93,6 +93,7 @@ type ObjInfo struct {
 	// Some channel information
 	AttrMaxInst  int64
 	AttrMaxInstC int64
+	AttrChlType  int64
 }
 
 // QMgrMapKey can never be a real object name and is therefore useful in
@@ -116,6 +117,7 @@ var chlInfoMap map[string]*ObjInfo
 
 var locale string
 var discoveryDone = false
+var publicationCount = 0
 
 func GetDiscoveredQueues() []string {
 	keys := make([]string, 0)
@@ -123,6 +125,10 @@ func GetDiscoveredQueues() []string {
 		keys = append(keys, key)
 	}
 	return keys
+}
+
+func GetProcessPublicationCount() int {
+	return publicationCount
 }
 
 /*
@@ -928,20 +934,21 @@ func ProcessPublications() error {
 	var elementidx int
 	var value int64
 
+	publicationCount = 0
+
 	if !usePublications {
 		return nil
 	}
 
 	// Keep reading all available messages until queue is empty. Don't
 	// do a GET-WAIT; just immediate removals.
-	cnt := 0
 	for err == nil {
 		data, err = getMessage(false)
 
 		// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
 		// which will end the loop.
 		if err == nil {
-			cnt++
+			publicationCount++
 			elemList, _ := parsePCFResponse(data)
 
 			// A typical publication contains some fixed

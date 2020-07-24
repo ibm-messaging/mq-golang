@@ -1,6 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Jul 23 2020 - v5.1.0
+* Update for MQ 9.2.0
+* mqmetric - Add explicit client configuration options
+* mqmetric - Add counter of how many resource publicatins read per scrape
+
 ## June 1 2020 - v5.0.0
 * Migration for Go modules (requires new major number) (#138)
 * ibmmq - Add all string mapping functions from cmqstrc (#142)
