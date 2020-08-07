@@ -78,7 +78,7 @@ func NewMQSTS() *MQSTS {
 func copySTStoC(mqsts *C.MQSTS, gosts *MQSTS) {
 	const vsbufsize = C.MQ_TOPIC_STR_LENGTH
 
-	setMQIString((*C.char)(&mqsts.StrucId[0]), "STS ", 4)
+	setMQIString((*C.char)(&mqsts.StrucId[0]), "STAT", 4)
 	mqsts.Version = C.MQSTS_VERSION_2
 
 	mqsts.PutSuccessCount = C.MQLONG(gosts.PutSuccessCount)
