@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Aug 07 2020 - v5.1.1
+* ibmmq - Fix STS structure (#146)
+* Add flag for Windows build that seems no longer to be automatically set by cgo
+
 ## Jul 23 2020 - v5.1.0
 * Update for MQ 9.2.0
 * mqmetric - Add explicit client configuration options
@@ -9,13 +13,13 @@ Newest updates are at the top of this file.
 ## June 1 2020 - v5.0.0
 * Migration for Go modules (requires new major number) (#138)
 * ibmmq - Add all string mapping functions from cmqstrc (#142)
-* ibmmq - Add AIX platform header  
+* ibmmq - Add AIX platform header
 * mqmetric - Permit selection of which statistics to gather for STATQ (ibm-messaging/mq-metric-samples#34)
 * mqmetric - Do not try to subscribe to application resource statistics (STATAPP) for now
 * mqmetric - Add QFile usage status available from MQ 9.1.5
 
 ## Apr 02 2020 - v4.1.4
-* Update for MQ 9.1.5                                           
+* Update for MQ 9.1.5
 * ibmmq - Add message and header compression for MQCD (#137)
 * ibmmq - Set endianness just once (#140)
 * mqmetric - Add better diagnostics when running out of object handles

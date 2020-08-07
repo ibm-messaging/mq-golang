@@ -78,8 +78,8 @@ export CGO_LDFLAGS_ALLOW="-Wl,-rpath.*"
 ### Windows
 
 * Install the Go runtime and compiler. On Windows, the common directory is `c:\Go`
-* Ensure you have a gcc-based compiler, for example from the Cygwin distribution.
-I recommend you use the mingw variation, to ensure compiled code can be used on systems without Cygwin installed.
+* Ensure you have a gcc-based compiler. The variant that now seems to be recommended for cgo is
+the [tdm-gcc-64](https://jmeubank.github.io/tdm-gcc/download/) 64-bit compiler suite.
 The default `gcc` compiler from Cygwin does not work because it tries to build a
 Cygwin-enabled executable but the MQ libraries do not work in that model;
 the `mingw` versions build Windows-native programs.
