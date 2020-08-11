@@ -1,6 +1,12 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Sep 10 2020 - v5.1.2
+* mqmetric - Add loglevel=TRACE and trace-points for all key functions in the package
+* mqmetric - Add channel status bytes and buffer counts
+* mqmetric - Check queue depth appropriate for all CHSTATUS operations
+* ibmmq - Fix for potential race condition (#148)
+
 ## Aug 07 2020 - v5.1.1
 * ibmmq - Fix STS structure (#146)
 * Add flag for Windows build that seems no longer to be automatically set by cgo

@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2019
+  Copyright (c) IBM Corporation 2016, 2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ type AllMetrics struct {
 
 // This structure contains additional info about any object type that may need to be held.
 // The first fields are used for all object types. Following fields will apply to different
-// object types. Currently only queues need this information.
+// object types.
 type ObjInfo struct {
 	exists          bool // Used during rediscovery
 	firstCollection bool // To indicate discard needed of first stat
@@ -120,10 +120,12 @@ var discoveryDone = false
 var publicationCount = 0
 
 func GetDiscoveredQueues() []string {
+	traceEntry("GetDiscoveredQueues")
 	keys := make([]string, 0)
 	for key := range qInfoMap {
 		keys = append(keys, key)
 	}
+	traceExit("GetDiscoveredQueues", 0)
 	return keys
 }
 
@@ -149,6 +151,8 @@ func VerifyConfig() (int32, error) {
 	var err error
 	var v map[int32]interface{}
 	var compCode = ibmmq.MQCC_OK
+
+	traceEntry("VerifyConfig")
 	if !discoveryDone {
 		err = fmt.Errorf("Error: Need to call DiscoverAndSubscribe first")
 		compCode = ibmmq.MQCC_FAILED
@@ -169,7 +173,18 @@ func VerifyConfig() (int32, error) {
 			// Since we don't do pubsub-based collection on z/OS, this qdepth doesn't matter
 			recommendedDepth := (20 + len(qInfoMap)*5) * 6
 			if maxQDepth < int32(recommendedDepth) && usePublications {
-				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d", replyQBaseName, maxQDepth)
+				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on queue count is at least %d", replyQBaseName, maxQDepth, recommendedDepth)
+				compCode = ibmmq.MQCC_WARNING
+			}
+
+			// There may also be a high number of channels that meet the selection criteria. Make sure we've got enough space
+			// for a DIS CHS(*) in case that pattern is used. I've added a small bit of headroom but we will normally only get
+			// exactly the number of responses to match the number of actual channels. Of course, that number may change in the
+			// lifetime of the system but we only check what's possible at startup.If the channels are being named via a set of
+			// separate patterns, then this will overestimate what's needed. Hence it's a warning, not an error.
+			recommendedDepth = len(chlInfoMap) + 20
+			if maxQDepth < int32(recommendedDepth) && len(chlInfoMap) > 0 {
+				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on channel count is at least %d\n", replyQBaseName, maxQDepth, recommendedDepth)
 				compCode = ibmmq.MQCC_WARNING
 			}
 
@@ -183,6 +198,9 @@ func VerifyConfig() (int32, error) {
 			}
 		}
 	}
+
+	traceExitErr("VerifyConfig", 0, err)
+
 	return compCode, err
 }
 
@@ -192,15 +210,21 @@ different resources available from a queue manager and
 issuing the MQSUB calls to collect the data
 */
 func DiscoverAndSubscribe(dc DiscoverConfig) error {
+	traceEntry("DiscoverAndSubscribe")
+
 	discoveryDone = true
 	redo := false
 
 	qInfoMap = make(map[string]*ObjInfo)
 
 	err := discoverAndSubscribe(dc, redo)
+
+	traceExitErr("DiscoverAndSubscribe", 0, err)
 	return err
 }
 func RediscoverAndSubscribe(dc DiscoverConfig) error {
+	traceEntry("RediscoverAndSubscribe")
+
 	discoveryDone = true
 	redo := true
 
@@ -219,6 +243,8 @@ func RediscoverAndSubscribe(dc DiscoverConfig) error {
 		}
 	}
 
+	traceExitErr("RediscoverAndSubscribe", 0, err)
+
 	return err
 }
 
@@ -227,6 +253,7 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 	var infoMap map[string](*ObjInfo)
 	var fn func(string, map[string](*ObjInfo)) error
 
+	traceEntry("RediscoverAttributes")
 	switch objectType {
 	case ibmmq.MQOT_CHANNEL:
 		// Always start with a clean slate for these maps
@@ -246,12 +273,16 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 			}
 		}
 	}
+
+	traceExitErr("RediscoverAttributes", 0, err)
+
 	return err
 }
 
 func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 	var err error
 
+	traceEntry("discoverAndSubscribe")
 	// What metrics can the queue manager provide?
 	if err == nil && redo == false {
 		err = discoverStats(dc)
@@ -288,6 +319,8 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 		err = createSubscriptions()
 	}
 
+	traceExitErr("discoverAndSubscribe", 0, err)
+
 	return err
 }
 
@@ -298,6 +331,7 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 	var err error
 	var rootTopic string
 
+	traceEntry("discoverClasses")
 	// Have to know the starting point for the topic that tells about classes
 	if metaPrefix == "" {
 		rootTopic = "$SYS/MQ/INFO/QMGR/" + resolvedQMgrName + "/Monitor/METADATA/CLASSES"
@@ -335,7 +369,9 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 				case ibmmq.MQCA_TOPIC_STRING:
 					cl.typesTopic = elem.String[0]
 				default:
-					return fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
+					e2 := fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
+					traceExitErr("discoverClasses", 1, e2)
+					return e2
 				}
 			}
 			if cl.Name != "STATAPP" {
@@ -347,6 +383,7 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 	}
 
 	subsOpened = true
+	traceExitErr("discoverClasses", 0, err)
 	return err
 }
 
@@ -355,6 +392,8 @@ func discoverTypes(dc DiscoverConfig, cl *MonClass) error {
 	var sub ibmmq.MQObject
 	var metaReplyQObj ibmmq.MQObject
 	var err error
+
+	traceEntry("discoverTypes")
 
 	sub, err = subscribeManaged(cl.typesTopic, &metaReplyQObj)
 	if err == nil {
@@ -389,7 +428,9 @@ func discoverTypes(dc DiscoverConfig, cl *MonClass) error {
 				case ibmmq.MQCA_TOPIC_STRING:
 					ty.elementTopic = elem.String[0]
 				default:
-					return fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
+					e2 := fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
+					traceExitErr("discoverTypes", 1, e2)
+					return e2
 				}
 			}
 			if ty.Parent.Name == "STATQ" && dc.MonitoredQueues.SubscriptionSelector != "" {
@@ -403,6 +444,8 @@ func discoverTypes(dc DiscoverConfig, cl *MonClass) error {
 			}
 		}
 	}
+
+	traceExitErr("discoverTypes", 0, err)
 	return err
 }
 
@@ -413,6 +456,7 @@ func discoverElements(dc DiscoverConfig, ty *MonType) error {
 	var metaReplyQObj ibmmq.MQObject
 	var elem *MonElement
 
+	traceEntry("discoverElements")
 	sub, err = subscribeManaged(ty.elementTopic, &metaReplyQObj)
 	if err == nil {
 		data, err = getMessageWithHObj(true, metaReplyQObj)
@@ -449,7 +493,9 @@ func discoverElements(dc DiscoverConfig, ty *MonType) error {
 				case ibmmq.MQCAMO_MONITOR_DESC:
 					elem.Description = e.String[0]
 				default:
-					return fmt.Errorf("Unknown parameter %d in type discovery", e.Parameter)
+					e2 := fmt.Errorf("Unknown parameter %d in type discovery", e.Parameter)
+					traceExitErr("discoverElements", 1, e2)
+					return e2
 				}
 			}
 
@@ -457,6 +503,8 @@ func discoverElements(dc DiscoverConfig, ty *MonType) error {
 			ty.Elements[elementIndex] = elem
 		}
 	}
+
+	traceExitErr("discoverElements", 0, err)
 
 	return err
 }
@@ -470,7 +518,9 @@ func discoverElementsNLS(dc DiscoverConfig, ty *MonType, locale string) error {
 	var sub ibmmq.MQObject
 	var metaReplyQObj ibmmq.MQObject
 
+	traceEntry("discoverElementsNLS")
 	if locale == "" {
+		traceExit("discoverElementsNLS", 1)
 		return nil
 	}
 
@@ -522,6 +572,8 @@ func discoverElementsNLS(dc DiscoverConfig, ty *MonType, locale string) error {
 		}
 	}
 
+	traceExitErr("discoverElementsNLS", 0, err)
+
 	return err
 }
 
@@ -534,12 +586,14 @@ Then discover the list of individual queues we have been asked for.
 func discoverStats(dc DiscoverConfig) error {
 	var err error
 
+	traceEntry("discoverStats")
 	metaPrefix := dc.MetaPrefix
 	// Start with an empty set of information about the available stats
 	Metrics.Classes = make(map[int]*MonClass)
 
 	// Allow us to proceed on z/OS even though it does not support pub/sub resources
 	if metaPrefix == "" && !usePublications {
+		traceExit("discoverStats", 1)
 		return nil
 	}
 
@@ -583,6 +637,8 @@ func discoverStats(dc DiscoverConfig) error {
 
 	}
 
+	traceExitErr("discoverStats", 0, err)
+
 	return err
 }
 
@@ -605,6 +661,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 	var allQueues []string
 	usingRegExp := false
 
+	traceEntry("discoverQueues")
 	// If the list of monitored queues has a ! somewhere in it, we will
 	// get the full list of queues on the qmgr, and filter it by patterns.
 	if strings.Contains(monitoredQueuePatterns, "!") {
@@ -673,8 +730,12 @@ func discoverQueues(monitoredQueuePatterns string) error {
 		if err != nil {
 			//fmt.Printf("Queue Discovery Error: %v\n", err)
 		}
+		traceExit("discoverQueues", 1)
+
 		return nil
 	}
+
+	traceExitErr("discoverQueues", 0, err)
 
 	return err
 }
@@ -689,9 +750,11 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 	var returnedAttribute int32
 	var missingPatterns string
 
+	traceEntryF("inquireObjects", "Type: %d Patterns: %s", objectType, objectPatternsList)
 	objectList = make([]string, 0)
 
 	if objectPatternsList == "" {
+		traceExitErr("inquireObjects", 1, err)
 		return nil, err
 	}
 
@@ -720,7 +783,9 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 			attribute = ibmmq.MQCACH_CHANNEL_NAME
 			returnedAttribute = ibmmq.MQCACH_CHANNEL_NAMES
 		default:
-			return nil, fmt.Errorf("Object type %d is not valid", objectType)
+			e2 := fmt.Errorf("Object type %d is not valid", objectType)
+			traceExitErr("inquireObjects", 2, e2)
+			return nil, e2
 		}
 
 		putmqmd := ibmmq.NewMQMD()
@@ -778,6 +843,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
+			traceExitErr("inquireObjects", 3, err)
 			return objectList, err
 		}
 
@@ -829,9 +895,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 							}
 							for i := 0; i < len(elem.String); i++ {
 								s := strings.TrimSpace(elem.String[i])
-
 								objectList = append(objectList, s)
-
 							}
 						}
 					}
@@ -845,6 +909,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 						bufSize = maxBufSize
 					}
 				} else {
+					traceExitErr("inquireObjects", 4, err)
 					return objectList, err
 				}
 			}
@@ -854,6 +919,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 	if len(missingPatterns) > 0 && err == nil {
 		err = fmt.Errorf("No objects matching %s of type %d exist", missingPatterns, objectType)
 	}
+	traceExitErr("inquireObjects", 0, err)
 	return objectList, err
 }
 
@@ -864,6 +930,8 @@ create all the subscriptions.
 func createSubscriptions() error {
 	var err error
 	var sub ibmmq.MQObject
+
+	traceEntry("createSubscriptions")
 	for _, cl := range Metrics.Classes {
 		for _, ty := range cl.Types {
 
@@ -905,10 +973,14 @@ func createSubscriptions() error {
 			}
 
 			if err != nil {
-				return fmt.Errorf("Error subscribing to %s: %v", ty.ObjectTopic, err)
+				e2 := fmt.Errorf("Error subscribing to %s: %v", ty.ObjectTopic, err)
+				traceExitErr("createSubscriptions", 1, e2)
+				return e2
 			}
 		}
 	}
+
+	traceExitErr("createSubscriptions", 0, err)
 
 	return err
 }
@@ -934,9 +1006,12 @@ func ProcessPublications() error {
 	var elementidx int
 	var value int64
 
+	traceEntry("ProcessPublications")
+
 	publicationCount = 0
 
 	if !usePublications {
+		traceExit("ProcessPublications", 1)
 		return nil
 	}
 
@@ -1052,6 +1127,7 @@ func ProcessPublications() error {
 			mqreturn := err.(*ibmmq.MQReturn)
 
 			if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+				traceExitErr("ProcessPublications", 2, mqreturn)
 				return mqreturn
 			}
 		}
@@ -1062,6 +1138,7 @@ func ProcessPublications() error {
 		qi.firstCollection = false
 	}
 
+	traceExit("ProcessPublications", 0)
 	return nil
 }
 
@@ -1081,6 +1158,8 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 	var elemList []*ibmmq.PCFParameter
 	var bytesRead int
 
+	traceEntry("parsePCFResponse")
+
 	rc := false
 
 	// First get the MQCFH structure. This also returns
@@ -1088,6 +1167,7 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 	// looking for the next element
 	cfh, offset := ibmmq.ReadPCFHeader(buf)
 	if cfh == nil {
+		traceExit("parsePCFResponse", 1)
 		return elemList, true
 	}
 
@@ -1115,6 +1195,8 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 	if cfh.Control == ibmmq.MQCFC_LAST {
 		rc = true
 	}
+	traceExit("parsePCFResponse", 0)
+
 	return elemList, rc
 }
 
@@ -1179,7 +1261,7 @@ func formatDescription(elem *MonElement) string {
 			s = s + "_count"
 		}
 	}
-
+	logTrace("  [%s] in:%s out:%s", "formatDescription", elem.Description, s)
 	return s
 }
 

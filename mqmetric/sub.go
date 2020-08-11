@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2019
+  Copyright (c) IBM Corporation 2018,2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -57,7 +57,9 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func SubInitAttributes() {
+	traceEntry("SubInitAttributes")
 	if subAttrsInit {
+		traceExit("SubInitAttributes", 1)
 		return
 	}
 	SubStatus.Attributes = make(map[string]*StatusAttribute)
@@ -81,11 +83,12 @@ func SubInitAttributes() {
 	SubStatus.Attributes[attr].delta = true
 
 	subAttrsInit = true
+	traceExit("SubInitAttributes", 0)
 }
 
 func CollectSubStatus(patterns string) error {
 	var err error
-
+	traceEntry("CollectSubStatus")
 	SubInitAttributes()
 
 	// Empty any collected values
@@ -95,6 +98,7 @@ func CollectSubStatus(patterns string) error {
 
 	subPatterns := strings.Split(patterns, ",")
 	if len(subPatterns) == 0 {
+		traceExit("CollectSubStatus", 1)
 		return nil
 	}
 
@@ -108,8 +112,9 @@ func CollectSubStatus(patterns string) error {
 
 	}
 
-	return err
+	traceExitErr("CollectSubStatus", 0, err)
 
+	return err
 }
 
 // Issue the INQUIRE_SUB_STATUS command for a subscription name pattern
@@ -117,6 +122,7 @@ func CollectSubStatus(patterns string) error {
 func collectSubStatus(pattern string) error {
 	var err error
 
+	traceEntryF("collectSubStatus", "Pattern: %s", pattern)
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -139,8 +145,9 @@ func collectSubStatus(pattern string) error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
-		return err
+		traceExitErr("collectSubStatus", 1, err)
 
+		return err
 	}
 
 	// Now get the responses - loop until all have been received (one
@@ -152,6 +159,8 @@ func collectSubStatus(pattern string) error {
 		}
 	}
 
+	traceExitErr("collectSubStatus", 0, err)
+
 	return err
 }
 
@@ -159,6 +168,7 @@ func collectSubStatus(pattern string) error {
 func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
+	traceEntry("parseSubData")
 	subName := ""
 	subId := ""
 	key := ""
@@ -172,6 +182,7 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseSubData", 1)
 		return ""
 	}
 
@@ -226,6 +237,8 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	SubStatus.Attributes[ATTR_SUB_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
 	SubStatus.Attributes[ATTR_SUB_TOPIC_STRING].Values[key] = newStatusValueString(topicString)
 	SubStatus.Attributes[ATTR_SUB_NAME].Values[key] = newStatusValueString(subName)
+
+	traceExitF("parseSubData", 0, "Key : %s", key)
 
 	return key
 }

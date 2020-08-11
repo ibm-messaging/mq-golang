@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2019
+  Copyright (c) IBM Corporation 2018,2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -75,7 +75,9 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func QueueInitAttributes() {
+	traceEntry("QueueInitAttributes")
 	if qAttrsInit {
+		traceExit("QueueInitAttributes", 1)
 		return
 	}
 	QueueStatus.Attributes = make(map[string]*StatusAttribute)
@@ -138,18 +140,25 @@ func QueueInitAttributes() {
 	QueueStatus.Attributes[attr].index = 1
 
 	qAttrsInit = true
+
+	traceExit("QueueInitAttributes", 0)
+
 }
 
 // If we need to list the queues that match a pattern. Not needed for
 // the status queries as they (unlike the pub/sub resource stats) accept
 // patterns in the PCF command
 func InquireQueues(patterns string) ([]string, error) {
+	traceEntry("InquireQueues")
 	QueueInitAttributes()
-	return inquireObjects(patterns, ibmmq.MQOT_Q)
+	rc, err := inquireObjects(patterns, ibmmq.MQOT_Q)
+	traceExitErr("InquireQueues", 0, err)
+	return rc, err
 }
 
 func CollectQueueStatus(patterns string) error {
 	var err error
+	traceEntry("CollectQueueStatus")
 
 	QueueInitAttributes()
 
@@ -160,6 +169,7 @@ func CollectQueueStatus(patterns string) error {
 
 	queuePatterns := strings.Split(patterns, ",")
 	if len(queuePatterns) == 0 {
+		traceExit("CollectQueueStatus", 1)
 		return nil
 	}
 
@@ -189,6 +199,7 @@ func CollectQueueStatus(patterns string) error {
 			}
 		}
 	}
+	traceExitErr("CollectQueueStatus", 0, err)
 	return err
 }
 
@@ -196,6 +207,7 @@ func CollectQueueStatus(patterns string) error {
 // Collect the responses and build up the statistics
 func collectQueueStatus(pattern string, instanceType int32) error {
 	var err error
+	traceEntryF("collectQueueStatus", "Pattern: %s", pattern)
 
 	statusClearReplyQ()
 
@@ -226,6 +238,7 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
+		traceExit("collectQueueStatus", 1)
 		return err
 	}
 
@@ -238,12 +251,14 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 		}
 	}
 
+	traceExitErr("collectQueueStatus", 0, err)
 	return err
 }
 
 func collectResetQStats(pattern string) error {
 	var err error
 
+	traceEntry("collectResetQStats")
 	statusClearReplyQ()
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 
@@ -263,6 +278,7 @@ func collectResetQStats(pattern string) error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
+		traceExitErr("collectResetQueueStats", 1, err)
 		return err
 	}
 
@@ -274,7 +290,7 @@ func collectResetQStats(pattern string) error {
 			parseResetQStatsData(cfh, buf)
 		}
 	}
-
+	traceExitErr("collectResetQueueStats", 0, err)
 	return err
 }
 
@@ -284,9 +300,11 @@ func collectResetQStats(pattern string) error {
 func inquireQueueAttributes(objectPatternsList string) error {
 	var err error
 
+	traceEntry("inquireQueueAttributes")
 	statusClearReplyQ()
 
 	if objectPatternsList == "" {
+		traceExitErr("inquireQueueAttributes", 1, err)
 		return err
 	}
 
@@ -326,6 +344,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		// And now put the command to the queue
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 		if err != nil {
+			traceExitErr("inquireQueueAttributes", 2, err)
 			return err
 		}
 
@@ -336,6 +355,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 			}
 		}
 	}
+	traceExit("inquireQueueAttributes", 0)
 	return nil
 }
 
@@ -343,6 +363,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
+	traceEntry("parseQData")
 	qName := ""
 	key := ""
 
@@ -356,6 +377,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseQData", 1)
 		return ""
 	}
 
@@ -413,6 +435,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		usage := s.AttrUsage
 		QueueStatus.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
 	}
+	traceExitF("parseQData", 0, "Key: %s", key)
 	return key
 }
 
@@ -420,6 +443,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
+	traceEntry("parseResetQStatsData")
 	qName := ""
 	key := ""
 
@@ -428,6 +452,7 @@ func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseResetQStatsData", 1)
 		return ""
 	}
 
@@ -466,12 +491,13 @@ func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 		statusGetIntAttributes(QueueStatus, elem, key)
 	}
 
+	traceExitF("parseResetQStatsData", 0, "Key: %s", key)
 	return key
 }
 
 func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 	var elem *ibmmq.PCFParameter
-
+	traceEntry("parseQAttrData")
 	qName := ""
 
 	parmAvail := true
@@ -479,6 +505,7 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 	offset := 0
 	datalen := len(buf)
 	if cfh.ParameterCount == 0 {
+		traceExit("parseQAttrData", 1)
 		return
 	}
 	// Parse it once to extract the fields that are needed for the map key
@@ -535,6 +562,7 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 
 	}
 
+	traceExit("parseQAttrData", 0)
 	return
 }
 

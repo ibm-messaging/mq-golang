@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2019
+  Copyright (c) IBM Corporation 2016, 2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -59,7 +59,9 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func TopicInitAttributes() {
+	traceEntry("TopicInitAttributes")
 	if tpAttrsInit {
+		traceExit("TopicInitAttributes", 1)
 		return
 	}
 	TopicStatus.Attributes = make(map[string]*StatusAttribute)
@@ -90,18 +92,24 @@ func TopicInitAttributes() {
 	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
 
 	tpAttrsInit = true
+	traceExit("TopicInitAttributes", 0)
+
 }
 
 // If we need to list the topics that match a pattern. Not needed for
 // the status queries as they (unlike the pub/sub resource stats) accept
 // patterns in the PCF command
 func InquireTopics(patterns string) ([]string, error) {
+	traceEntry("InquireTopics")
 	TopicInitAttributes()
-	return inquireObjects(patterns, ibmmq.MQOT_TOPIC)
+	rc, err := inquireObjects(patterns, ibmmq.MQOT_TOPIC)
+	traceExitErr("InquireTopics", 0, err)
+	return rc, err
 }
 
 func CollectTopicStatus(patterns string) error {
 	var err error
+	traceEntry("CollectTopicStatus")
 	topicsSeen = make(map[string]bool) // Record which topics have been seen in this period
 	TopicInitAttributes()
 
@@ -112,6 +120,7 @@ func CollectTopicStatus(patterns string) error {
 
 	topicPatterns := strings.Split(patterns, ",")
 	if len(topicPatterns) == 0 {
+		traceExit("CollectTopicStatus", 1)
 		return nil
 	}
 
@@ -153,6 +162,8 @@ func CollectTopicStatus(patterns string) error {
 		}
 	}
 
+	traceExitErr("CollectTopicStatus", 0, err)
+
 	return err
 }
 
@@ -160,6 +171,7 @@ func CollectTopicStatus(patterns string) error {
 // Collect the responses and build up the statistics
 func collectTopicStatus(pattern string, instanceType int32) error {
 	var err error
+	traceEntryF("collectTopicStatus", "Pattern: %s", pattern)
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -189,6 +201,7 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
+		traceExitErr("collectTopicStatus", 1, err)
 		return err
 
 	}
@@ -204,13 +217,15 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 
 	}
 
+	traceExitErr("collectTopicStatus", 0, err)
+
 	return err
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
 func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
-
+	traceEntry("parseTopicData")
 	tpName := ""
 
 	key := ""
@@ -223,6 +238,7 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseTopicData", 1)
 		return ""
 	}
 
@@ -292,6 +308,8 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 	}
 
+	traceExitF("parseTopicData", 0, "Key: %s", key)
+
 	return key
 }
 
@@ -304,7 +322,7 @@ func TopicNormalise(attr *StatusAttribute, v int64) float64 {
 
 // Return a combination of the topic name and the status query type so we
 // get unique keys in the map. There might be valid data for the same
-// topic name in TYPE(SUB), TYPE(TOPIC) and TYPE(TOPIC).
+// topic name in TYPE(SUB) and TYPE(TOPIC).
 func TopicKey(n string, t string) string {
 	return n + "[!" + t + "!]"
 }

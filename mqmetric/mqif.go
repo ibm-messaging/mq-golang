@@ -1,7 +1,7 @@
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2019
+  Copyright (c) IBM Corporation 2016, 2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -106,6 +106,8 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	var gocd *ibmmq.MQCD
 	var mqreturn *ibmmq.MQReturn
 	var errorString = ""
+
+	traceEntryF("InitConnection", "QMgrName %s", qMgrName)
 
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
@@ -271,8 +273,11 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	}
 
 	if err != nil {
+		traceExitErr("InitConnection", 1, mqreturn)
 		return MQMetricError{Err: errorString, MQReturn: mqreturn}
 	}
+
+	traceExitErr("InitConnection", 0, mqreturn)
 
 	return err
 }
@@ -281,7 +286,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 EndConnection tidies up by closing the queues and disconnecting.
 */
 func EndConnection() {
-
+	traceEntry("EndConnection")
 	// MQCLOSE all subscriptions
 	if subsOpened {
 		for _, cl := range Metrics.Classes {
@@ -306,6 +311,7 @@ func EndConnection() {
 		qMgr.Disc()
 	}
 
+	traceExit("EndConnection", 0)
 }
 
 /*
@@ -319,13 +325,17 @@ A 32K buffer was created at the top of this file, and should always
 be big enough for what we are expecting.
 */
 func getMessage(wait bool) ([]byte, error) {
-	return getMessageWithHObj(wait, replyQObj)
+	traceEntry("getMessage")
+	rc, err := getMessageWithHObj(wait, replyQObj)
+	traceExitErr("getMessage", 0, err)
+	return rc, err
 }
 
 func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 	var err error
 	var datalen int
 
+	traceEntry("getMessageWithHObj")
 	getmqmd := ibmmq.NewMQMD()
 	gmo := ibmmq.NewMQGMO()
 	gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
@@ -340,6 +350,8 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 	}
 
 	datalen, err = hObj.Get(getmqmd, gmo, getBuffer)
+
+	traceExitErr("getMessageWithHObj", 0, err)
 
 	return getBuffer[0:datalen], err
 }
@@ -365,6 +377,7 @@ func subscribeManaged(topic string, pubQObj *ibmmq.MQObject) (ibmmq.MQObject, er
 func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (ibmmq.MQObject, error) {
 	var err error
 
+	traceEntry("subscribeWithOptions")
 	mqsd := ibmmq.NewMQSD()
 	mqsd.Options = ibmmq.MQSO_CREATE
 	mqsd.Options |= ibmmq.MQSO_NON_DURABLE
@@ -383,9 +396,12 @@ func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (
 		case ibmmq.MQRC_HANDLE_NOT_AVAILABLE:
 			extraInfo = "You may need to increase the MAXHANDS attribute on the queue manager."
 		}
-		return subObj, fmt.Errorf("Error subscribing to topic '%s': %v %s", topic, err, extraInfo)
+		e2 := fmt.Errorf("Error subscribing to topic '%s': %v %s", topic, err, extraInfo)
+		traceExitErr("subscribeWithOptions", 1, e2)
+		return subObj, e2
 	}
 
+	traceExitErr("subscribeWithOptions", 0, err)
 	return subObj, err
 }
 

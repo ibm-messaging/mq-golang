@@ -58,7 +58,9 @@ var UsagePsStatus StatusSet
 var usageAttrsInit = false
 
 func UsageInitAttributes() {
+	traceEntry("usageInitAttributes")
 	if usageAttrsInit {
+		traceExit("usageInitAttributes", 1)
 		return
 	}
 	UsageBpStatus.Attributes = make(map[string]*StatusAttribute)
@@ -97,11 +99,13 @@ func UsageInitAttributes() {
 	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Expansion Count", ibmmq.MQIACF_USAGE_EXPAND_COUNT)
 
 	usageAttrsInit = true
+	traceExit("usageInitAttributes", 0)
+
 }
 
 func CollectUsageStatus() error {
 	var err error
-
+	traceEntry("CollectUsageStatus")
 	UsageInitAttributes()
 
 	// Empty any collected values
@@ -112,12 +116,14 @@ func CollectUsageStatus() error {
 		UsagePsStatus.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 	err = collectUsageStatus()
-
+	traceExitErr("CollectUsageStatus", 0, err)
 	return err
 }
 
 func collectUsageStatus() error {
 	var err error
+	traceEntry("collectUsageStatus")
+
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -134,6 +140,7 @@ func collectUsageStatus() error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
+		traceExitErr("collectUsageStatus", 1, err)
 		return err
 
 	}
@@ -147,6 +154,8 @@ func collectUsageStatus() error {
 
 	}
 
+	traceExitErr("collectUsageStatus", 0, err)
+
 	return err
 }
 
@@ -154,6 +163,8 @@ func collectUsageStatus() error {
 func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 	var responseType int32
+
+	traceEntry("parseUsageData")
 	bpId := ""
 	bpLocation := ""
 	bpClass := ""
@@ -165,6 +176,7 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseUsageData", 1)
 		return ""
 	}
 
@@ -184,6 +196,7 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 			case ibmmq.MQIACF_USAGE_BUFFER_POOL, ibmmq.MQIACF_USAGE_PAGESET:
 				responseType = v
 			default:
+				traceExit("parseUsageData", 2)
 				return ""
 			}
 
@@ -261,6 +274,7 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 			statusGetIntAttributes(UsagePsStatus, elem, key)
 		}
 	}
+	traceExitF("parseUsageData", 0, "Key: %s", key)
 	return key
 }
 

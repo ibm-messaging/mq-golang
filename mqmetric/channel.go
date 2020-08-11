@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2019
+  Copyright (c) IBM Corporation 2016, 2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -43,6 +43,10 @@ const (
 	ATTR_CHL_RQMNAME  = "rqmname"
 
 	ATTR_CHL_MESSAGES      = "messages"
+	ATTR_CHL_BYTES_SENT    = "bytes_sent"
+	ATTR_CHL_BYTES_RCVD    = "bytes_rcvd"
+	ATTR_CHL_BUFFERS_SENT  = "buffers_sent"
+	ATTR_CHL_BUFFERS_RCVD  = "buffers_rcvd"
 	ATTR_CHL_BATCHES       = "batches"
 	ATTR_CHL_STATUS        = "status"
 	ATTR_CHL_STATUS_SQUASH = ATTR_CHL_STATUS + "_squash"
@@ -81,7 +85,9 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func ChannelInitAttributes() {
+	traceEntry("ChannelInitAttributes")
 	if chlAttrsInit {
+		traceExit("ChannelInitAttributes", 1)
 		return
 	}
 	ChannelStatus.Attributes = make(map[string]*StatusAttribute)
@@ -100,6 +106,18 @@ func ChannelInitAttributes() {
 	// These are the integer status fields that are of interest
 	attr = ATTR_CHL_MESSAGES
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
+	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	attr = ATTR_CHL_BYTES_SENT
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Bytes sent", ibmmq.MQIACH_BYTES_SENT)
+	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	attr = ATTR_CHL_BYTES_RCVD
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD)
+	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	attr = ATTR_CHL_BUFFERS_SENT
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT)
+	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	attr = ATTR_CHL_BUFFERS_RCVD
+	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD)
 	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BATCHES
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
@@ -156,18 +174,26 @@ func ChannelInitAttributes() {
 	attr = ATTR_CHL_MAX_INSTC
 	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "MaxInstC", -1)
 
+	traceExit("ChannelInitAttributes", 0)
 }
 
 // If we need to list the channels that match a pattern. Not needed for
 // the status queries as they (unlike the pub/sub resource stats) accept
 // patterns in the PCF command
 func InquireChannels(patterns string) ([]string, error) {
+	traceEntry("InquireChannels")
 	ChannelInitAttributes()
-	return inquireObjects(patterns, ibmmq.MQOT_CHANNEL)
+	rc, err := inquireObjects(patterns, ibmmq.MQOT_CHANNEL)
+
+	traceExitErr("InquireChannels", 0, err)
+	return rc, err
 }
 
 func CollectChannelStatus(patterns string) error {
 	var err error
+
+	traceEntry("CollectChannelStatus")
+
 	channelsSeen = make(map[string]bool) // Record which channels have been seen in this period
 	ChannelInitAttributes()
 
@@ -178,6 +204,7 @@ func CollectChannelStatus(patterns string) error {
 
 	channelPatterns := strings.Split(patterns, ",")
 	if len(channelPatterns) == 0 {
+		traceExit("CollectChannelStatus", 1)
 		return nil
 	}
 
@@ -245,6 +272,7 @@ func CollectChannelStatus(patterns string) error {
 			}
 		}
 	}
+	traceExitErr("CollectChannelStatus", 0, err)
 	return err
 
 }
@@ -253,6 +281,9 @@ func CollectChannelStatus(patterns string) error {
 // Collect the responses and build up the statistics
 func collectChannelStatus(pattern string, instanceType int32) error {
 	var err error
+
+	traceEntryF("collectChannelStatus", "Pattern: %s", pattern)
+
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -283,6 +314,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
+		traceExitErr("collectChannelStatus", 1, err)
 		return err
 	}
 
@@ -298,12 +330,15 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 		}
 	}
 
+	traceExitErr("collectChannelStatus", 0, err)
 	return err
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
 func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
+
+	traceEntry("parseChlData")
 
 	chlName := ""
 	connName := ""
@@ -321,6 +356,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseChlData", 1)
 		return ""
 	}
 
@@ -379,6 +415,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		for k, _ := range channelsSeen {
 			re := regexp.MustCompile(subKey)
 			if re.MatchString(k) {
+				traceExit("parseChlData", 2)
 				return ""
 			}
 		}
@@ -421,6 +458,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		ChannelStatus.Attributes[ATTR_CHL_MAX_INST].Values[key] = newStatusValueInt64(maxInst)
 	}
 
+	traceExitF("parseChlData", 0, "Key: %s", key)
 	return key
 }
 
@@ -430,6 +468,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 func ChannelNormalise(attr *StatusAttribute, v int64) float64 {
 	var f float64
 
+	traceEntry("ChannelNormalise")
 	if attr.squash {
 		switch attr.pcfAttr {
 
@@ -467,6 +506,9 @@ func ChannelNormalise(attr *StatusAttribute, v int64) float64 {
 			f = 0
 		}
 	}
+
+	traceExit("ChannelNormalise", 0)
+
 	return f
 }
 
@@ -476,9 +518,12 @@ func ChannelNormalise(attr *StatusAttribute, v int64) float64 {
 func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*ObjInfo) error {
 	var err error
 
+	traceEntry("inquireChannelAttributes")
+
 	statusClearReplyQ()
 
 	if objectPatternsList == "" {
+		traceExitErr("inquireChannelAttributes", 1, err)
 		return err
 	}
 
@@ -528,6 +573,7 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 		// And now put the command to the queue
 		err = cmdQObj.Put(putmqmd, pmo, buf)
 		if err != nil {
+			traceExitErr("inquireChannelAttributes", 2, err)
 			return err
 		}
 
@@ -538,6 +584,8 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 			}
 		}
 	}
+	traceExit("inquireChannelAttributes", 0)
+
 	return nil
 }
 
@@ -546,6 +594,8 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 	var ci *ObjInfo
 	var ok bool
 
+	traceEntry("parseChannelAttrData")
+
 	chlName := ""
 
 	parmAvail := true
@@ -553,6 +603,7 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 	offset := 0
 	datalen := len(buf)
 	if cfh.ParameterCount == 0 {
+		traceExit("parseChannelAttrData", 1)
 		return
 	}
 	// Parse it once to extract the fields that are needed for the map key
@@ -631,6 +682,7 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 		}
 	}
 
+	traceExit("parseChannelAttrData", 0)
 	return
 }
 

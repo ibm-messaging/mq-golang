@@ -112,6 +112,8 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 	var err error
 	var parsedT time.Time
 
+	traceEntry("statusTimeDiff")
+
 	// If there's any error in parsing the timestamp - perhaps
 	// the value has not been set yet, then just return 0
 	rc = 0
@@ -136,10 +138,12 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 		}
 	}
 	//fmt.Printf("statusTimeDiff d:%s t:%s diff:%d tzoffset: %f err:%v\n", d, t, rc, tzOffsetSecs, err)
+	traceExitF("statusTimeDiff", 0, "Diff: %d", rc)
 	return rc
 }
 
 func statusClearReplyQ() {
+	traceEntry("statusClearReplyQ")
 	buf := make([]byte, 0)
 	// Empty replyQ in case any left over from previous errors
 	for ok := true; ok; {
@@ -156,6 +160,7 @@ func statusClearReplyQ() {
 			ok = false
 		}
 	}
+	traceExit("statusClearReplyQ", 0)
 	return
 }
 
@@ -163,6 +168,7 @@ func statusClearReplyQ() {
 // server. The caller of this function will complete the message contents
 // with elements specific to the object type.
 func statusSetCommandHeaders() (*ibmmq.MQMD, *ibmmq.MQPMO, *ibmmq.MQCFH, []byte) {
+	traceEntry("statusSetCommandHeaders")
 	cfh := ibmmq.NewMQCFH()
 	cfh.Version = ibmmq.MQCFH_VERSION_3
 	cfh.Type = ibmmq.MQCFT_COMMAND_XR
@@ -182,6 +188,8 @@ func statusSetCommandHeaders() (*ibmmq.MQMD, *ibmmq.MQPMO, *ibmmq.MQCFH, []byte)
 
 	buf := make([]byte, 0)
 
+	traceExit("statusSetCommandHeaders", 0)
+
 	return putmqmd, pmo, cfh, buf
 }
 
@@ -192,6 +200,7 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 	var offset int
 	var cfh *ibmmq.MQCFH
 
+	traceEntry("statusGetReply")
 	replyBuf := make([]byte, 10240)
 
 	getmqmd := ibmmq.NewMQMD()
@@ -212,19 +221,22 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 		}
 
 		if cfh.Reason != ibmmq.MQRC_NONE {
+			traceExitErr("statusGetReply", 1, err)
 			return cfh, nil, allDone, err
 		}
 		// Returned by z/OS qmgrs but are not interesting
 		if cfh.Type == ibmmq.MQCFT_XR_SUMMARY || cfh.Type == ibmmq.MQCFT_XR_MSG {
+			traceExitErr("statusGetReply", 2, err)
 			return cfh, nil, allDone, err
 		}
 	} else {
 		if err.(*ibmmq.MQReturn).MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
 			logError("StatusGetReply error : %v\n", err)
 		}
+		traceExitErr("statusGetReply", 3, err)
 		return nil, nil, allDone, err
 	}
-
+	traceExitErr("statusGetReply", 0, err)
 	return cfh, replyBuf[offset:datalen], allDone, err
 }
 
@@ -232,6 +244,7 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 // server messages. We can deal here with the various integer responses; string
 // responses need to be handled in the object-specific caller.
 func statusGetIntAttributes(s StatusSet, elem *ibmmq.PCFParameter, key string) bool {
+	// traceEntry("statusGetIntAttributes") // Don't trace as too noisy
 	usableValue := false
 	if elem.Type == ibmmq.MQCFT_INTEGER || elem.Type == ibmmq.MQCFT_INTEGER64 ||
 		elem.Type == ibmmq.MQCFT_INTEGER_LIST || elem.Type == ibmmq.MQCFT_INTEGER64_LIST {
@@ -239,6 +252,7 @@ func statusGetIntAttributes(s StatusSet, elem *ibmmq.PCFParameter, key string) b
 	}
 
 	if !usableValue {
+		//traceExit("statusGetIntAttributes", 1)
 		return false
 	}
 
@@ -289,6 +303,7 @@ func statusGetIntAttributes(s StatusSet, elem *ibmmq.PCFParameter, key string) b
 		}
 	}
 
+	//traceExit("statusGetIntAttributes", 0)
 	return true
 }
 

@@ -35,6 +35,7 @@ import "C"
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"unsafe"
 )
 
@@ -53,6 +54,9 @@ type cbInfo struct {
 
 // This map is indexed by a combination of the hConn and hObj values
 var cbMap = make(map[string]*cbInfo)
+
+// Add a mutex to control access to it as there may be several threads going for different qmgrs
+var mutex sync.Mutex
 
 /*
 MQCALLBACK_Go is a wrapper callback function that will invoke the user-supplied callback
@@ -90,7 +94,9 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	}
 
 	key := makeKey(hConn, mqcbc.Hobj)
+	mapLock()
 	info, ok := cbMap[key]
+	mapUnlock()
 
 	// The MQ Client libraries seem to sometimes call us with an EVENT
 	// even if it's not been registered. And therefore the cbMap does not
@@ -105,6 +111,7 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	if !ok {
 		if gocbc.CallType == MQCBCT_EVENT_CALL && mqcbc.Hobj == C.MQHO_NONE {
 			key = makePartialKey(hConn)
+			mapLock()
 			for k, i := range cbMap {
 				if strings.HasPrefix(k, key) {
 					ok = true
@@ -114,6 +121,7 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 					break
 				}
 			}
+			mapUnlock()
 		}
 	} else {
 		cbHObj = info.hObj
@@ -185,14 +193,18 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	// Add or remove the control information in the map used by the callback routines
 	switch mqOperation {
 	case C.MQOP_DEREGISTER:
+		mapLock()
 		delete(cbMap, key)
+		mapUnlock()
 	case C.MQOP_REGISTER:
 		// Stash the hObj and real function to be called
 		info := &cbInfo{hObj: object,
 			callbackFunction: gocbd.CallbackFunction,
 			connectionArea:   nil,
 			callbackArea:     gocbd.CallbackArea}
+		mapLock()
 		cbMap[key] = info
+		mapUnlock()
 	default: // Other values leave the map alone
 	}
 
@@ -230,14 +242,18 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 	// Add or remove the control information in the map used by the callback routines
 	switch mqOperation {
 	case C.MQOP_DEREGISTER:
+		mapLock()
 		delete(cbMap, key)
+		mapUnlock()
 	case C.MQOP_REGISTER:
 		// Stash an hObj and real function to be called
 		info := &cbInfo{hObj: &MQObject{qMgr: object, Name: ""},
 			callbackFunction: gocbd.CallbackFunction,
 			connectionArea:   nil,
 			callbackArea:     gocbd.CallbackArea}
+		mapLock()
 		cbMap[key] = info
+		mapUnlock()
 	default: // Other values leave the map alone
 	}
 
@@ -259,11 +275,13 @@ func (x *MQQueueManager) Ctl(goOperation int32, goctlo *MQCTLO) error {
 	// Need to make sure control information is available before the callback
 	// is enabled. So this gets setup even if the MQCTL fails.
 	key := makePartialKey(x.hConn)
+	mapLock()
 	for k, info := range cbMap {
 		if strings.HasPrefix(k, key) {
 			info.connectionArea = goctlo.ConnectionArea
 		}
 	}
+	mapUnlock()
 
 	C.MQCTL(x.hConn, mqOperation, (C.PMQVOID)(unsafe.Pointer(&mqctlo)), &mqcc, &mqrc)
 
@@ -295,14 +313,25 @@ func makePartialKey(hConn C.MQHCONN) string {
 func cbRemoveConnection(hConn C.MQHCONN) {
 	// Remove all of the hObj values for this hconn
 	key := makePartialKey(hConn)
+	mapLock()
 	for k, _ := range cbMap {
 		if strings.HasPrefix(k, key) {
 			delete(cbMap, k)
 		}
 	}
+	mapUnlock()
 }
 
 func cbRemoveHandle(hConn C.MQHCONN, hObj C.MQHOBJ) {
 	key := makeKey(hConn, hObj)
+	mapLock()
 	delete(cbMap, key)
+	mapUnlock()
+}
+
+func mapLock() {
+	mutex.Lock()
+}
+func mapUnlock() {
+	mutex.Unlock()
 }

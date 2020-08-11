@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2019
+  Copyright (c) IBM Corporation 2018,2020
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -59,7 +59,10 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func QueueManagerInitAttributes() {
+
+	traceEntry("QueueManagerInitAttributes")
 	if qMgrAttrsInit {
+		traceExit("QueueManagerInitAttributes", 1)
 		return
 	}
 	QueueManagerStatus.Attributes = make(map[string]*StatusAttribute)
@@ -93,11 +96,15 @@ func QueueManagerInitAttributes() {
 	}
 
 	qMgrAttrsInit = true
+
+	traceExit("QueueManagerInitAttributes", 0)
+
 }
 
 func CollectQueueManagerStatus() error {
 	var err error
 
+	traceEntry("CollectQueueManagerStatus")
 	QueueManagerInitAttributes()
 	for k := range QueueManagerStatus.Attributes {
 		QueueManagerStatus.Attributes[k].Values = make(map[string]*StatusValue)
@@ -109,6 +116,9 @@ func CollectQueueManagerStatus() error {
 	} else {
 		err = collectQueueManagerStatus(ibmmq.MQOT_Q_MGR)
 	}
+
+	traceExitErr("CollectQueueManagerStatus", 0, err)
+
 	return err
 
 }
@@ -117,6 +127,9 @@ func CollectQueueManagerStatus() error {
 // They can be obtained via MQINQ and do not need a PCF flow.
 // We can't get these on Distributed because equivalents are in qm.ini
 func collectQueueManagerAttrs() error {
+
+	traceEntry("collectQueueManagerAttrs")
+
 	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
 		ibmmq.MQIA_ACTIVE_CHANNELS,
 		ibmmq.MQIA_TCP_CHANNELS,
@@ -134,6 +147,8 @@ func collectQueueManagerAttrs() error {
 		QueueManagerStatus.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
 
 	}
+	traceExitErr("collectQueueManagerAttrs", 0, err)
+
 	return err
 }
 
@@ -141,6 +156,8 @@ func collectQueueManagerAttrs() error {
 // Collect the responses and build up the statistics
 func collectQueueManagerStatus(instanceType int32) error {
 	var err error
+
+	traceEntry("collectQueueManagerStatus")
 
 	statusClearReplyQ()
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -155,6 +172,7 @@ func collectQueueManagerStatus(instanceType int32) error {
 	// And now put the command to the queue
 	err = cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
+		traceExitErr("collectQueueManagerStatus", 1, err)
 		return err
 	}
 
@@ -165,9 +183,9 @@ func collectQueueManagerStatus(instanceType int32) error {
 		if buf != nil {
 			parseQMgrData(instanceType, cfh, buf)
 		}
-
 	}
 
+	traceExitErr("collectQueueManagerStatus", 0, err)
 	return err
 }
 
@@ -175,6 +193,7 @@ func collectQueueManagerStatus(instanceType int32) error {
 func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
+	traceEntry("parseQMgrData")
 	qMgrName := ""
 	key := ""
 
@@ -186,6 +205,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseQMgrData", 1)
 		return ""
 	}
 
@@ -233,6 +253,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	now := time.Now()
 	QueueManagerStatus.Attributes[ATTR_QMGR_UPTIME].Values[key] = newStatusValueInt64(statusTimeDiff(now, startDate, startTime))
 
+	traceExitF("parseQMgrData", 0, "Key: %s", key)
 	return key
 }
 

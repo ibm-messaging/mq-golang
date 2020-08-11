@@ -55,11 +55,17 @@ ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messag
     VRMF=9.2.0.0
 
 # Install the MQ client from the Redistributable package. This also contains the
-# header files we need to compile against.
+# header files we need to compile against. Setup the subset of the package
+# we are going to keep - the genmqpkg.sh script removes unneeded parts
+ENV genmqpkg_incnls=1 \
+    genmqpkg_incsdk=1 \
+    genmqpkg_inctls=1
+
 RUN cd /opt/mqm \
  && curl -LO "$RDURL/$VRMF-$RDTAR" \
  && tar -zxf ./*.tar.gz \
- && rm -f ./*.tar.gz
+ && rm -f ./*.tar.gz \
+ && bin/genmqpkg.sh -b /opt/mqm
 
 # Insert the script that will do the build
 COPY buildInDocker.sh $GOPATH
