@@ -134,6 +134,14 @@ For example,
 At this point, you should have a compiled copy of the program in `$GOPATH/bin`. See the
 `samples` directory for more sample programs.
 
+### Build errors
+If you get errors such as `cannot find package v5/ibmmq` then one solution is to go to
+the repository directory itself: `cd ./src/github.com/ibm-messaging/mq-golang`. And
+then compile directly from that directory: `go install ./ibmmq`, `go install ./samples/amqsput.go`.
+
+An alternative is to set GOPATH to the directory you have tried to compile
+from: `export GOPATH=$HOME/gowork`.
+
 ## Building in a container
 The `buildSamples.sh` script in this directory can also be used to create a container which will
 compile the samples and copy them to a local directory. If you use this approach, you do not need
