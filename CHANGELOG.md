@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Sep 29 2020 - no new version
+* samples - Add script to build a running container with a sample program in it
+
 ## Sep 10 2020 - v5.1.2
 * mqmetric - Add loglevel=TRACE and trace-points for all key functions in the package
 * mqmetric - Add channel status bytes and buffer counts

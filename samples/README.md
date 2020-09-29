@@ -36,6 +36,11 @@ Some trivial scripts run the sample programs in matching pairs:
 * putget.sh  : Run amqsput and then use the generated MsgId to get the same message with amqsget
 * pubsub.sh  : Start amqssub and then run the amqspub program immediately
 
+Building a container:
+* runSample.sh         : Drives the process to get `amqsput` into the container
+* runSample.Dockerfile : Instructions to create the container with its dependencies
+* runSample.gomod      : Copied into the container as `go.mod`
+
 The `mqitest` sample program in its own subdirectory is a more general demonstration
 of many of the features available from the MQI rather than focussed on a specific
 aspect.
@@ -61,6 +66,11 @@ For example
 You will probably want to run `amqssub` JUST BEFORE running `amqspub` to ensure
 there is something waiting to receive the publications when they are made. The
 `pubsub.sh` script executes the two programs appropriately.
+
+## Building a container for running samples
+There is an set of files in here that will show how to create a container that runs
+the `amqsput` program. The `runSample.sh` script drives the process. It will try to
+connect to a queue manager running on the host machine.
 
 ## More information
 Comments in the programs explain what they are doing. For more detailed information about the

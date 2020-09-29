@@ -274,7 +274,13 @@ func statusGetIntAttributes(s StatusSet, elem *ibmmq.PCFParameter, key string) b
 					// then use it to create the delta. Otherwise make the initial
 					// value 0.
 					if prevVal, ok := s.Attributes[attr].prevValues[key]; ok {
-						s.Attributes[attr].Values[key] = newStatusValueInt64(v - prevVal)
+						if v-prevVal < 0 {
+							// Value might have wrapped. This number may be temporarily "wrong" but it's
+							// sorted out on the next iteration
+							s.Attributes[attr].Values[key] = newStatusValueInt64(v)
+						} else {
+							s.Attributes[attr].Values[key] = newStatusValueInt64(v - prevVal)
+						}
 					} else {
 						s.Attributes[attr].Values[key] = newStatusValueInt64(0)
 					}
@@ -290,7 +296,11 @@ func statusGetIntAttributes(s StatusSet, elem *ibmmq.PCFParameter, key string) b
 					// then use it to create the delta. Otherwise make the initial
 					// value 0.
 					if prevVal, ok := s.Attributes[attr].prevValues[key]; ok {
-						s.Attributes[attr].Values[key] = newStatusValueInt64(v[index] - prevVal)
+						if v[index]-prevVal < 0 {
+							s.Attributes[attr].Values[key] = newStatusValueInt64(v[index])
+						} else {
+							s.Attributes[attr].Values[key] = newStatusValueInt64(v[index] - prevVal)
+						}
 					} else {
 						s.Attributes[attr].Values[key] = newStatusValueInt64(0)
 					}
