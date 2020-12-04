@@ -1,3 +1,5 @@
+// +build go1.13
+
 package ibmmq
 
 /*
@@ -1377,6 +1379,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_915"
 		case 920:
 			s = "MQCMDL_LEVEL_920"
+		case 921:
+			s = "MQCMDL_LEVEL_921"
 		default:
 			s = ""
 		}

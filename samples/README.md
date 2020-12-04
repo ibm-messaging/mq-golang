@@ -75,8 +75,8 @@ connect to a queue manager running on the host machine.
 ## More information
 Comments in the programs explain what they are doing. For more detailed information about the
 MQ API, the functions, structures, and constants, see the
-[MQ Knowledge Center](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.ref.dev.doc/q089590_.htm).
+[MQ Knowledge Center](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_latest/com.ibm.mq.ref.dev.doc/q089590_.html).
 
-You can also find general MQ application development advice [here](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.dev.doc/q022830_.htm).
+You can also find general MQ application development advice [here](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_latest/com.ibm.mq.dev.doc/q022830_.html).
 Information about development for procedural programming languages such as C in that
 documentation is most relevant for the interface exported by this Go package.

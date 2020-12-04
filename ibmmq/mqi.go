@@ -6,7 +6,7 @@ of MQOPEN etc.
 
 For more information on the MQI, including detailed descriptions of the functions,
 constants and structures, see the MQ Knowledge Center
-at https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.dev.doc/q023720_.htm#q023720_
+at https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_latest/com.ibm.mq.dev.doc/q023720_.htm#q023720_
 
 If an MQI call returns MQCC_FAILED or MQCC_WARNING, a custom error
 type is returned containing the MQCC/MQRC values as well as

@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Dec 04 2020 - v5.1.3
+* Update for MQ 9.2.1
+
 ## Sep 29 2020 - no new version
 * samples - Add script to build a running container with a sample program in it
 
