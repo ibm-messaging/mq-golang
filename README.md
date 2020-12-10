@@ -95,6 +95,15 @@ set CC=x86_64-w64-mingw32-gcc.exe
 * The `CGO_LDFLAGS_ALLOW` variable is not needed on Windows
 * Install the git client
 
+#### (Optional) Prepare without installed MQ Server or MQ Client
+
+* Download [IBM MQ redistributable client for Windows](https://www.ibm.com/support/fixcentral/swg/selectFixes?parent=ibm%7EWebSphere&product=ibm/WebSphere/WebSphere+MQ&release=All&platform=All&function=fixId&fixids=*IBM-MQC-Redist-*&includeSupersedes=0)
+* Unpack archive to fixed directory. E.g. `c:\IBM-MQC-Redist-Win64`
+* Set environment variables (overrides vars in following section **Common**):
+```
+set CGO_CFLAGS=-Ic:\IBM-MQC-Redist-Win64\tools\c\include -D_WIN64
+set CGO_LDFLAGS=-L c:\IBM-MQC-Redist-Win64\bin64 -lmqm
+```
 ### Common
 
 * Make sure your PATH includes routes to the Go compiler (`$GOROOT/bin`), the Git client, and the C compiler.
