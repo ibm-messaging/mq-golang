@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=ubuntu:19.10
+ARG BASE_IMAGE=ubuntu:18.04
 FROM $BASE_IMAGE
 
 ARG GOPATH_ARG="/go"
+ARG GOVERSION=1.13.15
 
-ENV GOVERSION=1.13 \
+ENV GOVERSION=${GOVERSION}   \
     GOPATH=$GOPATH_ARG \
+    GOTAR=go${GOVERSION}.linux-amd64.tar.gz \
     ORG="github.com/ibm-messaging"
 
 # Install the Go compiler and Git
@@ -31,8 +33,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
      echo "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates universe" >> /etc/apt/sources.list;' \
   && apt-get update \
   && apt-get install -y --no-install-recommends \
-    golang-${GOVERSION} \
     git \
+    wget \
     ca-certificates \
     curl \
     tar \
@@ -44,6 +46,11 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 # Create location for the go programs and the MQ installation
 RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
   && chmod -R 777 $GOPATH \
+  && cd /tmp       \
+  && wget -nv https://dl.google.com/go/${GOTAR} \
+  && tar -xf ${GOTAR} \
+  && mv go /usr/lib/go-${GOVERSION} \
+  && rm -f ${GOTAR} \
   && mkdir -p /opt/mqm \
   && chmod a+rx /opt/mqm
 
