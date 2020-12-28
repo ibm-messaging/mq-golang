@@ -289,3 +289,15 @@ func TestRoundTo4(t *testing.T) {
 		}
 	}
 }
+
+func TestHConnValid(t *testing.T) {
+	valid := MQQueueManager{hConn: 0}
+	if !valid.IsValid() {
+		t.Error("MQHC_DEF_HCONN: expected IsValid true, got false")
+	}
+
+	invalid := MQQueueManager{hConn: -1}
+	if invalid.IsValid() {
+		t.Error("MQHC_UNUSABLE_HCONN: expected IsValid false, got true")
+	}
+}

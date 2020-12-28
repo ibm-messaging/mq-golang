@@ -607,6 +607,15 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 
 }
 
+// IsValid returns FALSE if the underlying hConn is
+// MQHC_UNUSABLE_HCONN otherwise TRUE
+func (x *MQQueueManager) IsValid() bool {
+	if x.hConn == C.MQHC_UNUSABLE_HCONN {
+		return false
+	}
+	return true
+}
+
 /*
 Get a message from a queue
 The length of the retrieved message is returned.
