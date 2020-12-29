@@ -92,6 +92,14 @@ func mainWithRc() int {
 		defer disc(qMgrObject)
 	}
 
+	if err == nil {
+		cmho := ibmmq.NewMQCMHO()
+		mh, err = qMgrObject.CrtMH(cmho)
+		if err == nil {
+			defer dltMh(mh)
+		}
+	}
+
 	// Open the queue
 	if err == nil {
 		// Create the Object Descriptor that allows us to give the queue name
@@ -112,11 +120,6 @@ func mainWithRc() int {
 			fmt.Println("Opened queue", qObject.Name)
 			defer close(qObject)
 		}
-	}
-
-	if err == nil {
-		cmho := ibmmq.NewMQCMHO()
-		mh, err = qMgrObject.CrtMH(cmho)
 	}
 
 	if err == nil {
@@ -145,6 +148,9 @@ func mainWithRc() int {
 		// Register the callback function along with any selection criteria from the
 		// MQMD and MQGMO parameters
 		err = qObject.CB(ibmmq.MQOP_REGISTER, cbd, getmqmd, gmo)
+		if err == nil {
+			defer dereg(qObject, cbd, getmqmd, gmo)
+		}
 	}
 
 	if err == nil {
@@ -155,7 +161,7 @@ func mainWithRc() int {
 		if err == nil {
 			// Use defer to disable the message consumer when we are ready to exit.
 			// Otherwise the shutdown will give MQRC_HCONN_ASYNC_ACTIVE error
-			defer qMgrObject.Ctl(ibmmq.MQOP_STOP, ctlo)
+			defer stopCB(qMgrObject)
 		}
 	}
 
@@ -175,6 +181,19 @@ func mainWithRc() int {
 	return mqret
 }
 
+// Various cleanup functions that ought to be called at the end of the program for neatness.
+
+// Stop the callback function from being called again
+func stopCB(qMgrObject ibmmq.MQQueueManager) {
+	ctlo := ibmmq.NewMQCTLO()
+	err := qMgrObject.Ctl(ibmmq.MQOP_STOP, ctlo)
+	if err == nil {
+		fmt.Printf("Stopped callback function\n")
+	} else {
+		fmt.Println(err)
+	}
+}
+
 // Disconnect from the queue manager
 func disc(qMgrObject ibmmq.MQQueueManager) error {
 	err := qMgrObject.Disc()
@@ -191,6 +210,30 @@ func close(object ibmmq.MQObject) error {
 	err := object.Close(0)
 	if err == nil {
 		fmt.Println("Closed queue")
+	} else {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// Deallocate the message handle
+func dltMh(mh ibmmq.MQMessageHandle) error {
+	dmho := ibmmq.NewMQDMHO()
+	err := mh.DltMH(dmho)
+	if err == nil {
+		fmt.Println("Closed a Msg Handle")
+	} else {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// Deregister the callback function - have to do this before the message handle can be
+// successfully deleted
+func dereg(qObject ibmmq.MQObject, cbd *ibmmq.MQCBD, getmqmd *ibmmq.MQMD, gmo *ibmmq.MQGMO) error {
+	err := qObject.CB(ibmmq.MQOP_DEREGISTER, cbd, getmqmd, gmo)
+	if err == nil {
+		fmt.Println("Deregistered callback")
 	} else {
 		fmt.Println(err)
 	}

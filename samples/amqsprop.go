@@ -246,6 +246,8 @@ func mainWithRc() int {
 		putMsgHandle, err = qMgrObject.CrtMH(cmho)
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			defer dltMh(putMsgHandle)
 		}
 	}
 
@@ -255,6 +257,8 @@ func mainWithRc() int {
 		getMsgHandle, err = qMgrObject.CrtMH(cmho)
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			defer dltMh(getMsgHandle)
 		}
 	}
 
@@ -346,6 +350,18 @@ func close(object ibmmq.MQObject) error {
 	err := object.Close(0)
 	if err == nil {
 		fmt.Println("Closed queue")
+	} else {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// Clean up message handle
+func dltMh(mh ibmmq.MQMessageHandle) error {
+	dmho := ibmmq.NewMQDMHO()
+	err := mh.DltMH(dmho)
+	if err == nil {
+		fmt.Println("Closed a Msg Handle")
 	} else {
 		fmt.Println(err)
 	}
