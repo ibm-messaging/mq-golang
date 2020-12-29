@@ -16,7 +16,9 @@ limitations under the License.
 package ibmmq
 
 import (
+	"errors"
 	"testing"
+	"time"
 )
 
 // Tests for mqistr.go
@@ -287,5 +289,40 @@ func TestRoundTo4(t *testing.T) {
 			t.Logf("Passed: %d. Expected: %d. Got: %d", e, expected[i], back)
 			t.Fail()
 		}
+	}
+}
+
+func TestMQMDTime(t *testing.T) {
+	testDateTime, _ := time.Parse(time.RFC3339, "2015-12-14T07:00:00.99Z")
+
+	// correct time
+	md := &MQMD{
+		PutDate: "20151214",
+		PutTime: "07000099",
+	}
+	got, err := md.Time()
+	if err != nil {
+		t.Errorf("%s%s: expected nil error, got %v", md.PutDate, md.PutTime, err)
+	}
+	if got != testDateTime {
+		t.Errorf("%s%s: expected %v, got %v", md.PutDate, md.PutTime, testDateTime, got)
+	}
+
+	// fail time parsing
+	md = &MQMD{
+		PutDate: "bad date",
+		PutTime: "07000099",
+	}
+	got, err = md.Time()
+	var parseErr *time.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Errorf("%s%s: expected time.ParseError{}, got %T", md.PutDate, md.PutTime, err)
+	}
+
+	// empty fields
+	md = NewMQMD()
+	got, err = md.Time()
+	if err != ErrMDEmptyTime {
+		t.Errorf("empty fields: expected ErrMQMDTimeIsNil, got %v", err)
 	}
 }

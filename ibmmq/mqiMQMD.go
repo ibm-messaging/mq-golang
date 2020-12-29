@@ -30,6 +30,8 @@ import "C"
 
 import (
 	"bytes"
+	"errors"
+	"time"
 )
 
 /*
@@ -101,6 +103,30 @@ func NewMQMD() *MQMD {
 	md.OriginalLength = int32(C.MQOL_UNDEFINED)
 
 	return md
+}
+
+// Go time package reference date time as
+// concatenated date and time from MD
+const mqmdGoRefTime = "20060102150405.99"
+
+// ErrMDEmptyTime is returned from the MQMD.Time() method
+// if the PutTime field is empty
+var ErrMDEmptyTime = errors.New("PutTime field in MQMD is empty")
+
+// Time returns the MQMD PutDate and PutTime as time.Time
+func (md *MQMD) Time() (time.Time, error) {
+	if len(md.PutTime) != 8 {
+		return time.Time{}, ErrMDEmptyTime
+	}
+
+	// separate fractions of a second with a dot
+	s := md.PutDate + md.PutTime[:6] + "." + md.PutTime[6:]
+	t, err := time.Parse(mqmdGoRefTime, s)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return t, nil
 }
 
 func checkMD(gomd *MQMD, verb string) error {
