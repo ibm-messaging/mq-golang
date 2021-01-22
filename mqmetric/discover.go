@@ -105,19 +105,10 @@ const ClassNameQ = "STATQ"
 const maxBufSize = 100 * 1024 * 1024 // 100 MB
 const defaultMaxQDepth = 5000
 
-// Metrics is the global variable for the tree of data
-var Metrics AllMetrics
-
-// Only issue the warning about a '/' in an object name once.
-var globalSlashWarning = false
-var localSlashWarning = false
-
 var qInfoMap map[string]*ObjInfo
 var chlInfoMap map[string]*ObjInfo
 
 var locale string
-var discoveryDone = false
-var publicationCount = 0
 
 func GetDiscoveredQueues() []string {
 	traceEntry("GetDiscoveredQueues")
@@ -130,7 +121,7 @@ func GetDiscoveredQueues() []string {
 }
 
 func GetProcessPublicationCount() int {
-	return publicationCount
+	return ci.publicationCount
 }
 
 /*
@@ -153,14 +144,14 @@ func VerifyConfig() (int32, error) {
 	var compCode = ibmmq.MQCC_OK
 
 	traceEntry("VerifyConfig")
-	if !discoveryDone {
+	if !ci.discoveryDone {
 		err = fmt.Errorf("Error: Need to call DiscoverAndSubscribe first")
 		compCode = ibmmq.MQCC_FAILED
 	}
 
 	if err == nil {
 		selectors := []int32{ibmmq.MQIA_MAX_Q_DEPTH, ibmmq.MQIA_DEFINITION_TYPE}
-		v, err = replyQObj.InqMap(selectors)
+		v, err = ci.si.replyQObj.InqMap(selectors)
 		if err == nil {
 			maxQDepth := v[ibmmq.MQIA_MAX_Q_DEPTH].(int32)
 			// Function has tuning based on number of queues to be monitored
@@ -172,8 +163,8 @@ func VerifyConfig() (int32, error) {
 			// and assume monitor collection interval is one minute
 			// Since we don't do pubsub-based collection on z/OS, this qdepth doesn't matter
 			recommendedDepth := (20 + len(qInfoMap)*5) * 6
-			if maxQDepth < int32(recommendedDepth) && usePublications {
-				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on queue count is at least %d", replyQBaseName, maxQDepth, recommendedDepth)
+			if maxQDepth < int32(recommendedDepth) && ci.usePublications {
+				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on queue count is at least %d", ci.si.replyQBaseName, maxQDepth, recommendedDepth)
 				compCode = ibmmq.MQCC_WARNING
 			}
 
@@ -184,7 +175,7 @@ func VerifyConfig() (int32, error) {
 			// separate patterns, then this will overestimate what's needed. Hence it's a warning, not an error.
 			recommendedDepth = len(chlInfoMap) + 20
 			if maxQDepth < int32(recommendedDepth) && len(chlInfoMap) > 0 {
-				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on channel count is at least %d\n", replyQBaseName, maxQDepth, recommendedDepth)
+				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on channel count is at least %d\n", ci.si.replyQBaseName, maxQDepth, recommendedDepth)
 				compCode = ibmmq.MQCC_WARNING
 			}
 
@@ -193,7 +184,7 @@ func VerifyConfig() (int32, error) {
 			// A LOCAL queue would end up with mixed sets of replies/publications
 			defType := v[ibmmq.MQIA_DEFINITION_TYPE].(int32)
 			if defType == ibmmq.MQQDT_PREDEFINED {
-				err = fmt.Errorf("Error: ReplyQ parameter %s must refer to a MODEL queue,", replyQBaseName)
+				err = fmt.Errorf("Error: ReplyQ parameter %s must refer to a MODEL queue,", ci.si.replyQBaseName)
 				compCode = ibmmq.MQCC_FAILED
 			}
 		}
@@ -212,7 +203,7 @@ issuing the MQSUB calls to collect the data
 func DiscoverAndSubscribe(dc DiscoverConfig) error {
 	traceEntry("DiscoverAndSubscribe")
 
-	discoveryDone = true
+	ci.discoveryDone = true
 	redo := false
 
 	qInfoMap = make(map[string]*ObjInfo)
@@ -225,7 +216,7 @@ func DiscoverAndSubscribe(dc DiscoverConfig) error {
 func RediscoverAndSubscribe(dc DiscoverConfig) error {
 	traceEntry("RediscoverAndSubscribe")
 
-	discoveryDone = true
+	ci.discoveryDone = true
 	redo := true
 
 	// Assume queues have been deleted and we will tidy up later.
@@ -309,8 +300,8 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 		// we round up the number of qmgr subs and per-queue subs. This will need extension if more object types are supported
 		// in the amqsrua-style of resource subscriptions. Add a few extra just in case.
 		recommendedHandles := 20 + len(qInfoMap)*5 + 10
-		if maxHandles < int32(recommendedHandles) && usePublications {
-			err = fmt.Errorf("MAXHANDS attribute on queue manager needs increasing. Current value = %d. Recommended minimum based on number of monitored queues = %d", maxHandles, recommendedHandles)
+		if ci.si.maxHandles < int32(recommendedHandles) && ci.usePublications {
+			err = fmt.Errorf("MAXHANDS attribute on queue manager needs increasing. Current value = %d. Recommended minimum based on number of monitored queues = %d", ci.si.maxHandles, recommendedHandles)
 		}
 	}
 
@@ -334,9 +325,9 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 	traceEntry("discoverClasses")
 	// Have to know the starting point for the topic that tells about classes
 	if metaPrefix == "" {
-		rootTopic = "$SYS/MQ/INFO/QMGR/" + resolvedQMgrName + "/Monitor/METADATA/CLASSES"
+		rootTopic = "$SYS/MQ/INFO/QMGR/" + ci.si.resolvedQMgrName + "/Monitor/METADATA/CLASSES"
 	} else {
-		rootTopic = metaPrefix + "/INFO/QMGR/" + resolvedQMgrName + "/Monitor/METADATA/CLASSES"
+		rootTopic = metaPrefix + "/INFO/QMGR/" + ci.si.resolvedQMgrName + "/Monitor/METADATA/CLASSES"
 	}
 	sub, err = subscribeManaged(rootTopic, &metaReplyQObj)
 	if err == nil {
@@ -382,7 +373,7 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 		}
 	}
 
-	subsOpened = true
+	ci.si.subsOpened = true
 	traceExitErr("discoverClasses", 0, err)
 	return err
 }
@@ -592,7 +583,7 @@ func discoverStats(dc DiscoverConfig) error {
 	Metrics.Classes = make(map[int]*MonClass)
 
 	// Allow us to proceed on z/OS even though it does not support pub/sub resources
-	if metaPrefix == "" && !usePublications {
+	if metaPrefix == "" && !ci.usePublications {
 		traceExit("discoverStats", 1)
 		return nil
 	}
@@ -681,7 +672,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 		qList, err = inquireObjects(monitoredQueuePatterns, ibmmq.MQOT_Q)
 	}
 
-	localSlashWarning = false
+	ci.localSlashWarning = false
 	if len(qList) > 0 {
 		//fmt.Printf("Monitoring Queues: %v\n", qList)
 		for i := 0; i < len(qList); i++ {
@@ -697,8 +688,8 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			// Because of the possible complexities of pattern matching, we don't
 			// actually fail the discovery process, but instead issue a warning and continue with
 			// other queues.
-			if strings.Contains(qName, "/") && globalSlashWarning == false {
-				localSlashWarning = true // First time through, issue the warning for all queues
+			if strings.Contains(qName, "/") && ci.globalSlashWarning == false {
+				ci.localSlashWarning = true // First time through, issue the warning for all queues
 				logError("Warning: Cannot subscribe to queue containing '/': %s", qName)
 				continue
 			}
@@ -711,7 +702,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			qInfoMap[qName] = qInfoElem
 		}
 
-		if useStatus {
+		if ci.useStatus {
 			if usingRegExp {
 				for qName, _ := range qInfoMap {
 					if len(qName) > 0 {
@@ -723,8 +714,8 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			}
 		}
 
-		if localSlashWarning {
-			globalSlashWarning = true
+		if ci.localSlashWarning {
+			ci.globalSlashWarning = true
 		}
 
 		if err != nil {
@@ -797,7 +788,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		pmo.Options |= ibmmq.MQPMO_FAIL_IF_QUIESCING
 
 		putmqmd.Format = "MQADMIN"
-		putmqmd.ReplyToQ = statusReplyQObj.Name
+		putmqmd.ReplyToQ = ci.si.statusReplyQObj.Name
 		putmqmd.MsgType = ibmmq.MQMT_REQUEST
 		putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
@@ -826,7 +817,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 
 			// We don't see shared queues in the returned set unless explicitly asked for.
 			// MQQSGD_ALL returns all locals, and (if qmgr in a QSG) also shared queues.
-			if platform == ibmmq.MQPL_ZOS {
+			if ci.si.platform == ibmmq.MQPL_ZOS {
 				pcfparm = new(ibmmq.PCFParameter)
 				pcfparm.Type = ibmmq.MQCFT_INTEGER
 				pcfparm.Parameter = ibmmq.MQIA_QSG_DISP
@@ -840,7 +831,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		buf = append(cfh.Bytes(), buf...)
 
 		// And put the command to the queue
-		err = cmdQObj.Put(putmqmd, pmo, buf)
+		err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 
 		if err != nil {
 			traceExitErr("inquireObjects", 3, err)
@@ -863,7 +854,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 		for truncation := true; truncation; {
 			buf = make([]byte, bufSize)
 
-			datalen, err = statusReplyQObj.Get(getmqmd, gmo, buf)
+			datalen, err = ci.si.statusReplyQObj.Get(getmqmd, gmo, buf)
 			if err == nil {
 				truncation = false
 				cfh, offset := ibmmq.ReadPCFHeader(buf)
@@ -955,7 +946,7 @@ func createSubscriptions() error {
 						}
 					} else {
 						topic := fmt.Sprintf(ty.ObjectTopic, key)
-						sub, err = subscribe(topic, &replyQObj)
+						sub, err = subscribe(topic, &ci.si.replyQObj)
 						if err == nil {
 							ty.subHobj[key] = sub
 							im[key].firstCollection = true
@@ -967,7 +958,7 @@ func createSubscriptions() error {
 
 					// Don't have a qmgr-level subscription to this topic. Should
 					// only do this subscription once at startup
-					sub, err = subscribe(ty.ObjectTopic, &replyQObj)
+					sub, err = subscribe(ty.ObjectTopic, &ci.si.replyQObj)
 					ty.subHobj[QMgrMapKey] = sub
 				}
 			}
@@ -1008,9 +999,9 @@ func ProcessPublications() error {
 
 	traceEntry("ProcessPublications")
 
-	publicationCount = 0
+	ci.publicationCount = 0
 
-	if !usePublications {
+	if !ci.usePublications {
 		traceExit("ProcessPublications", 1)
 		return nil
 	}
@@ -1023,7 +1014,7 @@ func ProcessPublications() error {
 		// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
 		// which will end the loop.
 		if err == nil {
-			publicationCount++
+			ci.publicationCount++
 			elemList, _ := parsePCFResponse(data)
 
 			// A typical publication contains some fixed

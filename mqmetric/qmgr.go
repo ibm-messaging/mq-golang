@@ -47,9 +47,6 @@ const (
 	ATTR_QMGR_MAX_TCP_CHANNELS    = "max_tcp_channels"
 )
 
-var QueueManagerStatus StatusSet
-var qMgrAttrsInit = false
-
 /*
 Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
@@ -61,41 +58,43 @@ for now.
 func QueueManagerInitAttributes() {
 
 	traceEntry("QueueManagerInitAttributes")
-	if qMgrAttrsInit {
+	os := &ci.objectStatus[GOOT_Q_MGR]
+	st := &QueueManagerStatus
+	if os.init {
 		traceExit("QueueManagerInitAttributes", 1)
 		return
 	}
-	QueueManagerStatus.Attributes = make(map[string]*StatusAttribute)
+	st.Attributes = make(map[string]*StatusAttribute)
 
 	attr := ATTR_QMGR_NAME
-	QueueManagerStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Manager Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Manager Name")
 
 	if GetPlatform() != ibmmq.MQPL_ZOS {
 		attr = ATTR_QMGR_UPTIME
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Up time", -1)
+		st.Attributes[attr] = newStatusAttribute(attr, "Up time", -1)
 
 		// These are the integer status fields that are of interest
 		attr = ATTR_QMGR_CONNECTION_COUNT
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Connection Count", ibmmq.MQIACF_CONNECTION_COUNT)
+		st.Attributes[attr] = newStatusAttribute(attr, "Connection Count", ibmmq.MQIACF_CONNECTION_COUNT)
 		attr = ATTR_QMGR_CHINIT_STATUS
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Initiator Status", ibmmq.MQIACF_CHINIT_STATUS)
+		st.Attributes[attr] = newStatusAttribute(attr, "Channel Initiator Status", ibmmq.MQIACF_CHINIT_STATUS)
 		attr = ATTR_QMGR_CMD_SERVER_STATUS
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
+		st.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
 
 		// The qmgr status is pointless - if we can't connect to the qmgr, then we can't report on it. And if we can, it's up.
 		// I'll leave this in as a reminder of why it's not being collected.
 		//attr = ATTR_QMGR_STATUS
-		//QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
+		//st.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
 	} else {
 		attr = ATTR_QMGR_MAX_CHANNELS
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Max Channels", -1)
+		st.Attributes[attr] = newStatusAttribute(attr, "Max Channels", -1)
 		attr = ATTR_QMGR_MAX_TCP_CHANNELS
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Max TCP Channels", -1)
+		st.Attributes[attr] = newStatusAttribute(attr, "Max TCP Channels", -1)
 		attr = ATTR_QMGR_MAX_ACTIVE_CHANNELS
-		QueueManagerStatus.Attributes[attr] = newStatusAttribute(attr, "Max Active Channels", -1)
+		st.Attributes[attr] = newStatusAttribute(attr, "Max Active Channels", -1)
 	}
 
-	qMgrAttrsInit = true
+	os.init = true
 
 	traceExit("QueueManagerInitAttributes", 0)
 
@@ -105,9 +104,12 @@ func CollectQueueManagerStatus() error {
 	var err error
 
 	traceEntry("CollectQueueManagerStatus")
+	//os := &ci.objectStatus[GOOT_Q_MGR]
+	st := &QueueManagerStatus
+
 	QueueManagerInitAttributes()
-	for k := range QueueManagerStatus.Attributes {
-		QueueManagerStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range st.Attributes {
+		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
 	// Empty any collected values
@@ -129,22 +131,23 @@ func CollectQueueManagerStatus() error {
 func collectQueueManagerAttrs() error {
 
 	traceEntry("collectQueueManagerAttrs")
+	st := &QueueManagerStatus
 
 	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
 		ibmmq.MQIA_ACTIVE_CHANNELS,
 		ibmmq.MQIA_TCP_CHANNELS,
 		ibmmq.MQIA_MAX_CHANNELS}
 
-	v, err := qMgrObject.Inq(selectors)
+	v, err := ci.si.qMgrObject.Inq(selectors)
 	if err == nil {
 		maxchls := v[ibmmq.MQIA_MAX_CHANNELS].(int32)
 		maxact := v[ibmmq.MQIA_ACTIVE_CHANNELS].(int32)
 		maxtcp := v[ibmmq.MQIA_TCP_CHANNELS].(int32)
 		key := v[ibmmq.MQCA_Q_MGR_NAME].(string)
-		QueueManagerStatus.Attributes[ATTR_QMGR_MAX_ACTIVE_CHANNELS].Values[key] = newStatusValueInt64(int64(maxact))
-		QueueManagerStatus.Attributes[ATTR_QMGR_MAX_CHANNELS].Values[key] = newStatusValueInt64(int64(maxchls))
-		QueueManagerStatus.Attributes[ATTR_QMGR_MAX_TCP_CHANNELS].Values[key] = newStatusValueInt64(int64(maxtcp))
-		QueueManagerStatus.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
+		st.Attributes[ATTR_QMGR_MAX_ACTIVE_CHANNELS].Values[key] = newStatusValueInt64(int64(maxact))
+		st.Attributes[ATTR_QMGR_MAX_CHANNELS].Values[key] = newStatusValueInt64(int64(maxchls))
+		st.Attributes[ATTR_QMGR_MAX_TCP_CHANNELS].Values[key] = newStatusValueInt64(int64(maxtcp))
+		st.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
 
 	}
 	traceExitErr("collectQueueManagerAttrs", 0, err)
@@ -170,7 +173,7 @@ func collectQueueManagerStatus(instanceType int32) error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExitErr("collectQueueManagerStatus", 1, err)
 		return err
@@ -194,6 +197,9 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
 	traceEntry("parseQMgrData")
+
+	st := &QueueManagerStatus
+
 	qMgrName := ""
 	key := ""
 
@@ -227,7 +233,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	// Create a unique key for this instance
 	key = qMgrName
 
-	QueueManagerStatus.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(qMgrName)
+	st.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(qMgrName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -251,7 +257,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	now := time.Now()
-	QueueManagerStatus.Attributes[ATTR_QMGR_UPTIME].Values[key] = newStatusValueInt64(statusTimeDiff(now, startDate, startTime))
+	st.Attributes[ATTR_QMGR_UPTIME].Values[key] = newStatusValueInt64(statusTimeDiff(now, startDate, startTime))
 
 	traceExitF("parseQMgrData", 0, "Key: %s", key)
 	return key

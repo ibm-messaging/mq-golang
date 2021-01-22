@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2019
+  Copyright (c) IBM Corporation 2016, 2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -125,7 +125,7 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 		}
 		parsedT, err = time.ParseInLocation(timeStampLayout, d+" "+t, now.Location())
 		if err == nil {
-			diff := now.Sub(parsedT).Seconds() + tzOffsetSecs
+			diff := now.Sub(parsedT).Seconds() + ci.tzOffsetSecs
 
 			if diff < 0 { // Cannot have status from the future
 				if !timeTravelWarningIssued {
@@ -154,7 +154,7 @@ func statusClearReplyQ() {
 		gmo.Options |= ibmmq.MQGMO_NO_WAIT
 		gmo.Options |= ibmmq.MQGMO_CONVERT
 		gmo.Options |= ibmmq.MQGMO_ACCEPT_TRUNCATED_MSG
-		_, err := statusReplyQObj.Get(getmqmd, gmo, buf)
+		_, err := ci.si.statusReplyQObj.Get(getmqmd, gmo, buf)
 
 		if err != nil && err.(*ibmmq.MQReturn).MQCC == ibmmq.MQCC_FAILED {
 			ok = false
@@ -182,7 +182,7 @@ func statusSetCommandHeaders() (*ibmmq.MQMD, *ibmmq.MQPMO, *ibmmq.MQCFH, []byte)
 	pmo.Options |= ibmmq.MQPMO_FAIL_IF_QUIESCING
 
 	putmqmd.Format = "MQADMIN"
-	putmqmd.ReplyToQ = statusReplyQObj.Name
+	putmqmd.ReplyToQ = ci.si.statusReplyQObj.Name
 	putmqmd.MsgType = ibmmq.MQMT_REQUEST
 	putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
@@ -212,7 +212,7 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 	gmo.WaitInterval = 3 * 1000 // 3 seconds
 
 	allDone := false
-	datalen, err := statusReplyQObj.Get(getmqmd, gmo, replyBuf)
+	datalen, err := ci.si.statusReplyQObj.Get(getmqmd, gmo, replyBuf)
 	if err == nil {
 		cfh, offset = ibmmq.ReadPCFHeader(replyBuf)
 

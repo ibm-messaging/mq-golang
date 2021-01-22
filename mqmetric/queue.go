@@ -63,9 +63,6 @@ const (
 	ATTR_Q_INTERVAL_HI_DEPTH = "hi_depth"
 )
 
-var QueueStatus StatusSet
-var qAttrsInit = false
-
 /*
 Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
@@ -76,49 +73,52 @@ for now.
 */
 func QueueInitAttributes() {
 	traceEntry("QueueInitAttributes")
-	if qAttrsInit {
+	os := &ci.objectStatus[GOOT_Q]
+	st := &QueueStatus
+
+	if os.init {
 		traceExit("QueueInitAttributes", 1)
 		return
 	}
-	QueueStatus.Attributes = make(map[string]*StatusAttribute)
+	st.Attributes = make(map[string]*StatusAttribute)
 
 	attr := ATTR_Q_NAME
-	QueueStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Name")
 
 	attr = ATTR_Q_SINCE_PUT
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Put", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Put", -1)
 	attr = ATTR_Q_SINCE_GET
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Get", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Get", -1)
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_Q_MSGAGE
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Oldest Message", ibmmq.MQIACF_OLDEST_MSG_AGE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Oldest Message", ibmmq.MQIACF_OLDEST_MSG_AGE)
 	attr = ATTR_Q_IPPROCS
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
+	st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
 	attr = ATTR_Q_OPPROCS
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+	st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
 
 	// QFile sizes - current, and the "current maximum" which may not be
 	// the same as the qdefinition but is the one in effect for now until
 	// the qfile empties
 	attr = ATTR_Q_CURFSIZE
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue File Current Size", ibmmq.MQIACF_CUR_Q_FILE_SIZE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue File Current Size", ibmmq.MQIACF_CUR_Q_FILE_SIZE)
 	attr = ATTR_Q_CURMAXFSIZE
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue File Maximum Size", ibmmq.MQIACF_CUR_MAX_FILE_SIZE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue File Maximum Size", ibmmq.MQIACF_CUR_MAX_FILE_SIZE)
 
 	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response
-	if !usePublications {
+	if !ci.usePublications {
 		attr = ATTR_Q_DEPTH
-		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
+		st.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
 	}
 
-	if platform == ibmmq.MQPL_ZOS && useResetQStats {
+	if ci.si.platform == ibmmq.MQPL_ZOS && ci.useResetQStats {
 		attr = ATTR_Q_INTERVAL_PUT
-		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Put/Put1 Count", ibmmq.MQIA_MSG_ENQ_COUNT)
+		st.Attributes[attr] = newStatusAttribute(attr, "Put/Put1 Count", ibmmq.MQIA_MSG_ENQ_COUNT)
 		attr = ATTR_Q_INTERVAL_GET
-		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Get Count", ibmmq.MQIA_MSG_DEQ_COUNT)
+		st.Attributes[attr] = newStatusAttribute(attr, "Get Count", ibmmq.MQIA_MSG_DEQ_COUNT)
 		attr = ATTR_Q_INTERVAL_HI_DEPTH
-		QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Highest Depth", ibmmq.MQIA_HIGH_Q_DEPTH)
+		st.Attributes[attr] = newStatusAttribute(attr, "Highest Depth", ibmmq.MQIA_HIGH_Q_DEPTH)
 	}
 
 	// This is not really a monitoring metric but it enables calculations to be made such as %full for
@@ -128,18 +128,18 @@ func QueueInitAttributes() {
 	// usually - but not always - come from the published resource stats. So we don't have direct access to it.
 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
 	attr = ATTR_Q_MAX_DEPTH
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", -1)
 	attr = ATTR_Q_USAGE
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", -1)
 
 	attr = ATTR_Q_QTIME_SHORT
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
-	QueueStatus.Attributes[attr].index = 0
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
+	st.Attributes[attr].index = 0
 	attr = ATTR_Q_QTIME_LONG
-	QueueStatus.Attributes[attr] = newStatusAttribute(attr, "Queue Time Long", ibmmq.MQIACF_Q_TIME_INDICATOR)
-	QueueStatus.Attributes[attr].index = 1
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Time Long", ibmmq.MQIACF_Q_TIME_INDICATOR)
+	st.Attributes[attr].index = 1
 
-	qAttrsInit = true
+	os.init = true
 
 	traceExit("QueueInitAttributes", 0)
 
@@ -160,11 +160,12 @@ func CollectQueueStatus(patterns string) error {
 	var err error
 	traceEntry("CollectQueueStatus")
 
+	st := &QueueStatus
 	QueueInitAttributes()
 
 	// Empty any collected values
-	for k := range QueueStatus.Attributes {
-		QueueStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range st.Attributes {
+		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
 	queuePatterns := strings.Split(patterns, ",")
@@ -182,7 +183,7 @@ func CollectQueueStatus(patterns string) error {
 				continue
 			}
 			err = collectQueueStatus(qName, ibmmq.MQOT_Q)
-			if err == nil && useResetQStats {
+			if err == nil && ci.useResetQStats {
 				err = collectResetQStats(qName)
 			}
 		}
@@ -194,7 +195,7 @@ func CollectQueueStatus(patterns string) error {
 			}
 
 			err = collectQueueStatus(pattern, ibmmq.MQOT_Q)
-			if err == nil && useResetQStats {
+			if err == nil && ci.useResetQStats {
 				err = collectResetQStats(pattern)
 			}
 		}
@@ -236,7 +237,7 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExit("collectQueueStatus", 1)
 		return err
@@ -259,6 +260,7 @@ func collectResetQStats(pattern string) error {
 	var err error
 
 	traceEntry("collectResetQStats")
+
 	statusClearReplyQ()
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 
@@ -276,7 +278,7 @@ func collectResetQStats(pattern string) error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExitErr("collectResetQueueStats", 1, err)
 		return err
@@ -342,7 +344,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		buf = append(cfh.Bytes(), buf...)
 
 		// And now put the command to the queue
-		err = cmdQObj.Put(putmqmd, pmo, buf)
+		err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 		if err != nil {
 			traceExitErr("inquireQueueAttributes", 2, err)
 			return err
@@ -364,6 +366,9 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
 	traceEntry("parseQData")
+
+	st := &QueueStatus
+
 	qName := ""
 	key := ""
 
@@ -399,7 +404,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	// Create a unique key for this instance
 	key = qName
-	QueueStatus.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
+	st.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -427,13 +432,13 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	now := time.Now()
-	QueueStatus.Attributes[ATTR_Q_SINCE_PUT].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
-	QueueStatus.Attributes[ATTR_Q_SINCE_GET].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
+	st.Attributes[ATTR_Q_SINCE_PUT].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
+	st.Attributes[ATTR_Q_SINCE_GET].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
 	if s, ok := qInfoMap[key]; ok {
 		maxDepth := s.AttrMaxDepth
-		QueueStatus.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
+		st.Attributes[ATTR_Q_MAX_DEPTH].Values[key] = newStatusValueInt64(maxDepth)
 		usage := s.AttrUsage
-		QueueStatus.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
+		st.Attributes[ATTR_Q_USAGE].Values[key] = newStatusValueInt64(usage)
 	}
 	traceExitF("parseQData", 0, "Key: %s", key)
 	return key
@@ -444,6 +449,9 @@ func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
 	traceEntry("parseResetQStatsData")
+
+	st := &QueueStatus
+
 	qName := ""
 	key := ""
 
@@ -475,7 +483,7 @@ func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 	// Create a unique key for this instance
 	key = qName
 
-	QueueStatus.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
+	st.Attributes[ATTR_Q_NAME].Values[key] = newStatusValueString(qName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true

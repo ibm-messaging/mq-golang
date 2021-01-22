@@ -45,9 +45,6 @@ const (
 	ATTR_SUB_MESSAGES      = "messsages_received"
 )
 
-var SubStatus StatusSet
-var subAttrsInit = false
-
 /*
 Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
@@ -58,42 +55,47 @@ for now.
 */
 func SubInitAttributes() {
 	traceEntry("SubInitAttributes")
-	if subAttrsInit {
+	os := &ci.objectStatus[GOOT_SUB]
+	st := &SubStatus
+
+	if os.init {
 		traceExit("SubInitAttributes", 1)
 		return
 	}
-	SubStatus.Attributes = make(map[string]*StatusAttribute)
+	st.Attributes = make(map[string]*StatusAttribute)
 
 	attr := ATTR_SUB_ID
-	SubStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Id")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Id")
 	attr = ATTR_SUB_NAME
-	SubStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Name")
 	attr = ATTR_SUB_TOPIC_STRING
-	SubStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
 
 	attr = ATTR_SUB_TYPE
-	SubStatus.Attributes[attr] = newStatusAttribute(attr, "Subscription Type", ibmmq.MQIACF_SUB_TYPE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Subscription Type", ibmmq.MQIACF_SUB_TYPE)
 
 	attr = ATTR_SUB_SINCE_PUB_MSG
-	SubStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Message Received", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Message Received", -1)
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_SUB_MESSAGES
-	SubStatus.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACF_MESSAGE_COUNT)
-	SubStatus.Attributes[attr].delta = true
+	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACF_MESSAGE_COUNT)
+	st.Attributes[attr].delta = true
 
-	subAttrsInit = true
+	os.init = true
 	traceExit("SubInitAttributes", 0)
 }
 
 func CollectSubStatus(patterns string) error {
 	var err error
 	traceEntry("CollectSubStatus")
+
+	st := &SubStatus
 	SubInitAttributes()
 
 	// Empty any collected values
-	for k := range SubStatus.Attributes {
-		SubStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range st.Attributes {
+		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
 	subPatterns := strings.Split(patterns, ",")
@@ -143,7 +145,7 @@ func collectSubStatus(pattern string) error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExitErr("collectSubStatus", 1, err)
 
@@ -169,6 +171,8 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
 	traceEntry("parseSubData")
+
+	st := &SubStatus
 	subName := ""
 	subId := ""
 	key := ""
@@ -206,7 +210,7 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	// Create a unique key for this instance
 	key = subId
 
-	SubStatus.Attributes[ATTR_SUB_ID].Values[key] = newStatusValueString(subId)
+	st.Attributes[ATTR_SUB_ID].Values[key] = newStatusValueString(subId)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -234,9 +238,9 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	now := time.Now()
-	SubStatus.Attributes[ATTR_SUB_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
-	SubStatus.Attributes[ATTR_SUB_TOPIC_STRING].Values[key] = newStatusValueString(topicString)
-	SubStatus.Attributes[ATTR_SUB_NAME].Values[key] = newStatusValueString(subName)
+	st.Attributes[ATTR_SUB_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
+	st.Attributes[ATTR_SUB_TOPIC_STRING].Values[key] = newStatusValueString(topicString)
+	st.Attributes[ATTR_SUB_NAME].Values[key] = newStatusValueString(subName)
 
 	traceExitF("parseSubData", 0, "Key : %s", key)
 

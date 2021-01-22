@@ -46,10 +46,6 @@ const (
 	ATTR_TOPIC_SUBSCRIBER_COUNT = "subscriber_count"
 )
 
-var TopicStatus StatusSet
-var tpAttrsInit = false
-var topicsSeen map[string]bool
-
 /*
 Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
@@ -60,38 +56,42 @@ for now.
 */
 func TopicInitAttributes() {
 	traceEntry("TopicInitAttributes")
-	if tpAttrsInit {
+
+	os := &ci.objectStatus[GOOT_TOPIC]
+	st := &TopicStatus
+
+	if os.init {
 		traceExit("TopicInitAttributes", 1)
 		return
 	}
-	TopicStatus.Attributes = make(map[string]*StatusAttribute)
+	st.Attributes = make(map[string]*StatusAttribute)
 
 	// These fields are used to construct the key to the per-topic map values and
 	// as tags to uniquely identify a topic instance
 	attr := ATTR_TOPIC_STRING
-	TopicStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
 	attr = ATTR_TOPIC_STATUS_TYPE
-	TopicStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic Status Type")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic Status Type")
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_TOPIC_PUB_MESSAGES
-	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Published Messages", ibmmq.MQIACF_PUBLISH_COUNT)
-	TopicStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Published Messages", ibmmq.MQIACF_PUBLISH_COUNT)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_TOPIC_SUB_MESSAGES
-	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Received Messages", ibmmq.MQIACF_MESSAGE_COUNT)
-	TopicStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Received Messages", ibmmq.MQIACF_MESSAGE_COUNT)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 
 	attr = ATTR_TOPIC_PUBLISHER_COUNT
-	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Number of publishers", ibmmq.MQIA_PUB_COUNT)
+	st.Attributes[attr] = newStatusAttribute(attr, "Number of publishers", ibmmq.MQIA_PUB_COUNT)
 	attr = ATTR_TOPIC_SUBSCRIBER_COUNT
-	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Number of subscribers", ibmmq.MQIA_SUB_COUNT)
+	st.Attributes[attr] = newStatusAttribute(attr, "Number of subscribers", ibmmq.MQIA_SUB_COUNT)
 
 	attr = ATTR_TOPIC_SINCE_PUB_MSG
-	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
 	attr = ATTR_TOPIC_SINCE_SUB_MSG
-	TopicStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
 
-	tpAttrsInit = true
+	os.init = true
 	traceExit("TopicInitAttributes", 0)
 
 }
@@ -110,12 +110,15 @@ func InquireTopics(patterns string) ([]string, error) {
 func CollectTopicStatus(patterns string) error {
 	var err error
 	traceEntry("CollectTopicStatus")
-	topicsSeen = make(map[string]bool) // Record which topics have been seen in this period
+
+	os := &ci.objectStatus[GOOT_TOPIC]
+	st := &TopicStatus
+	os.objectSeen = make(map[string]bool) // Record which topics have been seen in this period
 	TopicInitAttributes()
 
 	// Empty any collected values
-	for k := range TopicStatus.Attributes {
-		TopicStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range st.Attributes {
+		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
 	topicPatterns := strings.Split(patterns, ",")
@@ -148,11 +151,11 @@ func CollectTopicStatus(patterns string) error {
 
 	// Need to clean out the prevValues elements to stop short-lived topics
 	// building up in the map
-	for a, _ := range TopicStatus.Attributes {
-		if TopicStatus.Attributes[a].delta {
-			m := TopicStatus.Attributes[a].prevValues
+	for a, _ := range st.Attributes {
+		if st.Attributes[a].delta {
+			m := st.Attributes[a].prevValues
 			for key, _ := range m {
-				if _, ok := topicsSeen[key]; ok {
+				if _, ok := os.objectSeen[key]; ok {
 					// Leave it in the map
 				} else {
 					// need to delete it from the map
@@ -172,6 +175,8 @@ func CollectTopicStatus(patterns string) error {
 func collectTopicStatus(pattern string, instanceType int32) error {
 	var err error
 	traceEntryF("collectTopicStatus", "Pattern: %s", pattern)
+
+	os := &ci.objectStatus[GOOT_TOPIC]
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -199,7 +204,7 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExitErr("collectTopicStatus", 1, err)
 		return err
@@ -211,7 +216,7 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 		if buf != nil {
 			key := parseTopicData(instanceType, cfh, buf)
 			if key != "" {
-				topicsSeen[key] = true
+				os.objectSeen[key] = true
 			}
 		}
 
@@ -226,8 +231,9 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 	traceEntry("parseTopicData")
-	tpName := ""
 
+	st := &TopicStatus
+	tpName := ""
 	key := ""
 
 	lastMsgDate := ""
@@ -272,8 +278,8 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	// Create a unique key for this topic instance
 	key = TopicKey(tpName, instanceTypeString)
 
-	TopicStatus.Attributes[ATTR_TOPIC_STRING].Values[key] = newStatusValueString(tpName)
-	TopicStatus.Attributes[ATTR_TOPIC_STATUS_TYPE].Values[key] = newStatusValueString(instanceTypeString)
+	st.Attributes[ATTR_TOPIC_STRING].Values[key] = newStatusValueString(tpName)
+	st.Attributes[ATTR_TOPIC_STATUS_TYPE].Values[key] = newStatusValueString(instanceTypeString)
 
 	parmAvail = true
 	// And then re-parse the message so we can store the metrics now knowing the map key
@@ -302,9 +308,9 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
 		switch instanceType {
 		case ibmmq.MQIACF_TOPIC_SUB:
-			TopicStatus.Attributes[ATTR_TOPIC_SINCE_SUB_MSG].Values[key] = newStatusValueInt64(diff)
+			st.Attributes[ATTR_TOPIC_SINCE_SUB_MSG].Values[key] = newStatusValueInt64(diff)
 		case ibmmq.MQIACF_TOPIC_PUB:
-			TopicStatus.Attributes[ATTR_TOPIC_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(diff)
+			st.Attributes[ATTR_TOPIC_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(diff)
 		}
 	}
 

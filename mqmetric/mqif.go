@@ -30,28 +30,7 @@ import (
 )
 
 var (
-	qMgr             ibmmq.MQQueueManager
-	cmdQObj          ibmmq.MQObject
-	replyQObj        ibmmq.MQObject
-	qMgrObject       ibmmq.MQObject
-	replyQBaseName   string
-	statusReplyQObj  ibmmq.MQObject
-	getBuffer        = make([]byte, 32768)
-	platform         int32
-	commandLevel     int32
-	maxHandles       int32
-	resolvedQMgrName string
-
-	tzOffsetSecs float64
-
-	qmgrConnected = false
-	queuesOpened  = false
-	subsOpened    = false
-
-	usePublications      = true
-	useStatus            = false
-	useResetQStats       = false
-	showInactiveChannels = false
+	getBuffer = make([]byte, 32768)
 )
 
 type ConnectionConfig struct {
@@ -109,12 +88,14 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 
 	traceEntryF("InitConnection", "QMgrName %s", qMgrName)
 
+	initConnection()
+
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
 
 	// Copy initialisation configuraton information to global vars
-	tzOffsetSecs = cc.TZOffsetSecs
-	showInactiveChannels = cc.ShowInactiveChannels
+	ci.tzOffsetSecs = cc.TZOffsetSecs
+	ci.showInactiveChannels = cc.ShowInactiveChannels
 
 	// Explicitly force client mode if requested. Otherwise use the "default"
 	// Client mode can be come from a simple boolean, or from having
@@ -156,9 +137,9 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	}
 
 	logDebug("Connecting to queue manager %s", qMgrName)
-	qMgr, err = ibmmq.Connx(qMgrName, gocno)
+	ci.si.qMgr, err = ibmmq.Connx(qMgrName, gocno)
 	if err == nil {
-		qmgrConnected = true
+		ci.si.qmgrConnected = true
 	} else {
 		errorString = "Cannot connect to queue manager " + qMgrName
 		mqreturn = err.(*ibmmq.MQReturn)
@@ -170,7 +151,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	if err == nil {
 		var v map[int32]interface{}
 
-		useStatus = cc.UseStatus
+		ci.useStatus = cc.UseStatus
 
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
@@ -178,7 +159,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		mqod.ObjectType = ibmmq.MQOT_Q_MGR
 		mqod.ObjectName = ""
 
-		qMgrObject, err = qMgr.Open(mqod, openOptions)
+		ci.si.qMgrObject, err = ci.si.qMgr.Open(mqod, openOptions)
 
 		if err == nil {
 			selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
@@ -187,30 +168,30 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 				ibmmq.MQIA_MAX_HANDLES,
 				ibmmq.MQIA_PLATFORM}
 
-			v, err = qMgrObject.InqMap(selectors)
+			v, err = ci.si.qMgrObject.InqMap(selectors)
 			if err == nil {
-				resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
-				platform = v[ibmmq.MQIA_PLATFORM].(int32)
-				commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
-				maxHandles = v[ibmmq.MQIA_MAX_HANDLES].(int32)
-				if platform == ibmmq.MQPL_ZOS {
-					usePublications = false
-					useResetQStats = cc.UseResetQStats
+				ci.si.resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
+				ci.si.platform = v[ibmmq.MQIA_PLATFORM].(int32)
+				ci.si.commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
+				ci.si.maxHandles = v[ibmmq.MQIA_MAX_HANDLES].(int32)
+				if ci.si.platform == ibmmq.MQPL_ZOS {
+					ci.usePublications = false
+					ci.useResetQStats = cc.UseResetQStats
 					evEnabled := v[ibmmq.MQIA_PERFORMANCE_EVENT].(int32)
-					if useResetQStats && evEnabled == 0 {
+					if ci.useResetQStats && evEnabled == 0 {
 						err = fmt.Errorf("Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)")
 						errorString = "Command"
 					}
 				} else {
 					if cc.UsePublications == true {
-						if commandLevel < 900 && platform != ibmmq.MQPL_APPLIANCE {
+						if ci.si.commandLevel < 900 && ci.si.platform != ibmmq.MQPL_APPLIANCE {
 							err = fmt.Errorf("Queue manager must be at least V9.0 for full monitoring. The ibmmq.usePublications configuration parameter can be used to permit limited monitoring.")
 							errorString = "Unsupported system"
 						} else {
-							usePublications = cc.UsePublications
+							ci.usePublications = cc.UsePublications
 						}
 					} else {
-						usePublications = false
+						ci.usePublications = false
 					}
 				}
 
@@ -230,11 +211,11 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = "SYSTEM.ADMIN.COMMAND.QUEUE"
-		if platform == ibmmq.MQPL_ZOS {
+		if ci.si.platform == ibmmq.MQPL_ZOS {
 			mqod.ObjectName = "SYSTEM.COMMAND.INPUT"
 		}
 
-		cmdQObj, err = qMgr.Open(mqod, openOptions)
+		ci.si.cmdQObj, err = ci.si.qMgr.Open(mqod, openOptions)
 		if err != nil {
 			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
@@ -249,10 +230,10 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		openOptions |= ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
-		replyQObj, err = qMgr.Open(mqod, openOptions)
-		replyQBaseName = replyQ
+		ci.si.replyQObj, err = ci.si.qMgr.Open(mqod, openOptions)
+		ci.si.replyQBaseName = replyQ
 		if err == nil {
-			queuesOpened = true
+			ci.si.queuesOpened = true
 		} else {
 			errorString = "Cannot open queue " + replyQ
 			mqreturn = err.(*ibmmq.MQReturn)
@@ -265,7 +246,7 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
-		statusReplyQObj, err = qMgr.Open(mqod, openOptions)
+		ci.si.statusReplyQObj, err = ci.si.qMgr.Open(mqod, openOptions)
 		if err != nil {
 			errorString = "Cannot open queue " + replyQ
 			mqreturn = err.(*ibmmq.MQReturn)
@@ -288,7 +269,7 @@ EndConnection tidies up by closing the queues and disconnecting.
 func EndConnection() {
 	traceEntry("EndConnection")
 	// MQCLOSE all subscriptions
-	if subsOpened {
+	if ci.si.subsOpened {
 		for _, cl := range Metrics.Classes {
 			for _, ty := range cl.Types {
 				for _, hObj := range ty.subHobj {
@@ -299,16 +280,16 @@ func EndConnection() {
 	}
 
 	// MQCLOSE the queues
-	if queuesOpened {
-		cmdQObj.Close(0)
-		replyQObj.Close(0)
-		statusReplyQObj.Close(0)
-		qMgrObject.Close(0)
+	if ci.si.queuesOpened {
+		ci.si.cmdQObj.Close(0)
+		ci.si.replyQObj.Close(0)
+		ci.si.statusReplyQObj.Close(0)
+		ci.si.qMgrObject.Close(0)
 	}
 
 	// MQDISC regardless of other errors
-	if qmgrConnected {
-		qMgr.Disc()
+	if ci.si.qmgrConnected {
+		ci.si.qMgr.Disc()
 	}
 
 	traceExit("EndConnection", 0)
@@ -326,7 +307,7 @@ be big enough for what we are expecting.
 */
 func getMessage(wait bool) ([]byte, error) {
 	traceEntry("getMessage")
-	rc, err := getMessageWithHObj(wait, replyQObj)
+	rc, err := getMessageWithHObj(wait, ci.si.replyQObj)
 	traceExitErr("getMessage", 0, err)
 	return rc, err
 }
@@ -388,7 +369,7 @@ func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (
 
 	mqsd.ObjectString = topic
 
-	subObj, err := qMgr.Sub(mqsd, pubQObj)
+	subObj, err := ci.si.qMgr.Sub(mqsd, pubQObj)
 	if err != nil {
 		extraInfo := ""
 		mqrc := err.(*ibmmq.MQReturn).MQRC
@@ -410,12 +391,12 @@ Return the current platform - the MQPL_* definition value. It
 can be turned into a string if necessary via ibmmq.MQItoString("PL"...)
 */
 func GetPlatform() int32 {
-	return platform
+	return ci.si.platform
 }
 
 /*
 Return the current command level
 */
 func GetCommandLevel() int32 {
-	return commandLevel
+	return ci.si.commandLevel
 }

@@ -53,52 +53,55 @@ const (
 	ATTR_PS_EXPAND_COUNT = "expansion_count"
 )
 
-var UsageBpStatus StatusSet
-var UsagePsStatus StatusSet
-var usageAttrsInit = false
-
 func UsageInitAttributes() {
 	traceEntry("usageInitAttributes")
-	if usageAttrsInit {
+
+	osbp := &ci.objectStatus[GOOT_BP]
+	osps := &ci.objectStatus[GOOT_PS]
+	stbp := &UsageBpStatus
+	stps := &UsagePsStatus
+	if osbp.init && osps.init {
 		traceExit("usageInitAttributes", 1)
 		return
 	}
-	UsageBpStatus.Attributes = make(map[string]*StatusAttribute)
-	UsagePsStatus.Attributes = make(map[string]*StatusAttribute)
+	stbp.Attributes = make(map[string]*StatusAttribute)
+	stps.Attributes = make(map[string]*StatusAttribute)
 
 	attr := ATTR_BP_ID
-	UsageBpStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool ID")
+	stbp.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool ID")
 	attr = ATTR_BP_LOCATION
-	UsageBpStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool Location")
+	stbp.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool Location")
 	attr = ATTR_BP_CLASS
-	UsageBpStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool Class")
+	stbp.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool Class")
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_BP_FREE
-	UsageBpStatus.Attributes[attr] = newStatusAttribute(attr, "Free buffers", ibmmq.MQIACF_USAGE_FREE_BUFF)
+	stbp.Attributes[attr] = newStatusAttribute(attr, "Free buffers", ibmmq.MQIACF_USAGE_FREE_BUFF)
 	attr = ATTR_BP_FREE_PERCENT
-	UsageBpStatus.Attributes[attr] = newStatusAttribute(attr, "Free buffers percent", ibmmq.MQIACF_USAGE_FREE_BUFF_PERC)
+	stbp.Attributes[attr] = newStatusAttribute(attr, "Free buffers percent", ibmmq.MQIACF_USAGE_FREE_BUFF_PERC)
 	attr = ATTR_BP_TOTAL
-	UsageBpStatus.Attributes[attr] = newStatusAttribute(attr, "Total buffers", ibmmq.MQIACF_USAGE_TOTAL_BUFFERS)
+	stbp.Attributes[attr] = newStatusAttribute(attr, "Total buffers", ibmmq.MQIACF_USAGE_TOTAL_BUFFERS)
 
 	attr = ATTR_PS_ID
-	UsagePsStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Pageset ID")
+	stps.Attributes[attr] = newPseudoStatusAttribute(attr, "Pageset ID")
 	attr = ATTR_PS_BPID
-	UsagePsStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool ID")
+	stps.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool ID")
 	attr = ATTR_PS_TOTAL
-	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Total pages", ibmmq.MQIACF_USAGE_TOTAL_PAGES)
+	stps.Attributes[attr] = newStatusAttribute(attr, "Total pages", ibmmq.MQIACF_USAGE_TOTAL_PAGES)
 	attr = ATTR_PS_UNUSED
-	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Unused pages", ibmmq.MQIACF_USAGE_UNUSED_PAGES)
+	stps.Attributes[attr] = newStatusAttribute(attr, "Unused pages", ibmmq.MQIACF_USAGE_UNUSED_PAGES)
 	attr = ATTR_PS_NP_PAGES
-	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Non-persistent pages", ibmmq.MQIACF_USAGE_NONPERSIST_PAGES)
+	stps.Attributes[attr] = newStatusAttribute(attr, "Non-persistent pages", ibmmq.MQIACF_USAGE_NONPERSIST_PAGES)
 	attr = ATTR_PS_P_PAGES
-	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Persistent pages", ibmmq.MQIACF_USAGE_PERSIST_PAGES)
+	stps.Attributes[attr] = newStatusAttribute(attr, "Persistent pages", ibmmq.MQIACF_USAGE_PERSIST_PAGES)
 	attr = ATTR_PS_STATUS
-	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Status", ibmmq.MQIACF_PAGESET_STATUS)
+	stps.Attributes[attr] = newStatusAttribute(attr, "Status", ibmmq.MQIACF_PAGESET_STATUS)
 	attr = ATTR_PS_EXPAND_COUNT
-	UsagePsStatus.Attributes[attr] = newStatusAttribute(attr, "Expansion Count", ibmmq.MQIACF_USAGE_EXPAND_COUNT)
+	stps.Attributes[attr] = newStatusAttribute(attr, "Expansion Count", ibmmq.MQIACF_USAGE_EXPAND_COUNT)
 
-	usageAttrsInit = true
+	osbp.init = true
+	osps.init = true
+
 	traceExit("usageInitAttributes", 0)
 
 }
@@ -106,14 +109,18 @@ func UsageInitAttributes() {
 func CollectUsageStatus() error {
 	var err error
 	traceEntry("CollectUsageStatus")
+
+	stbp := &UsageBpStatus
+	stps := &UsagePsStatus
+
 	UsageInitAttributes()
 
 	// Empty any collected values
-	for k := range UsageBpStatus.Attributes {
-		UsageBpStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range stbp.Attributes {
+		stbp.Attributes[k].Values = make(map[string]*StatusValue)
 	}
-	for k := range UsagePsStatus.Attributes {
-		UsagePsStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range stps.Attributes {
+		stps.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 	err = collectUsageStatus()
 	traceExitErr("CollectUsageStatus", 0, err)
@@ -138,7 +145,7 @@ func collectUsageStatus() error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExitErr("collectUsageStatus", 1, err)
 		return err
@@ -165,6 +172,9 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var responseType int32
 
 	traceEntry("parseUsageData")
+
+	stbp := &UsageBpStatus
+	stps := &UsagePsStatus
 	bpId := ""
 	bpLocation := ""
 	bpClass := ""
@@ -236,9 +246,9 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 		// Create a unique key for this instance
 		key = bpId
 
-		UsageBpStatus.Attributes[ATTR_BP_ID].Values[key] = newStatusValueString(bpId)
-		UsageBpStatus.Attributes[ATTR_BP_LOCATION].Values[key] = newStatusValueString(bpLocation)
-		UsageBpStatus.Attributes[ATTR_BP_CLASS].Values[key] = newStatusValueString(bpClass)
+		stbp.Attributes[ATTR_BP_ID].Values[key] = newStatusValueString(bpId)
+		stbp.Attributes[ATTR_BP_LOCATION].Values[key] = newStatusValueString(bpLocation)
+		stbp.Attributes[ATTR_BP_CLASS].Values[key] = newStatusValueString(bpClass)
 
 		parmAvail = true
 		// And then re-parse the message so we can store the metrics now knowing the map key
@@ -257,8 +267,8 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 		// Create a unique key for this instance
 		key = psId
 
-		UsagePsStatus.Attributes[ATTR_PS_ID].Values[key] = newStatusValueString(psId)
-		UsagePsStatus.Attributes[ATTR_PS_BPID].Values[key] = newStatusValueString(bpId)
+		stps.Attributes[ATTR_PS_ID].Values[key] = newStatusValueString(psId)
+		stps.Attributes[ATTR_PS_BPID].Values[key] = newStatusValueString(bpId)
 
 		parmAvail = true
 		// And then re-parse the message so we can store the metrics now knowing the map key

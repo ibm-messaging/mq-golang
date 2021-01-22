@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2020
+  Copyright (c) IBM Corporation 2016, 2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ about running MQ channels
 */
 
 import (
+	_ "fmt"
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"regexp"
 	"strings"
@@ -72,10 +73,6 @@ const (
 	DUMMY_STRING = "-" // To provide a non-empty value for certain fields
 )
 
-var ChannelStatus StatusSet
-var chlAttrsInit = false
-var channelsSeen map[string]bool
-
 /*
 Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
@@ -85,94 +82,99 @@ text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
 func ChannelInitAttributes() {
+
 	traceEntry("ChannelInitAttributes")
-	if chlAttrsInit {
+
+	os := &ci.objectStatus[GOOT_CHANNEL]
+	st := &ChannelStatus
+
+	if os.init {
 		traceExit("ChannelInitAttributes", 1)
 		return
 	}
-	ChannelStatus.Attributes = make(map[string]*StatusAttribute)
+	st.Attributes = make(map[string]*StatusAttribute)
 
 	// These fields are used to construct the key to the per-channel map values and
 	// as tags to uniquely identify a channel instance
 	attr := ATTR_CHL_NAME
-	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
 	attr = ATTR_CHL_RQMNAME
-	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Remote Queue Manager Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Remote Queue Manager Name")
 	attr = ATTR_CHL_JOBNAME
-	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "MCA Job Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "MCA Job Name")
 	attr = ATTR_CHL_CONNNAME
-	ChannelStatus.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_CHL_MESSAGES
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
-	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BYTES_SENT
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Bytes sent", ibmmq.MQIACH_BYTES_SENT)
-	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Bytes sent", ibmmq.MQIACH_BYTES_SENT)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BYTES_RCVD
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD)
-	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BUFFERS_SENT
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT)
-	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BUFFERS_RCVD
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD)
-	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BATCHES
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
-	ChannelStatus.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
+	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
 
 	// This is decoded by MQCHS_* values
 	attr = ATTR_CHL_STATUS
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
+	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
 	// The next value can be decoded from the MQCHSSTATE_* values
 	attr = ATTR_CHL_SUBSTATE
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Substate", ibmmq.MQIACH_CHANNEL_SUBSTATE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Channel Substate", ibmmq.MQIACH_CHANNEL_SUBSTATE)
 	attr = ATTR_CHL_TYPE
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Type", ibmmq.MQIACH_CHANNEL_TYPE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Channel Type", ibmmq.MQIACH_CHANNEL_TYPE)
 	attr = ATTR_CHL_INSTANCE_TYPE
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Instance Type", ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE)
+	st.Attributes[attr] = newStatusAttribute(attr, "Channel Instance Type", ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE)
 
 	// This is the same attribute as earlier, except that we indicate the values are to be modified in
 	// a special way.
 	attr = ATTR_CHL_STATUS_SQUASH
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
-	ChannelStatus.Attributes[attr].squash = true
-	chlAttrsInit = true
+	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
+	st.Attributes[attr].squash = true
+	os.init = true
 
 	attr = ATTR_CHL_NETTIME_SHORT
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	ChannelStatus.Attributes[attr].index = 0
+	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
+	st.Attributes[attr].index = 0
 	attr = ATTR_CHL_NETTIME_LONG
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	ChannelStatus.Attributes[attr].index = 1
+	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
+	st.Attributes[attr].index = 1
 
 	attr = ATTR_CHL_BATCHSZ_SHORT
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	ChannelStatus.Attributes[attr].index = 0
+	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
+	st.Attributes[attr].index = 0
 	attr = ATTR_CHL_BATCHSZ_LONG
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	ChannelStatus.Attributes[attr].index = 1
+	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
+	st.Attributes[attr].index = 1
 
 	attr = ATTR_CHL_XQTIME_SHORT
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	ChannelStatus.Attributes[attr].index = 0
+	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
+	st.Attributes[attr].index = 0
 	attr = ATTR_CHL_XQTIME_LONG
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	ChannelStatus.Attributes[attr].index = 1
+	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
+	st.Attributes[attr].index = 1
 
 	attr = ATTR_CHL_SINCE_MSG
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
 
 	// These are not really monitoring metrics but it may enable calculations to be made such as %used for
 	// the channel instance availability. It's extracted at startup of the program via INQUIRE_CHL and not updated later
 	// until rediscovery is done based on a separate schedule.
 
 	attr = ATTR_CHL_MAX_INST
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "MaxInst", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "MaxInst", -1)
 	attr = ATTR_CHL_MAX_INSTC
-	ChannelStatus.Attributes[attr] = newStatusAttribute(attr, "MaxInstC", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "MaxInstC", -1)
 
 	traceExit("ChannelInitAttributes", 0)
 }
@@ -194,12 +196,16 @@ func CollectChannelStatus(patterns string) error {
 
 	traceEntry("CollectChannelStatus")
 
-	channelsSeen = make(map[string]bool) // Record which channels have been seen in this period
+	os := &ci.objectStatus[GOOT_CHANNEL]
+	st := &ChannelStatus
+
+	os.objectSeen = make(map[string]bool) // Record which channels have been seen in this period
+
 	ChannelInitAttributes()
 
 	// Empty any collected values
-	for k := range ChannelStatus.Attributes {
-		ChannelStatus.Attributes[k].Values = make(map[string]*StatusValue)
+	for k := range st.Attributes {
+		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
 	channelPatterns := strings.Split(patterns, ",")
@@ -228,11 +234,11 @@ func CollectChannelStatus(patterns string) error {
 
 	// Need to clean out the prevValues elements to stop short-lived channels
 	// building up in the map
-	for a, _ := range ChannelStatus.Attributes {
-		if ChannelStatus.Attributes[a].delta {
-			m := ChannelStatus.Attributes[a].prevValues
+	for a, _ := range st.Attributes {
+		if st.Attributes[a].delta {
+			m := st.Attributes[a].prevValues
 			for key, _ := range m {
-				if _, ok := channelsSeen[key]; ok {
+				if _, ok := os.objectSeen[key]; ok {
 					// Leave it in the map
 				} else {
 					// need to delete it from the map
@@ -247,11 +253,11 @@ func CollectChannelStatus(patterns string) error {
 	// our patterns (chlInfoMap) and add some dummy values to the status maps if the channel
 	// is not already there. Some of the fields do need to be faked up as we don't know anything about
 	// the "partner"
-	if err == nil && showInactiveChannels {
+	if err == nil && ci.showInactiveChannels {
 		for chlName, v := range chlInfoMap {
 			found := false
 			chlPrefix := chlName + "/"
-			for k, _ := range ChannelStatus.Attributes[ATTR_CHL_STATUS].Values {
+			for k, _ := range st.Attributes[ATTR_CHL_STATUS].Values {
 				if strings.HasPrefix(k, chlPrefix) {
 					found = true
 					break
@@ -261,17 +267,18 @@ func CollectChannelStatus(patterns string) error {
 				// A channel key is normally made up of 4 elements but we only know 1
 				key := chlName + "/" + DUMMY_STRING + "/" + DUMMY_STRING + "/" + DUMMY_STRING
 
-				ChannelStatus.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
-				ChannelStatus.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(DUMMY_STRING)
-				ChannelStatus.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(DUMMY_STRING)
-				ChannelStatus.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(DUMMY_STRING)
+				st.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
+				st.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(DUMMY_STRING)
+				st.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(DUMMY_STRING)
+				st.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(DUMMY_STRING)
 
-				ChannelStatus.Attributes[ATTR_CHL_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQCHS_INACTIVE))
-				ChannelStatus.Attributes[ATTR_CHL_STATUS_SQUASH].Values[key] = newStatusValueInt64(SQUASH_CHL_STATUS_STOPPED)
-				ChannelStatus.Attributes[ATTR_CHL_TYPE].Values[key] = newStatusValueInt64(v.AttrChlType)
+				st.Attributes[ATTR_CHL_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQCHS_INACTIVE))
+				st.Attributes[ATTR_CHL_STATUS_SQUASH].Values[key] = newStatusValueInt64(SQUASH_CHL_STATUS_STOPPED)
+				st.Attributes[ATTR_CHL_TYPE].Values[key] = newStatusValueInt64(v.AttrChlType)
 			}
 		}
 	}
+
 	traceExitErr("CollectChannelStatus", 0, err)
 	return err
 
@@ -283,6 +290,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	var err error
 
 	traceEntryF("collectChannelStatus", "Pattern: %s", pattern)
+	os := &ci.objectStatus[GOOT_CHANNEL]
 
 	statusClearReplyQ()
 
@@ -312,7 +320,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	buf = append(cfh.Bytes(), buf...)
 
 	// And now put the command to the queue
-	err = cmdQObj.Put(putmqmd, pmo, buf)
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
 		traceExitErr("collectChannelStatus", 1, err)
 		return err
@@ -325,7 +333,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 		if buf != nil {
 			key := parseChlData(instanceType, cfh, buf)
 			if key != "" {
-				channelsSeen[key] = true
+				os.objectSeen[key] = true
 			}
 		}
 	}
@@ -340,6 +348,8 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseChlData")
 
+	os := &ci.objectStatus[GOOT_CHANNEL]
+	st := &ChannelStatus
 	chlName := ""
 	connName := ""
 	jobName := ""
@@ -403,7 +413,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	// the channel start timestamp. That may still be wrong if lots of channel
 	// instances start at the same time, but it's a lot better than combining the
 	// instances badly.
-	if jobName == DUMMY_STRING && platform == ibmmq.MQPL_ZOS {
+	if jobName == DUMMY_STRING && ci.si.platform == ibmmq.MQPL_ZOS {
 		jobName = startDate + ":" + startTime
 	}
 	key = chlName + "/" + connName + "/" + rqmName + "/" + jobName
@@ -412,7 +422,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	// the Saved version. If so, then don't bother with the Saved status
 	if instanceType == ibmmq.MQOT_SAVED_CHANNEL {
 		subKey := chlName + "/" + connName + "/" + rqmName + "/.*"
-		for k, _ := range channelsSeen {
+		for k, _ := range os.objectSeen {
 			re := regexp.MustCompile(subKey)
 			if re.MatchString(k) {
 				traceExit("parseChlData", 2)
@@ -421,10 +431,10 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 	}
 
-	ChannelStatus.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
-	ChannelStatus.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(connName)
-	ChannelStatus.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(rqmName)
-	ChannelStatus.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(jobName)
+	st.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
+	st.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(connName)
+	st.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(rqmName)
+	st.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(jobName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -449,13 +459,13 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	now := time.Now()
 	diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
-	ChannelStatus.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
+	st.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
 
 	if s, ok := chlInfoMap[chlName]; ok {
 		maxInstC := s.AttrMaxInstC
-		ChannelStatus.Attributes[ATTR_CHL_MAX_INSTC].Values[key] = newStatusValueInt64(maxInstC)
+		st.Attributes[ATTR_CHL_MAX_INSTC].Values[key] = newStatusValueInt64(maxInstC)
 		maxInst := s.AttrMaxInst
-		ChannelStatus.Attributes[ATTR_CHL_MAX_INST].Values[key] = newStatusValueInt64(maxInst)
+		st.Attributes[ATTR_CHL_MAX_INST].Values[key] = newStatusValueInt64(maxInst)
 	}
 
 	traceExitF("parseChlData", 0, "Key: %s", key)
@@ -571,7 +581,7 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 		buf = append(cfh.Bytes(), buf...)
 
 		// And now put the command to the queue
-		err = cmdQObj.Put(putmqmd, pmo, buf)
+		err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 		if err != nil {
 			traceExitErr("inquireChannelAttributes", 2, err)
 			return err
