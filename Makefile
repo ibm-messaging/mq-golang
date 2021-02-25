@@ -49,6 +49,11 @@ else
 all: build-packages-unix build-samples-unix
 endif
 
+
+test:
+	cd ibmmq && export GOROOT='' && CGO_ENABLED=1 && go test
+
+
 .PHONY: clean
 clean:
 	$(DOCKER) rmi -f $(BUILD_IMAGE)
