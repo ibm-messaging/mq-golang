@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016, 2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import "C"
 
 import (
 	"bytes"
+	"time"
 )
 
 /*
@@ -56,8 +57,9 @@ type MQMD struct {
 	ApplIdentityData string
 	PutApplType      int32
 	PutApplName      string
-	PutDate          string
-	PutTime          string
+	PutDate          string // Deprecated
+	PutTime          string // Deprecated
+	PutDateTime      time.Time // Combines the PutDate and PutTime fields - takes precedence if both styles are used
 	ApplOriginData   string
 	GroupId          []byte
 	MsgSeqNumber     int32
@@ -119,6 +121,13 @@ func checkMD(gomd *MQMD, verb string) error {
 		mqrc = C.MQRC_MD_ERROR // No specific error defined
 	}
 
+	if len(gomd.PutDate) != 0 && len(gomd.PutDate) != C.MQ_PUT_DATE_LENGTH {
+		mqrc = C.MQRC_MD_ERROR
+	}
+	if len(gomd.PutTime) != 0 && len(gomd.PutTime) != C.MQ_PUT_TIME_LENGTH {
+		mqrc = C.MQRC_MD_ERROR
+	}
+
 	if mqrc != C.MQRC_NONE {
 		mqreturn := MQReturn{MQCC: C.MQCC_FAILED,
 			MQRC: int32(mqrc),
@@ -162,6 +171,9 @@ func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 	setMQIString((*C.char)(&mqmd.ApplIdentityData[0]), gomd.ApplIdentityData, C.MQ_APPL_IDENTITY_DATA_LENGTH)
 	mqmd.PutApplType = C.MQLONG(gomd.PutApplType)
 	setMQIString((*C.char)(&mqmd.PutApplName[0]), gomd.PutApplName, C.MQ_PUT_APPL_NAME_LENGTH)
+	if !gomd.PutDateTime.IsZero() {
+		gomd.PutDate,gomd.PutTime = createCDateTime(gomd.PutDateTime)
+	}
 	setMQIString((*C.char)(&mqmd.PutDate[0]), gomd.PutDate, C.MQ_PUT_DATE_LENGTH)
 	setMQIString((*C.char)(&mqmd.PutTime[0]), gomd.PutTime, C.MQ_PUT_TIME_LENGTH)
 	setMQIString((*C.char)(&mqmd.ApplOriginData[0]), gomd.ApplOriginData, C.MQ_APPL_ORIGIN_DATA_LENGTH)
@@ -210,6 +222,7 @@ func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 	gomd.PutApplName = trimStringN((*C.char)(&mqmd.PutApplName[0]), C.MQ_PUT_APPL_NAME_LENGTH)
 	gomd.PutDate = trimStringN((*C.char)(&mqmd.PutDate[0]), C.MQ_PUT_DATE_LENGTH)
 	gomd.PutTime = trimStringN((*C.char)(&mqmd.PutTime[0]), C.MQ_PUT_TIME_LENGTH)
+	gomd.PutDateTime = createGoDateTime(gomd.PutDate,gomd.PutTime)
 	gomd.ApplOriginData = trimStringN((*C.char)(&mqmd.ApplOriginData[0]), C.MQ_APPL_ORIGIN_DATA_LENGTH)
 
 	for i = 0; i < C.MQ_GROUP_ID_LENGTH; i++ {

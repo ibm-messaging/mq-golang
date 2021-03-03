@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2018
+  Copyright (c) IBM Corporation 2016,2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
+	"time"
 )
 
 type MQDLH struct {
@@ -40,8 +41,9 @@ type MQDLH struct {
 	Format         string
 	PutApplType    int32
 	PutApplName    string
-	PutDate        string
-	PutTime        string
+	PutDate        string // Deprecated
+	PutTime        string // Deprecated
+	PutDateTime    time.Time // Combines the PutDate and PutTime fields - takes precedence if both styles are used
 	strucLength    int // Not exported
 }
 
@@ -107,6 +109,10 @@ func (dlh *MQDLH) Bytes() []byte {
 	offset += 4
 	copy(buf[offset:], dlh.PutApplName)
 	offset += int(MQ_PUT_APPL_NAME_LENGTH)
+
+	if !dlh.PutDateTime.IsZero() {
+		dlh.PutDate,dlh.PutTime = createCDateTime(dlh.PutDateTime)
+	}
 	copy(buf[offset:], dlh.PutDate)
 	offset += int(MQ_PUT_DATE_LENGTH)
 	copy(buf[offset:], dlh.PutTime)
@@ -144,6 +150,7 @@ func getHeaderDLH(md *MQMD, buf []byte) (*MQDLH, int, error) {
 	dlh.PutApplName = readStringFromFixedBuffer(r, MQ_PUT_APPL_NAME_LENGTH)
 	dlh.PutDate = readStringFromFixedBuffer(r, MQ_PUT_DATE_LENGTH)
 	dlh.PutTime = readStringFromFixedBuffer(r, MQ_PUT_TIME_LENGTH)
+	dlh.PutDateTime = createGoDateTime(dlh.PutDate,dlh.PutTime)
 
 	return dlh, dlh.strucLength, nil
 }
