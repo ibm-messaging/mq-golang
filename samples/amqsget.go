@@ -17,7 +17,7 @@
 package main
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018, 2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
@@ -114,6 +115,8 @@ func mainWithRc() int {
 	for msgAvail == true && err == nil {
 		var datalen int
 
+		gotMsg := false // So we can do some common work on the message if one were retrieved
+
 		// The GET requires control structures, the Message Descriptor (MQMD)
 		// and Get Options (MQGMO). Create those with default values.
 		getmqmd := ibmmq.NewMQMD()
@@ -173,6 +176,7 @@ func mainWithRc() int {
 				// if it's been created by the amqsput program
 				fmt.Printf("Got message of length %d: ", datalen)
 				fmt.Println(strings.TrimSpace(string(buffer)))
+				gotMsg = true
 			}
 		} else {
 			// Create a buffer for the message data. This one is large enough
@@ -196,6 +200,20 @@ func mainWithRc() int {
 				// if it's been created by the amqsput program
 				fmt.Printf("Got message of length %d: ", datalen)
 				fmt.Println(strings.TrimSpace(string(buffer[:datalen])))
+				gotMsg = true
+			}
+		}
+
+		// Demonstrate how the PutDateTime value can be used
+		if gotMsg {
+			t := getmqmd.PutDateTime
+			if !t.IsZero() {
+				diff := time.Now().Sub(t)
+				round, _ := time.ParseDuration("1s")
+				diff = diff.Round(round)
+				fmt.Printf("Message was put %d seconds ago\n", int(diff.Seconds()))
+			} else {
+				fmt.Printf("Message has empty PutDateTime - MQMD PutDate:'%s' PutTime:'%s'\n", getmqmd.PutDate, getmqmd.PutTime)
 			}
 		}
 	}
