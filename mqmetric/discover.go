@@ -858,7 +858,7 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 
 		// Pick a default buffer size but allow it to double on retries to cope with
 		// truncated messages.
-		bufSize := 32768
+		bufSize := 327680
 
 		for truncation := true; truncation; {
 			buf = make([]byte, bufSize)
