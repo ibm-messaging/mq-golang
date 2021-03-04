@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2020
+  Copyright (c) IBM Corporation 2018,2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -73,8 +73,9 @@ for now.
 */
 func QueueInitAttributes() {
 	traceEntry("QueueInitAttributes")
-	os := &ci.objectStatus[GOOT_Q]
-	st := &QueueStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_Q]
+	st := GetObjectStatus(GetConnectionKey(), OT_Q)
 
 	if os.init {
 		traceExit("QueueInitAttributes", 1)
@@ -160,7 +161,8 @@ func CollectQueueStatus(patterns string) error {
 	var err error
 	traceEntry("CollectQueueStatus")
 
-	st := &QueueStatus
+	ci := getConnection(GetConnectionKey())
+	st := GetObjectStatus(GetConnectionKey(), OT_Q)
 	QueueInitAttributes()
 
 	// Empty any collected values
@@ -209,6 +211,8 @@ func CollectQueueStatus(patterns string) error {
 func collectQueueStatus(pattern string, instanceType int32) error {
 	var err error
 	traceEntryF("collectQueueStatus", "Pattern: %s", pattern)
+
+	ci := getConnection(GetConnectionKey())
 
 	statusClearReplyQ()
 
@@ -261,6 +265,8 @@ func collectResetQStats(pattern string) error {
 
 	traceEntry("collectResetQStats")
 
+	ci := getConnection(GetConnectionKey())
+
 	statusClearReplyQ()
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 
@@ -303,6 +309,8 @@ func inquireQueueAttributes(objectPatternsList string) error {
 	var err error
 
 	traceEntry("inquireQueueAttributes")
+
+	ci := getConnection(GetConnectionKey())
 	statusClearReplyQ()
 
 	if objectPatternsList == "" {
@@ -367,7 +375,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseQData")
 
-	st := &QueueStatus
+	st := GetObjectStatus(GetConnectionKey(), OT_Q)
 
 	qName := ""
 	key := ""
@@ -417,7 +425,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(QueueStatus, elem, key) {
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_Q), elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACF_LAST_PUT_TIME:
 				lastPutTime = strings.TrimSpace(elem.String[0])
@@ -450,7 +458,7 @@ func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseResetQStatsData")
 
-	st := &QueueStatus
+	st := GetObjectStatus(GetConnectionKey(), OT_Q)
 
 	qName := ""
 	key := ""
@@ -496,7 +504,7 @@ func parseResetQStatsData(cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		statusGetIntAttributes(QueueStatus, elem, key)
+		statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_Q), elem, key)
 	}
 
 	traceExitF("parseResetQStatsData", 0, "Key: %s", key)

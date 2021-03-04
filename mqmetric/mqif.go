@@ -81,6 +81,12 @@ opens both the command queue and a dynamic reply queue
 to be used for all responses including the publications
 */
 func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error {
+	return initConnectionKey("", qMgrName, replyQ, cc)
+}
+func InitConnectionKey(key string, qMgrName string, replyQ string, cc *ConnectionConfig) error {
+	return initConnectionKey(key, qMgrName, replyQ, cc)
+}
+func initConnectionKey(key string, qMgrName string, replyQ string, cc *ConnectionConfig) error {
 	var err error
 	var gocd *ibmmq.MQCD
 	var mqreturn *ibmmq.MQReturn
@@ -88,12 +94,14 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 
 	traceEntryF("InitConnection", "QMgrName %s", qMgrName)
 
-	initConnection()
+	initConnection(key)
 
 	gocno := ibmmq.NewMQCNO()
 	gocsp := ibmmq.NewMQCSP()
 
-	// Copy initialisation configuraton information to global vars
+	// Copy initialisation configuraton information to local structure
+	ci := getConnection(GetConnectionKey())
+
 	ci.tzOffsetSecs = cc.TZOffsetSecs
 	ci.showInactiveChannels = cc.ShowInactiveChannels
 
@@ -179,13 +187,13 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 					ci.useResetQStats = cc.UseResetQStats
 					evEnabled := v[ibmmq.MQIA_PERFORMANCE_EVENT].(int32)
 					if ci.useResetQStats && evEnabled == 0 {
-						err = fmt.Errorf("Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)")
-						errorString = "Command"
+						errorString = "Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)"
+						//err = fmt.Errorf(errorString) // Bypass the error for a while
 					}
 				} else {
 					if cc.UsePublications == true {
 						if ci.si.commandLevel < 900 && ci.si.platform != ibmmq.MQPL_APPLIANCE {
-							err = fmt.Errorf("Queue manager must be at least V9.0 for full monitoring. The ibmmq.usePublications configuration parameter can be used to permit limited monitoring.")
+							//err = fmt.Errorf("Queue manager must be at least V9.0 for full monitoring. The ibmmq.usePublications configuration parameter can be used to permit limited monitoring.")
 							errorString = "Unsupported system"
 						} else {
 							ci.usePublications = cc.UsePublications
@@ -194,7 +202,6 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 						ci.usePublications = false
 					}
 				}
-
 			}
 
 		} else {
@@ -254,6 +261,9 @@ func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error 
 	}
 
 	if err != nil {
+		if mqreturn == nil {
+			mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_WARNING, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
+		}
 		traceExitErr("InitConnection", 1, mqreturn)
 		return MQMetricError{Err: errorString, MQReturn: mqreturn}
 	}
@@ -268,9 +278,12 @@ EndConnection tidies up by closing the queues and disconnecting.
 */
 func EndConnection() {
 	traceEntry("EndConnection")
+
+	ci := getConnection(GetConnectionKey())
+	m := GetPublishedMetrics(GetConnectionKey())
 	// MQCLOSE all subscriptions
 	if ci.si.subsOpened {
-		for _, cl := range Metrics.Classes {
+		for _, cl := range m.Classes {
 			for _, ty := range cl.Types {
 				for _, hObj := range ty.subHobj {
 					hObj.Close(0)
@@ -307,6 +320,8 @@ be big enough for what we are expecting.
 */
 func getMessage(wait bool) ([]byte, error) {
 	traceEntry("getMessage")
+	ci := getConnection(GetConnectionKey())
+
 	rc, err := getMessageWithHObj(wait, ci.si.replyQObj)
 	traceExitErr("getMessage", 0, err)
 	return rc, err
@@ -359,6 +374,8 @@ func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (
 	var err error
 
 	traceEntry("subscribeWithOptions")
+	ci := getConnection(GetConnectionKey())
+
 	mqsd := ibmmq.NewMQSD()
 	mqsd.Options = ibmmq.MQSO_CREATE
 	mqsd.Options |= ibmmq.MQSO_NON_DURABLE
@@ -391,6 +408,7 @@ Return the current platform - the MQPL_* definition value. It
 can be turned into a string if necessary via ibmmq.MQItoString("PL"...)
 */
 func GetPlatform() int32 {
+	ci := getConnection(GetConnectionKey())
 	return ci.si.platform
 }
 
@@ -398,5 +416,6 @@ func GetPlatform() int32 {
 Return the current command level
 */
 func GetCommandLevel() int32 {
+	ci := getConnection(GetConnectionKey())
 	return ci.si.commandLevel
 }

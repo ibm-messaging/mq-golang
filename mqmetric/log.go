@@ -98,7 +98,7 @@ func traceEntryF(f string, format string, v ...interface{}) {
 	if format != "" {
 		fs := make([]interface{}, 1)
 		fs[0] = f
-		logTrace("> [%s] : "+format, append(fs, v)...)
+		logTrace("> [%s] : "+format, append(fs, v...)...)
 	} else {
 		logTrace("> [%s]", f)
 	}
@@ -121,7 +121,7 @@ func traceExitF(f string, returnPoint int, format string, v ...interface{}) {
 		fs[0] = f
 		fs[1] = returnPoint
 		if len(v) > 0 {
-			fs = append(fs, v)
+			fs = append(fs, v...)
 		}
 		logTrace("< [%s] rp: %d "+format, fs...)
 	} else {

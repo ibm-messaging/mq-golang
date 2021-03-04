@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2020
+  Copyright (c) IBM Corporation 2018,2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -55,8 +55,9 @@ for now.
 */
 func SubInitAttributes() {
 	traceEntry("SubInitAttributes")
-	os := &ci.objectStatus[GOOT_SUB]
-	st := &SubStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_SUB]
+	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
 
 	if os.init {
 		traceExit("SubInitAttributes", 1)
@@ -90,7 +91,7 @@ func CollectSubStatus(patterns string) error {
 	var err error
 	traceEntry("CollectSubStatus")
 
-	st := &SubStatus
+	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
 	SubInitAttributes()
 
 	// Empty any collected values
@@ -125,6 +126,8 @@ func collectSubStatus(pattern string) error {
 	var err error
 
 	traceEntryF("collectSubStatus", "Pattern: %s", pattern)
+	ci := getConnection(GetConnectionKey())
+
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -172,7 +175,7 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseSubData")
 
-	st := &SubStatus
+	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
 	subName := ""
 	subId := ""
 	key := ""
@@ -223,7 +226,7 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(SubStatus, elem, key) {
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_SUB), elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACF_LAST_MSG_TIME:
 				lastTime = strings.TrimSpace(elem.String[0])

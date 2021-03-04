@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2019
+  Copyright (c) IBM Corporation 2016, 2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -56,10 +56,11 @@ const (
 func UsageInitAttributes() {
 	traceEntry("usageInitAttributes")
 
-	osbp := &ci.objectStatus[GOOT_BP]
-	osps := &ci.objectStatus[GOOT_PS]
-	stbp := &UsageBpStatus
-	stps := &UsagePsStatus
+	ci := getConnection(GetConnectionKey())
+	osbp := &ci.objectStatus[OT_BP]
+	osps := &ci.objectStatus[OT_PS]
+	stbp := GetObjectStatus(GetConnectionKey(), OT_BP)
+	stps := GetObjectStatus(GetConnectionKey(), OT_PS)
 	if osbp.init && osps.init {
 		traceExit("usageInitAttributes", 1)
 		return
@@ -110,8 +111,8 @@ func CollectUsageStatus() error {
 	var err error
 	traceEntry("CollectUsageStatus")
 
-	stbp := &UsageBpStatus
-	stps := &UsagePsStatus
+	stbp := GetObjectStatus(GetConnectionKey(), OT_BP)
+	stps := GetObjectStatus(GetConnectionKey(), OT_PS)
 
 	UsageInitAttributes()
 
@@ -130,6 +131,7 @@ func CollectUsageStatus() error {
 func collectUsageStatus() error {
 	var err error
 	traceEntry("collectUsageStatus")
+	ci := getConnection(GetConnectionKey())
 
 	statusClearReplyQ()
 
@@ -173,8 +175,9 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseUsageData")
 
-	stbp := &UsageBpStatus
-	stps := &UsagePsStatus
+	stbp := GetObjectStatus(GetConnectionKey(), OT_BP)
+	stps := GetObjectStatus(GetConnectionKey(), OT_PS)
+
 	bpId := ""
 	bpLocation := ""
 	bpClass := ""
@@ -261,7 +264,7 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 				parmAvail = false
 			}
 
-			statusGetIntAttributes(UsageBpStatus, elem, key)
+			statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_BP), elem, key)
 		}
 	} else {
 		// Create a unique key for this instance
@@ -281,7 +284,7 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 				parmAvail = false
 			}
 
-			statusGetIntAttributes(UsagePsStatus, elem, key)
+			statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_PS), elem, key)
 		}
 	}
 	traceExitF("parseUsageData", 0, "Key: %s", key)

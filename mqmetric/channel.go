@@ -85,8 +85,9 @@ func ChannelInitAttributes() {
 
 	traceEntry("ChannelInitAttributes")
 
-	os := &ci.objectStatus[GOOT_CHANNEL]
-	st := &ChannelStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_CHANNEL]
+	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
 
 	if os.init {
 		traceExit("ChannelInitAttributes", 1)
@@ -196,8 +197,9 @@ func CollectChannelStatus(patterns string) error {
 
 	traceEntry("CollectChannelStatus")
 
-	os := &ci.objectStatus[GOOT_CHANNEL]
-	st := &ChannelStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_CHANNEL]
+	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
 
 	os.objectSeen = make(map[string]bool) // Record which channels have been seen in this period
 
@@ -290,7 +292,8 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	var err error
 
 	traceEntryF("collectChannelStatus", "Pattern: %s", pattern)
-	os := &ci.objectStatus[GOOT_CHANNEL]
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_CHANNEL]
 
 	statusClearReplyQ()
 
@@ -348,8 +351,9 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseChlData")
 
-	os := &ci.objectStatus[GOOT_CHANNEL]
-	st := &ChannelStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_CHANNEL]
+	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
 	chlName := ""
 	connName := ""
 	jobName := ""
@@ -447,7 +451,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(ChannelStatus, elem, key) {
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_CHANNEL), elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACH_LAST_MSG_TIME:
 				lastMsgTime = strings.TrimSpace(elem.String[0])
@@ -530,6 +534,7 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 
 	traceEntry("inquireChannelAttributes")
 
+	ci := getConnection(GetConnectionKey())
 	statusClearReplyQ()
 
 	if objectPatternsList == "" {

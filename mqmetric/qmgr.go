@@ -58,8 +58,9 @@ for now.
 func QueueManagerInitAttributes() {
 
 	traceEntry("QueueManagerInitAttributes")
-	os := &ci.objectStatus[GOOT_Q_MGR]
-	st := &QueueManagerStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_Q_MGR]
+	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 	if os.init {
 		traceExit("QueueManagerInitAttributes", 1)
 		return
@@ -104,8 +105,8 @@ func CollectQueueManagerStatus() error {
 	var err error
 
 	traceEntry("CollectQueueManagerStatus")
-	//os := &ci.objectStatus[GOOT_Q_MGR]
-	st := &QueueManagerStatus
+	//os := &ci.objectStatus[OT_Q_MGR]
+	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 
 	QueueManagerInitAttributes()
 	for k := range st.Attributes {
@@ -131,7 +132,8 @@ func CollectQueueManagerStatus() error {
 func collectQueueManagerAttrs() error {
 
 	traceEntry("collectQueueManagerAttrs")
-	st := &QueueManagerStatus
+	ci := getConnection(GetConnectionKey())
+	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 
 	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
 		ibmmq.MQIA_ACTIVE_CHANNELS,
@@ -161,6 +163,7 @@ func collectQueueManagerStatus(instanceType int32) error {
 	var err error
 
 	traceEntry("collectQueueManagerStatus")
+	ci := getConnection(GetConnectionKey())
 
 	statusClearReplyQ()
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -198,7 +201,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseQMgrData")
 
-	st := &QueueManagerStatus
+	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 
 	qMgrName := ""
 	key := ""
@@ -246,7 +249,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(QueueManagerStatus, elem, key) {
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_Q_MGR), elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACF_Q_MGR_START_TIME:
 				startTime = strings.TrimSpace(elem.String[0])

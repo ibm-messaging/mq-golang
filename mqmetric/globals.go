@@ -30,6 +30,7 @@ type sessionInfo struct {
 	qMgrObject      ibmmq.MQObject
 	replyQBaseName  string
 	statusReplyQObj ibmmq.MQObject
+	statusReplyBuf  []byte
 
 	platform         int32
 	commandLevel     int32
@@ -57,37 +58,45 @@ type connectionInfo struct {
 	discoveryDone    bool
 	publicationCount int
 
-	objectStatus [GOOT_LAST_USED + 1]objectStatus
+	objectStatus     [OT_LAST_USED + 1]objectStatus
+	publishedMetrics AllMetrics
 }
 
 type objectStatus struct {
 	init       bool
 	objectSeen map[string]bool
+	s          *StatusSet
 }
 
+// These object types are the same where possible as the MQI MQOT definitions
+// but there are some unique types here so that correspondence is not
+// completely identical.
 const (
-	GOOT_Q             = 1
-	GOOT_NAMELIST      = 2
-	GOOT_PROCESS       = 3
-	GOOT_STORAGE_CLASS = 4
-	GOOT_Q_MGR         = 5
-	GOOT_CHANNEL       = 6
-	GOOT_AUTH_INFO     = 7
-	GOOT_TOPIC         = 8
-	GOOT_COMM_INFO     = 9
-	GOOT_CF_STRUC      = 10
-	GOOT_LISTENER      = 11
-	GOOT_SERVICE       = 12
-	GOOT_APP           = 13
-	GOOT_PUB           = 14
-	GOOT_SUB           = 15
-	GOOT_NHA           = 16
-	GOOT_BP            = 17
-	GOOT_PS            = 18
-	GOOT_LAST_USED     = GOOT_PS
+	OT_Q             = 1
+	OT_NAMELIST      = 2
+	OT_PROCESS       = 3
+	OT_STORAGE_CLASS = 4
+	OT_Q_MGR         = 5
+	OT_CHANNEL       = 6
+	OT_AUTH_INFO     = 7
+	OT_TOPIC         = 8
+	OT_COMM_INFO     = 9
+	OT_CF_STRUC      = 10
+	OT_LISTENER      = 11
+	OT_SERVICE       = 12
+	OT_APP           = 13
+	OT_PUB           = 14
+	OT_SUB           = 15
+	OT_NHA           = 16
+	OT_BP            = 17
+	OT_PS            = 18
+	OT_LAST_USED     = OT_PS
 )
 
-var ci *connectionInfo
+var connectionMap = make(map[string]*connectionInfo)
+var connectionKey string
+
+const DEFAULT_CONNECTION_KEY = "@defaultConnection"
 
 // This are used externally so we need to maintain them as public exports until
 // there's a major version change. At which point we will move them to fields of
@@ -104,7 +113,7 @@ var (
 	UsageBpStatus      StatusSet
 )
 
-func newConnectionInfo() *connectionInfo {
+func newConnectionInfo(key string) *connectionInfo {
 
 	traceEntry("newConnectionInfo")
 
@@ -123,21 +132,82 @@ func newConnectionInfo() *connectionInfo {
 	ci.discoveryDone = false
 	ci.publicationCount = 0
 
-	for i := 1; i <= GOOT_LAST_USED; i++ {
+	for i := 1; i <= OT_LAST_USED; i++ {
 		ci.objectStatus[i].init = false
+		ci.objectStatus[i].s = new(StatusSet)
 	}
 
-	traceExit("newConnectionInfo", 0)
+	if key == "" {
+		key = DEFAULT_CONNECTION_KEY
+	}
+	connectionMap[key] = ci
+
+	traceExitF("newConnectionInfo", 0, "Key: %s", key)
 
 	return ci
 }
 
-// Initialise this package with a default connection object for compatibility
-func initConnection() {
-	traceEntry("initConnection")
+// Initialise this package
+func initConnection(key string) {
+	traceEntryF("initConnection", "key: %s", key)
 
-	ci = newConnectionInfo()
+	newConnectionInfo(key)
 
 	traceExit("initConnection", 0)
 
+}
+
+// This will be the preferred interface in future
+// to get at the values, at which point it will
+// change to not use the global public variables
+func GetObjectStatus(key string, objectType int) *StatusSet {
+	if key == "" || key == DEFAULT_CONNECTION_KEY {
+
+		switch objectType {
+		case OT_CHANNEL:
+			return &ChannelStatus
+		case OT_Q_MGR:
+			return &QueueManagerStatus
+		case OT_Q:
+			return &QueueStatus
+		case OT_TOPIC:
+			return &TopicStatus
+		case OT_SUB:
+			return &SubStatus
+		case OT_BP:
+			return &UsagePsStatus
+		case OT_PS:
+			return &UsageBpStatus
+		default:
+			return nil
+		}
+	} else {
+		ci := getConnection(key)
+		return ci.objectStatus[objectType].s
+	}
+}
+
+func GetPublishedMetrics(key string) *AllMetrics {
+	if key == "" || key == DEFAULT_CONNECTION_KEY {
+		return &Metrics
+	} else {
+		ci := getConnection(key)
+		return &ci.publishedMetrics
+	}
+}
+
+func SetConnectionKey(key string) {
+	connectionKey = key
+}
+
+func GetConnectionKey() string {
+	return connectionKey
+}
+
+func getConnection(key string) *connectionInfo {
+	if key == "" {
+		return connectionMap[DEFAULT_CONNECTION_KEY]
+	} else {
+		return connectionMap[key]
+	}
 }

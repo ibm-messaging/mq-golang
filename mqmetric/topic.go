@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2020
+  Copyright (c) IBM Corporation 2016, 2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -57,8 +57,9 @@ for now.
 func TopicInitAttributes() {
 	traceEntry("TopicInitAttributes")
 
-	os := &ci.objectStatus[GOOT_TOPIC]
-	st := &TopicStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_TOPIC]
+	st := GetObjectStatus(GetConnectionKey(), OT_TOPIC)
 
 	if os.init {
 		traceExit("TopicInitAttributes", 1)
@@ -111,8 +112,9 @@ func CollectTopicStatus(patterns string) error {
 	var err error
 	traceEntry("CollectTopicStatus")
 
-	os := &ci.objectStatus[GOOT_TOPIC]
-	st := &TopicStatus
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_TOPIC]
+	st := GetObjectStatus(GetConnectionKey(), OT_TOPIC)
 	os.objectSeen = make(map[string]bool) // Record which topics have been seen in this period
 	TopicInitAttributes()
 
@@ -176,7 +178,8 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 	var err error
 	traceEntryF("collectTopicStatus", "Pattern: %s", pattern)
 
-	os := &ci.objectStatus[GOOT_TOPIC]
+	ci := getConnection(GetConnectionKey())
+	os := &ci.objectStatus[OT_TOPIC]
 	statusClearReplyQ()
 
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
@@ -232,7 +235,7 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 	traceEntry("parseTopicData")
 
-	st := &TopicStatus
+	st := GetObjectStatus(GetConnectionKey(), OT_TOPIC)
 	tpName := ""
 	key := ""
 
@@ -292,7 +295,7 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(TopicStatus, elem, key) {
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_TOPIC), elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACF_LAST_MSG_TIME, ibmmq.MQCACF_LAST_PUB_TIME:
 				lastMsgTime = strings.TrimSpace(elem.String[0])
