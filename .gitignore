@@ -1,1 +1,8 @@
+#IntelliJ
 .idea/
+
+# OSX
+.DS_Store
+
+# Misc
+*.swp
