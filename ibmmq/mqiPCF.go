@@ -302,6 +302,9 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		// After dumping the stack, we will try to carry on regardless.
 		// Skip the remains of this structure, assuming it really is
 		// PCF and we just don't know how to process the element type
+		// If this does happen, it may be because the PCF type was truncated.
+		// The PCF type may become truncated if the buffer overflows from
+		// discovering too many objects on the queue manager.
 		p.Next(int(pcfParm.strucLength - 8))
 	}
 
