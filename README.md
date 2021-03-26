@@ -12,10 +12,15 @@ is not available before MQ V9. A limited set of metrics can be monitored for MQ 
 
 ## Health Warning
 
-This package is provided as-is with no guarantees of support or updates. There are
-also no guarantees of compatibility with any future versions of the package; the API
+This package is provided as-is with no guarantees of support or updates. You cannot use
+IBM formal support channels (Cases/PMRs) for assistance with material in this repository.
+
+There are also no guarantees of compatibility with any future versions of the package; the API
 is subject to change based on any feedback. Versioned releases are made in this repository
-to assist with using stable APIs.
+to assist with using stable APIs. Future versions will follow semver guidance so that breaking changes
+will only be done with a new major version number on the module.
+
+See the [DEPRECATIONS](DEPRECATIONS.md) file for any planned changes to the API.
 
 ## MQI Description
 
@@ -233,4 +238,4 @@ in the CLA.
 
 ## Copyright
 
-© Copyright IBM Corporation 2016, 2020
+© Copyright IBM Corporation 2016, 2021

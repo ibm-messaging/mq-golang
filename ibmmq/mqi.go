@@ -129,10 +129,11 @@ func (e *MQReturn) Error() string {
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
 const space8 = "        "
 const (
-  mqDateTimeFormat = "20060102150405.00 MST" // Used as the way to parse a string into a time.Time type with magic values
-  mqDateFormat     = "20060102"
+	mqDateTimeFormat = "20060102150405.00 MST" // Used as the way to parse a string into a time.Time type with magic values
+	mqDateFormat     = "20060102"
 	mqTimeFormat     = "150405.00"
 )
+
 // This function is executed once before any other code in the package
 func init() {
 	if C.MQENC_NATIVE%2 == 0 {
@@ -1390,11 +1391,10 @@ func readStringFromFixedBuffer(r io.Reader, l int32) string {
 	return strings.TrimSpace(string(tmpBuf))
 }
 
-
 // The date/time fields are being taken from a valid MQMD but they still might not be
 // "real" timestamps if the putting application has overridden context setting. If the values
 // are invalid, then we return an empty Go value
-func createGoDateTime(d string,t string) time.Time {
+func createGoDateTime(d string, t string) time.Time {
 
 	if len(d) == int(MQ_PUT_DATE_LENGTH) && len(t) == int(MQ_PUT_TIME_LENGTH) {
 		// Combine the MQI strings into a single parseable string
@@ -1406,15 +1406,15 @@ func createGoDateTime(d string,t string) time.Time {
 			return goTime
 		}
 	} else {
-    return time.Time{}
-  }
+		return time.Time{}
+	}
 }
 
 // If the application has set a Go timestamp, it ought to be valid. So we can try to convert it
 // to the MQ separate string formats.
-func createCDateTime(goTime time.Time) (string,string) {
-	d:= goTime.Format(mqDateFormat) // These magic values tell Go how to parse/format between Times and strings
-	t:= goTime.Format(mqTimeFormat)
+func createCDateTime(goTime time.Time) (string, string) {
+	d := goTime.Format(mqDateFormat) // These magic values tell Go how to parse/format between Times and strings
+	t := goTime.Format(mqTimeFormat)
 	t = t[:6] + t[7:] // Strip the '.'
-	return d,t
+	return d, t
 }

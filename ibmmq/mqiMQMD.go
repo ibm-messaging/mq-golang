@@ -57,8 +57,8 @@ type MQMD struct {
 	ApplIdentityData string
 	PutApplType      int32
 	PutApplName      string
-	PutDate          string // Deprecated
-	PutTime          string // Deprecated
+	PutDate          string    // Deprecated
+	PutTime          string    // Deprecated
 	PutDateTime      time.Time // Combines the PutDate and PutTime fields - takes precedence if both styles are used
 	ApplOriginData   string
 	GroupId          []byte
@@ -172,7 +172,7 @@ func copyMDtoC(mqmd *C.MQMD, gomd *MQMD) {
 	mqmd.PutApplType = C.MQLONG(gomd.PutApplType)
 	setMQIString((*C.char)(&mqmd.PutApplName[0]), gomd.PutApplName, C.MQ_PUT_APPL_NAME_LENGTH)
 	if !gomd.PutDateTime.IsZero() {
-		gomd.PutDate,gomd.PutTime = createCDateTime(gomd.PutDateTime)
+		gomd.PutDate, gomd.PutTime = createCDateTime(gomd.PutDateTime)
 	}
 	setMQIString((*C.char)(&mqmd.PutDate[0]), gomd.PutDate, C.MQ_PUT_DATE_LENGTH)
 	setMQIString((*C.char)(&mqmd.PutTime[0]), gomd.PutTime, C.MQ_PUT_TIME_LENGTH)
@@ -222,7 +222,7 @@ func copyMDfromC(mqmd *C.MQMD, gomd *MQMD) {
 	gomd.PutApplName = trimStringN((*C.char)(&mqmd.PutApplName[0]), C.MQ_PUT_APPL_NAME_LENGTH)
 	gomd.PutDate = trimStringN((*C.char)(&mqmd.PutDate[0]), C.MQ_PUT_DATE_LENGTH)
 	gomd.PutTime = trimStringN((*C.char)(&mqmd.PutTime[0]), C.MQ_PUT_TIME_LENGTH)
-	gomd.PutDateTime = createGoDateTime(gomd.PutDate,gomd.PutTime)
+	gomd.PutDateTime = createGoDateTime(gomd.PutDate, gomd.PutTime)
 	gomd.ApplOriginData = trimStringN((*C.char)(&mqmd.ApplOriginData[0]), C.MQ_APPL_ORIGIN_DATA_LENGTH)
 
 	for i = 0; i < C.MQ_GROUP_ID_LENGTH; i++ {

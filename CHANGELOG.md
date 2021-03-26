@@ -1,6 +1,15 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Mar 25 2021 - v5.2.0 
+Scope of mqmetric changes seem to justify new minor number
+* Update for MQ 9.2.2
+* Add DltMH calls to clarify samples
+* mqmetric - Restructure to allow multiple connections & reduce public interfaces
+* mqmetric - Deal with discovery of large numbers of queues (#133, #161)
+* ibmmq - Add PutDateTime as time.Time field in MQMD, MQDLH. Use of the string forms should be considered deprecated (inspired by #159)
+* Add a DEPRECATIONS file for when advance notice might be needed
+
 ## Dec 04 2020 - v5.1.3
 * Update for MQ 9.2.1
 

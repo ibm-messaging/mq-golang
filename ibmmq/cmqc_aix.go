@@ -16,7 +16,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2020
+* Copyright (c) IBM Corporation 1993, 2021
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -32,8 +32,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  11/12/20 5:27 PM
-*   Build Level:   p921-L201112.1
+*   Generated on:  3/5/21 5:00 PM
+*   Build Level:   p922-L210305.1
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -343,13 +343,14 @@ const (
 	MQCACF_LAST_PUB_TIME           int32  = 3162
 	MQCACF_LAST_PUT_DATE           int32  = 3128
 	MQCACF_LAST_PUT_TIME           int32  = 3129
-	MQCACF_LAST_USED               int32  = 3210
+	MQCACF_LAST_USED               int32  = 3211
 	MQCACF_LOCAL_Q_NAMES           int32  = 3015
 	MQCACF_LOG_PATH                int32  = 3074
 	MQCACF_MEDIA_LOG_EXTENT_NAME   int32  = 3073
 	MQCACF_MODEL_Q_NAMES           int32  = 3016
 	MQCACF_MQCB_NAME               int32  = 3192
 	MQCACF_NAMELIST_NAMES          int32  = 3013
+	MQCACF_NHA_INSTANCE_NAME       int32  = 3211
 	MQCACF_NONE                    int32  = 3171
 	MQCACF_OBJECT_NAME             int32  = 3046
 	MQCACF_OBJECT_Q_MGR_NAME       int32  = 3023
@@ -1004,7 +1005,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 921
+	MQCMDL_CURRENT_LEVEL           int32  = 922
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1047,6 +1048,7 @@ const (
 	MQCMDL_LEVEL_915               int32  = 915
 	MQCMDL_LEVEL_920               int32  = 920
 	MQCMDL_LEVEL_921               int32  = 921
+	MQCMDL_LEVEL_922               int32  = 922
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -4204,6 +4206,7 @@ const (
 	MQRQ_OPEN_NOT_AUTHORIZED       int32  = 2
 	MQRQ_Q_MGR_QUIESCING           int32  = 6
 	MQRQ_Q_MGR_STOPPING            int32  = 5
+	MQRQ_REPLICA_ACTIVATED         int32  = 33
 	MQRQ_SSL_CIPHER_SPEC_ERROR     int32  = 14
 	MQRQ_SSL_CLIENT_AUTH_ERROR     int32  = 15
 	MQRQ_SSL_HANDSHAKE_ERROR       int32  = 13
@@ -4937,6 +4940,7 @@ const (
 	MQ_MSG_TOKEN_LENGTH            int32  = 16
 	MQ_NAMELIST_DESC_LENGTH        int32  = 64
 	MQ_NAMELIST_NAME_LENGTH        int32  = 48
+	MQ_NHA_INSTANCE_NAME_LENGTH    int32  = 48
 	MQ_OBJECT_INSTANCE_ID_LENGTH   int32  = 24
 	MQ_OBJECT_NAME_LENGTH          int32  = 48
 	MQ_OPERATOR_MESSAGE_LENGTH     int32  = 4

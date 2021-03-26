@@ -41,10 +41,10 @@ type MQDLH struct {
 	Format         string
 	PutApplType    int32
 	PutApplName    string
-	PutDate        string // Deprecated
-	PutTime        string // Deprecated
+	PutDate        string    // Deprecated
+	PutTime        string    // Deprecated
 	PutDateTime    time.Time // Combines the PutDate and PutTime fields - takes precedence if both styles are used
-	strucLength    int // Not exported
+	strucLength    int       // Not exported
 }
 
 func NewMQDLH(md *MQMD) *MQDLH {
@@ -111,7 +111,7 @@ func (dlh *MQDLH) Bytes() []byte {
 	offset += int(MQ_PUT_APPL_NAME_LENGTH)
 
 	if !dlh.PutDateTime.IsZero() {
-		dlh.PutDate,dlh.PutTime = createCDateTime(dlh.PutDateTime)
+		dlh.PutDate, dlh.PutTime = createCDateTime(dlh.PutDateTime)
 	}
 	copy(buf[offset:], dlh.PutDate)
 	offset += int(MQ_PUT_DATE_LENGTH)
@@ -150,7 +150,7 @@ func getHeaderDLH(md *MQMD, buf []byte) (*MQDLH, int, error) {
 	dlh.PutApplName = readStringFromFixedBuffer(r, MQ_PUT_APPL_NAME_LENGTH)
 	dlh.PutDate = readStringFromFixedBuffer(r, MQ_PUT_DATE_LENGTH)
 	dlh.PutTime = readStringFromFixedBuffer(r, MQ_PUT_TIME_LENGTH)
-	dlh.PutDateTime = createGoDateTime(dlh.PutDate,dlh.PutTime)
+	dlh.PutDateTime = createGoDateTime(dlh.PutDate, dlh.PutTime)
 
 	return dlh, dlh.strucLength, nil
 }
