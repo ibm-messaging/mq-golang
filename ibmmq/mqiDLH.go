@@ -53,8 +53,8 @@ func NewMQDLH(md *MQMD) *MQDLH {
 	dlh.CodedCharSetId = MQCCSI_UNDEFINED
 	dlh.PutApplType = 0
 	dlh.PutApplName = ""
-	dlh.PutTime = ""
-	dlh.PutDate = ""
+	dlh.PutTime = md.PutTime // Copy over the original put timestamp
+	dlh.PutDate = md.PutDate
 	dlh.Format = ""
 	dlh.DestQName = ""
 	dlh.DestQMgrName = ""
