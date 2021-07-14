@@ -1383,6 +1383,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_921"
 		case 922:
 			s = "MQCMDL_LEVEL_922"
+		case 923:
+			s = "MQCMDL_LEVEL_923"
 		default:
 			s = ""
 		}
@@ -4395,6 +4397,16 @@ func MQItoString(class string, value int) string {
 			s = "MQSTDBY_NOT_PERMITTED"
 		case 1:
 			s = "MQSTDBY_PERMITTED"
+		default:
+			s = ""
+		}
+
+	case "ST":
+		switch v {
+		case 0:
+			s = "MQST_BEST_EFFORT"
+		case 1:
+			s = "MQST_MUST_DUP"
 		default:
 			s = ""
 		}

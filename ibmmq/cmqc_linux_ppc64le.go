@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  3/5/21 5:00 PM
-*   Build Level:   p922-L210305.1
+*   Generated on:  7/8/21 3:14 PM
+*   Build Level:   p923-L210708
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -480,7 +480,7 @@ const (
 	MQCACH_LAST_LUWID              int32  = 3531
 	MQCACH_LAST_MSG_DATE           int32  = 3525
 	MQCACH_LAST_MSG_TIME           int32  = 3524
-	MQCACH_LAST_USED               int32  = 3571
+	MQCACH_LAST_USED               int32  = 3573
 	MQCACH_LISTENER_DESC           int32  = 3555
 	MQCACH_LISTENER_NAME           int32  = 3554
 	MQCACH_LISTENER_START_DATE     int32  = 3556
@@ -518,6 +518,8 @@ const (
 	MQCACH_SSL_PEER_NAME           int32  = 3545
 	MQCACH_SSL_SHORT_PEER_NAME     int32  = 3547
 	MQCACH_TCP_NAME                int32  = 3553
+	MQCACH_TEMPORARY_MODEL_Q       int32  = 3572
+	MQCACH_TEMPORARY_Q_PREFIX      int32  = 3573
 	MQCACH_TOPIC_ROOT              int32  = 3571
 	MQCACH_TP_NAME                 int32  = 3504
 	MQCACH_USER_ID                 int32  = 3517
@@ -607,7 +609,7 @@ const (
 	MQCA_INSTALLATION_NAME         int32  = 2116
 	MQCA_INSTALLATION_PATH         int32  = 2117
 	MQCA_LAST                      int32  = 4000
-	MQCA_LAST_USED                 int32  = 2137
+	MQCA_LAST_USED                 int32  = 2138
 	MQCA_LDAP_BASE_DN_GROUPS       int32  = 2132
 	MQCA_LDAP_BASE_DN_USERS        int32  = 2126
 	MQCA_LDAP_FIND_GROUP_FIELD     int32  = 2135
@@ -663,6 +665,7 @@ const (
 	MQCA_STDOUT_DESTINATION        int32  = 2083
 	MQCA_STORAGE_CLASS             int32  = 2022
 	MQCA_STORAGE_CLASS_DESC        int32  = 2042
+	MQCA_STREAM_QUEUE_NAME         int32  = 2138
 	MQCA_SYSTEM_LOG_Q_NAME         int32  = 2065
 	MQCA_TCP_NAME                  int32  = 2075
 	MQCA_TOPIC_DESC                int32  = 2093
@@ -1003,7 +1006,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 922
+	MQCMDL_CURRENT_LEVEL           int32  = 923
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1047,6 +1050,7 @@ const (
 	MQCMDL_LEVEL_920               int32  = 920
 	MQCMDL_LEVEL_921               int32  = 921
 	MQCMDL_LEVEL_922               int32  = 922
+	MQCMDL_LEVEL_923               int32  = 923
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -2453,7 +2457,7 @@ const (
 	MQIA_IP_ADDRESS_VERSION        int32  = 93
 	MQIA_KEY_REUSE_COUNT           int32  = 267
 	MQIA_LAST                      int32  = 2000
-	MQIA_LAST_USED                 int32  = 274
+	MQIA_LAST_USED                 int32  = 275
 	MQIA_LDAP_AUTHORMD             int32  = 263
 	MQIA_LDAP_NESTGRP              int32  = 264
 	MQIA_LDAP_SECURE_COMM          int32  = 261
@@ -2574,6 +2578,7 @@ const (
 	MQIA_STATISTICS_INTERVAL       int32  = 131
 	MQIA_STATISTICS_MQI            int32  = 127
 	MQIA_STATISTICS_Q              int32  = 128
+	MQIA_STREAM_QUEUE_QOS          int32  = 275
 	MQIA_SUB_CONFIGURATION_EVENT   int32  = 242
 	MQIA_SUB_COUNT                 int32  = 204
 	MQIA_SUB_SCOPE                 int32  = 218
@@ -3475,6 +3480,10 @@ const (
 	MQRCCF_SSL_CLIENT_AUTH_ERROR   int32  = 4094
 	MQRCCF_SSL_PEER_NAME_ERROR     int32  = 4093
 	MQRCCF_STORAGE_CLASS_IN_USE    int32  = 3207
+	MQRCCF_STREAMQ_CONFLICT        int32  = 3387
+	MQRCCF_STREAMQ_DEST_CONFLICT   int32  = 3385
+	MQRCCF_STREAMQ_DEST_NOT_SUPP   int32  = 3384
+	MQRCCF_STREAMQ_NOT_SUPPORTED   int32  = 3386
 	MQRCCF_STREAM_ERROR            int32  = 3071
 	MQRCCF_STRUCTURE_TYPE_ERROR    int32  = 3013
 	MQRCCF_SUBSCRIPTION_IN_USE     int32  = 3155
@@ -4364,6 +4373,8 @@ const (
 	MQSTS_LENGTH_2                 int32  = 280
 	MQSTS_VERSION_1                int32  = 1
 	MQSTS_VERSION_2                int32  = 2
+	MQST_BEST_EFFORT               int32  = 0
+	MQST_MUST_DUP                  int32  = 1
 	MQSUBTYPE_ADMIN                int32  = 2
 	MQSUBTYPE_ALL                  int32  = -1
 	MQSUBTYPE_API                  int32  = 1
@@ -5006,6 +5017,7 @@ const (
 	MQ_SYSTEM_NAME_LENGTH          int32  = 8
 	MQ_TASK_NUMBER_LENGTH          int32  = 8
 	MQ_TCP_NAME_LENGTH             int32  = 8
+	MQ_TEMPORARY_Q_PREFIX_LENGTH   int32  = 32
 	MQ_TIME_LENGTH                 int32  = 8
 	MQ_TOPIC_DESC_LENGTH           int32  = 64
 	MQ_TOPIC_NAME_LENGTH           int32  = 48
