@@ -90,7 +90,8 @@ const (
 	OT_NHA           = 16
 	OT_BP            = 17
 	OT_PS            = 18
-	OT_LAST_USED     = OT_PS
+	OT_CLUSTER       = 19
+	OT_LAST_USED     = OT_CLUSTER
 )
 
 var connectionMap = make(map[string]*connectionInfo)
@@ -111,6 +112,7 @@ var (
 	SubStatus          StatusSet
 	UsagePsStatus      StatusSet
 	UsageBpStatus      StatusSet
+	ClusterStatus      StatusSet
 )
 
 func newConnectionInfo(key string) *connectionInfo {
@@ -178,6 +180,8 @@ func GetObjectStatus(key string, objectType int) *StatusSet {
 			return &UsagePsStatus
 		case OT_PS:
 			return &UsageBpStatus
+		case OT_CLUSTER:
+			return &ClusterStatus
 		default:
 			return nil
 		}

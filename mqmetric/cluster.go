@@ -25,24 +25,20 @@ package mqmetric
 */
 
 /*
-Functions in this file use the DISPLAY SubStatus command to extract metrics
-about MQ subscriptions
+Functions in this file use the DISPLAY CLUSQMGR command to extract metrics
+about MQ clusters
 */
 
 import (
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
-	"strings"
-	"time"
 )
 
 const (
-	ATTR_SUB_NAME = "name"
-	ATTR_SUB_ID   = "subid"
-
-	ATTR_SUB_TOPIC_STRING  = "topic"
-	ATTR_SUB_TYPE          = "type"
-	ATTR_SUB_SINCE_PUB_MSG = "time_since_message_published"
-	ATTR_SUB_MESSAGES      = "messsages_received"
+	ATTR_CLUSTER_NAME    = "name"
+	ATTR_CLUSTER_QMTYPE  = "qmtype"  // "repos" or "normal" = "full" or "partial"
+	ATTR_CLUSTER_STATUS  = "status"  // clussdr status
+	ATTR_CLUSTER_SUSPEND = "suspend" // yes/no
+	// do we want a channel status squash?
 )
 
 /*
@@ -53,79 +49,55 @@ attributes we are going to look for and gives the associated descriptive
 text. The elements can be expanded later; just trying to give a starting point
 for now.
 */
-func SubInitAttributes() {
-	traceEntry("SubInitAttributes")
+func ClusterInitAttributes() {
+	traceEntry("ClusInitAttributes")
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_SUB]
-	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
+	os := &ci.objectStatus[OT_CLUSTER]
+	st := GetObjectStatus(GetConnectionKey(), OT_CLUSTER)
 
 	if os.init {
-		traceExit("SubInitAttributes", 1)
+		traceExit("ClusterInitAttributes", 1)
 		return
 	}
 	st.Attributes = make(map[string]*StatusAttribute)
 
-	attr := ATTR_SUB_ID
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Id")
-	attr = ATTR_SUB_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Name")
-	attr = ATTR_SUB_TOPIC_STRING
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
-
-	attr = ATTR_SUB_TYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Subscription Type", ibmmq.MQIACF_SUB_TYPE)
-
-	attr = ATTR_SUB_SINCE_PUB_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Message Received", -1)
-
-	// These are the integer status fields that are of interest
-	attr = ATTR_SUB_MESSAGES
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACF_MESSAGE_COUNT)
-	st.Attributes[attr].delta = true
-
+	attr := ATTR_CLUSTER_NAME //MQCA_CLUSTER_NAME
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Cluster Name")
+	attr = ATTR_CLUSTER_STATUS
+	st.Attributes[attr] = newStatusAttribute(attr, "Cluster Status", ibmmq.MQIACH_CHANNEL_STATUS)
+	attr = ATTR_CLUSTER_SUSPEND
+	st.Attributes[attr] = newStatusAttribute(attr, "Cluster Suspend", ibmmq.MQIACF_SUSPEND)
+	attr = ATTR_CLUSTER_QMTYPE
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Type", ibmmq.MQIACF_Q_MGR_TYPE)
 	os.init = true
-	traceExit("SubInitAttributes", 0)
+	traceExit("ClusterInitAttributes", 0)
 }
 
-func CollectSubStatus(patterns string) error {
+func CollectClusterStatus() error {
 	var err error
-	traceEntry("CollectSubStatus")
+	traceEntry("CollectClusterStatus")
 
-	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
-	SubInitAttributes()
+	st := GetObjectStatus(GetConnectionKey(), OT_CLUSTER)
+	ClusterInitAttributes()
 
 	// Empty any collected values
 	for k := range st.Attributes {
 		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
-	subPatterns := strings.Split(patterns, ",")
-	if len(subPatterns) == 0 {
-		traceExit("CollectSubStatus", 1)
-		return nil
-	}
+	err = collectClusterStatus()
 
-	for _, pattern := range subPatterns {
-		pattern = strings.TrimSpace(pattern)
-		if len(pattern) == 0 {
-			continue
-		}
-
-		err = collectSubStatus(pattern)
-
-	}
-
-	traceExitErr("CollectSubStatus", 0, err)
+	traceExitErr("CollectClusterStatus", 0, err)
 
 	return err
 }
 
-// Issue the INQUIRE_SUB_STATUS command for a subscription name pattern
-// Collect the responses and build up the statistics
-func collectSubStatus(pattern string) error {
+// Issue the INQUIRE_CLUSQMGR command for this qmgr
+// Collect the responses and build up the metrics
+func collectClusterStatus() error {
 	var err error
 
-	traceEntryF("collectSubStatus", "Pattern: %s", pattern)
+	traceEntryF("collectClusterStatus", "")
 	ci := getConnection(GetConnectionKey())
 
 	statusClearReplyQ()
@@ -133,13 +105,13 @@ func collectSubStatus(pattern string) error {
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 
 	// Can allow all the other fields to default
-	cfh.Command = ibmmq.MQCMD_INQUIRE_SUB_STATUS
+	cfh.Command = ibmmq.MQCMD_INQUIRE_CLUSTER_Q_MGR
 
 	// Add the parameters one at a time into a buffer
 	pcfparm := new(ibmmq.PCFParameter)
 	pcfparm.Type = ibmmq.MQCFT_STRING
-	pcfparm.Parameter = ibmmq.MQCACF_SUB_NAME
-	pcfparm.String = []string{pattern}
+	pcfparm.Parameter = ibmmq.MQCA_CLUSTER_Q_MGR_NAME
+	pcfparm.String = []string{ci.si.resolvedQMgrName}
 	cfh.ParameterCount++
 	buf = append(buf, pcfparm.Bytes()...)
 
@@ -150,7 +122,7 @@ func collectSubStatus(pattern string) error {
 	// And now put the command to the queue
 	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
-		traceExitErr("collectSubStatus", 1, err)
+		traceExitErr("collectClusterStatus", 1, err)
 
 		return err
 	}
@@ -160,36 +132,30 @@ func collectSubStatus(pattern string) error {
 	for allReceived := false; !allReceived; {
 		cfh, buf, allReceived, err = statusGetReply()
 		if buf != nil {
-			parseSubData(cfh, buf)
+			parseClusterData(cfh, buf)
 		}
 	}
 
-	traceExitErr("collectSubStatus", 0, err)
+	traceExitErr("collectClusterStatus", 0, err)
 
 	return err
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
-func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
+func parseClusterData(cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
-	traceEntry("parseSubData")
+	traceEntry("parseClusterData")
 
-	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
-	subName := ""
-	subId := ""
-	key := ""
-	topicString := ""
-
-	lastTime := ""
-	lastDate := ""
+	st := GetObjectStatus(GetConnectionKey(), OT_CLUSTER)
+	ClusterName := ""
 
 	parmAvail := true
 	bytesRead := 0
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
-		traceExit("parseSubData", 1)
+		traceExit("parseClusterData", 1)
 		return ""
 	}
 
@@ -203,17 +169,15 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 
 		switch elem.Parameter {
-		case ibmmq.MQBACF_SUB_ID:
-			subId = trimToNull(elem.String[0])
-		case ibmmq.MQCA_TOPIC_STRING:
-			topicString = trimToNull(elem.String[0])
+		case ibmmq.MQCA_CLUSTER_NAME:
+			ClusterName = trimToNull(elem.String[0])
 		}
 	}
 
 	// Create a unique key for this instance
-	key = subId
+	key := ClusterName
 
-	st.Attributes[ATTR_SUB_ID].Values[key] = newStatusValueString(subId)
+	st.Attributes[ATTR_CLUSTER_NAME].Values[key] = newStatusValueString(ClusterName)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -226,26 +190,15 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_SUB), elem, key) {
+		logTrace("parseClusterData - looking at elem %+v", elem)
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_CLUSTER), elem, key) {
 			switch elem.Parameter {
-			case ibmmq.MQCACF_LAST_MSG_TIME:
-				lastTime = strings.TrimSpace(elem.String[0])
-			case ibmmq.MQCACF_LAST_MSG_DATE:
-				lastDate = strings.TrimSpace(elem.String[0])
-			case ibmmq.MQCA_TOPIC_STRING:
-				topicString = trimToNull(elem.String[0])
-			case ibmmq.MQCACF_SUB_NAME:
-				subName = trimToNull(elem.String[0])
+			case ibmmq.MQCA_CLUSTER_NAME:
+				ClusterName = trimToNull(elem.String[0])
 			}
 		}
 	}
-
-	now := time.Now()
-	st.Attributes[ATTR_SUB_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
-	st.Attributes[ATTR_SUB_TOPIC_STRING].Values[key] = newStatusValueString(topicString)
-	st.Attributes[ATTR_SUB_NAME].Values[key] = newStatusValueString(subName)
-
-	traceExitF("parseSubData", 0, "Key : %s", key)
+	traceExitF("parseClusterData", 0, "Key : %s", key)
 
 	return key
 }
@@ -253,6 +206,6 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 // Return a standardised value. If the attribute indicates that something
 // special has to be done, then do that. Otherwise just make sure it's a non-negative
 // value of the correct datatype
-func SubNormalise(attr *StatusAttribute, v int64) float64 {
+func ClusterNormalise(attr *StatusAttribute, v int64) float64 {
 	return statusNormalise(attr, v)
 }

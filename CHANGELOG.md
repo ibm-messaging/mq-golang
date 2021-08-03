@@ -1,6 +1,12 @@
 # Changelog
 Newest updates are at the top of this file.
 
+# Aug 04 2021 - v5.2.2
+* mqmetric - Add 'uncommitted messages' to queue status response
+* mqmetric - Add qmgr_status metric so that Prometheus collector can report it even when qmgr is unavailable
+* mqmetric - Check more failure scenarios (#170)
+* mqmetric - Add a cluster_suspend metric
+
 ## Aug 03 2021 - v5.2.1
 * Update for MQ 9.2.3
 * Add a sample amqsbo.go to show how to deal with poison messages

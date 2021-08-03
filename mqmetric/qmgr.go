@@ -82,10 +82,6 @@ func QueueManagerInitAttributes() {
 		attr = ATTR_QMGR_CMD_SERVER_STATUS
 		st.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
 
-		// The qmgr status is pointless - if we can't connect to the qmgr, then we can't report on it. And if we can, it's up.
-		// I'll leave this in as a reminder of why it's not being collected.
-		//attr = ATTR_QMGR_STATUS
-		//st.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
 	} else {
 		attr = ATTR_QMGR_MAX_CHANNELS
 		st.Attributes[attr] = newStatusAttribute(attr, "Max Channels", -1)
@@ -94,6 +90,12 @@ func QueueManagerInitAttributes() {
 		attr = ATTR_QMGR_MAX_ACTIVE_CHANNELS
 		st.Attributes[attr] = newStatusAttribute(attr, "Max Active Channels", -1)
 	}
+
+	// The qmgr status is reported to Prometheus with some pseudo-values so we can see if
+	// we are not actually connected. On other collectors, the whole collection process is
+	// halted so this would not be reported.
+	attr = ATTR_QMGR_STATUS
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Status", ibmmq.MQIACF_Q_MGR_STATUS)
 
 	os.init = true
 
@@ -150,7 +152,9 @@ func collectQueueManagerAttrs() error {
 		st.Attributes[ATTR_QMGR_MAX_CHANNELS].Values[key] = newStatusValueInt64(int64(maxchls))
 		st.Attributes[ATTR_QMGR_MAX_TCP_CHANNELS].Values[key] = newStatusValueInt64(int64(maxtcp))
 		st.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
-
+		// This pseudo-value will always get filled in for a z/OS qmgr - we know it's running because
+		// we've been able to connect!
+		st.Attributes[ATTR_QMGR_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQQMSTA_RUNNING))
 	}
 	traceExitErr("collectQueueManagerAttrs", 0, err)
 

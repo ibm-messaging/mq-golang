@@ -34,10 +34,11 @@ var (
 )
 
 type ConnectionConfig struct {
-	ClientMode   bool
-	UserId       string
-	Password     string
-	TZOffsetSecs float64
+	ClientMode    bool
+	UserId        string
+	Password      string
+	TZOffsetSecs  float64
+	SingleConnect bool
 
 	UsePublications      bool
 	UseStatus            bool
@@ -123,7 +124,12 @@ func initConnectionKey(key string, qMgrName string, replyQ string, cc *Connectio
 		// Force reconnection to only be to the same qmgr. Cannot do this with externally
 		// configured (eg MQ_CONNECT_TYPE or client-only installation) connections. But
 		// it is a bad idea to try to reconnect to a different queue manager.
-		gocno.Options |= ibmmq.MQCNO_RECONNECT_Q_MGR
+		// If the collector is managing its own reconnect, then don't use the MQ automatic mode
+		if cc.SingleConnect {
+			gocno.Options |= ibmmq.MQCNO_RECONNECT_DISABLED
+		} else {
+			gocno.Options |= ibmmq.MQCNO_RECONNECT_Q_MGR
+		}
 		if cc.CcdtUrl != "" {
 			gocno.CCDTUrl = cc.CcdtUrl
 			logInfo("Trying to connect as client using CCDT: %s", gocno.CCDTUrl)
@@ -203,7 +209,6 @@ func initConnectionKey(key string, qMgrName string, replyQ string, cc *Connectio
 					}
 				}
 			}
-
 		} else {
 			errorString = "Cannot open queue manager object"
 			mqreturn = err.(*ibmmq.MQReturn)
@@ -268,6 +273,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, cc *Connectio
 		return MQMetricError{Err: errorString, MQReturn: mqreturn}
 	}
 
+	logTrace("initConnection: Queue manager resolved info - %+v", ci.si)
 	traceExitErr("InitConnection", 0, mqreturn)
 
 	return err
@@ -280,6 +286,10 @@ func EndConnection() {
 	traceEntry("EndConnection")
 
 	ci := getConnection(GetConnectionKey())
+	if ci == nil {
+		traceExit("EndConnection", 1)
+		return
+	}
 	m := GetPublishedMetrics(GetConnectionKey())
 	// MQCLOSE all subscriptions
 	if ci.si.subsOpened {

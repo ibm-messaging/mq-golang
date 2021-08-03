@@ -50,6 +50,9 @@ const (
 	ATTR_Q_MAX_DEPTH   = "attribute_max_depth"
 	ATTR_Q_USAGE       = "attribute_usage"
 	ATTR_Q_CURMAXFSIZE = "qfile_max_size"
+	// Uncommitted messages - on Distributed platforms, this is any integer;
+	// but on z/OS it only indicates 0/1 (MQQSUM_NO/YES)
+	ATTR_Q_UNCOM = "uncommitted_messages"
 
 	// The next two attributes are given the same name
 	// as the published statistics from the amqsrua-style
@@ -98,6 +101,12 @@ func QueueInitAttributes() {
 	st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
 	attr = ATTR_Q_OPPROCS
 	st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+	attr = ATTR_Q_UNCOM
+	if ci.si.platform == ibmmq.MQPL_ZOS {
+		st.Attributes[attr] = newStatusAttribute(attr, "Uncommitted Messages (Yes/No)", ibmmq.MQIACF_UNCOMMITTED_MSGS)
+	} else {
+		st.Attributes[attr] = newStatusAttribute(attr, "Uncommitted Messages (Count)", ibmmq.MQIACF_UNCOMMITTED_MSGS)
+	}
 
 	// QFile sizes - current, and the "current maximum" which may not be
 	// the same as the qdefinition but is the one in effect for now until

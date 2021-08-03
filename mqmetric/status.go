@@ -228,7 +228,11 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 		}
 
 		if cfh.Reason != ibmmq.MQRC_NONE {
-			traceExitErr("statusGetReply", 1, err)
+			// A "normal" error might come back in 2 messages so we do not
+			// force allDone here. For example, issuing an INQUIRE_CHL_STATUS
+			// might get first response with Reason=STATUS_NOT_FOUND followed by
+			// second response with Reason=MQRCCF_COMMAND_FAILED and Control=Last
+			traceExitF("statusGetReply", 1, "CFH: %+v Error: %v", cfh, err)
 			return cfh, nil, allDone, err
 		}
 		// Returned by z/OS qmgrs but are not interesting
@@ -237,6 +241,11 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 			return cfh, nil, allDone, err
 		}
 	} else {
+		// After any MQ error (including 2033) we are not likely to receive more usable messages
+		// so return that this is done - whether or not we've seen a CFC_LAST flag.
+		// If further messages do show up later, they should be discarded before the next
+		// command tries to use this replyQ.
+		allDone = true
 		if err.(*ibmmq.MQReturn).MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
 			logError("StatusGetReply error : %v\n", err)
 		}
