@@ -10,8 +10,8 @@ function latestSemVer {
 # Assume repo tags have been created in a sensible order. Find the mq-golang
 # version in the root go.mod file and the current Git tag for this repo.
 # Then pick the latest version to create the Docker tag
-VERDEP=`cat ../go.mod | awk '/mq-golang/ {print $2}' `
-VERREPO=`git tag -l | sort | tail -1 `
+VERDEP=`cat ../../go.mod | awk '/mq-golang/ {print $2}' `
+VERREPO=`git tag -l 2>/dev/null| sort | tail -1 `
 
 VER=`latestSemVer $VERDEP $VERREPO`
 if [ -z "$VER" ]
@@ -25,6 +25,7 @@ echo Building container with tag $TAG:$VER
 
 # Build the container which includes compilation of the program
 docker build -t $TAG:$VER -f runSample.Dockerfile .
+
 if [ $? -eq 0 ]
 then
   # This line grabs a currently active IPv4 address for this machine. It's probably
@@ -36,7 +37,7 @@ then
 
   if [ ! -z "addr" ]
   then
-    # Run the container. Can override default command line values in amqsput voa
+    # Run the container. Can override default command line values in amqsput via
     # env vars here.
     docker run -e MQSERVER="SYSTEM.DEF.SVRCONN/TCP/$addr($port)" \
        -e QUEUE=DEV.QUEUE.1 \

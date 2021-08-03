@@ -40,7 +40,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-        "time"
+	"time"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
@@ -210,7 +210,7 @@ func mainWithRc() int {
 				qMgrObject.Cmit()
 			} else {
 				// In real life, there would be some processing of the message here before deciding to backout or
-				// commit the transaction. But here we will always to the backout.
+				// commit the transaction. But here we will always do the backout.
 				qMgrObject.Back()
 
 				// Adding an increasing delay in here may help with some error conditions so you don't just spin quickly.

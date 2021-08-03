@@ -64,6 +64,11 @@ For example
   go run amqsput.go DEV.QUEUE.1 QM1
 ```
 
+The amqsput.go program also allows the queue and queue manager names to 
+be provided by environment variables, to show another configuration
+mechanism. That approach will often be used in container deployments,
+and is demonstrated in the runSample set of files.
+
 ### Publish/Subscribe testing
 You will probably want to run `amqssub` JUST BEFORE running `amqspub` to ensure
 there is something waiting to receive the publications when they are made. The
@@ -73,6 +78,10 @@ there is something waiting to receive the publications when they are made. The
 There is an set of files in here that will show how to create a container that runs
 the `amqsput` program. The `runSample.sh` script drives the process. It will try to
 connect to a queue manager running on the host machine.
+
+The process is split into two pieces - the first is used to compile the program, and
+the second creates a (hopefully) smaller container with just the components needed
+to run the  program.
 
 ## More information
 Comments in the programs explain what they are doing. For more detailed information about the

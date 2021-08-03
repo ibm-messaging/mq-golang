@@ -4,6 +4,9 @@
  *
  * The queue and queue manager name can be given as parameters on the
  * command line. Defaults are coded in the program.
+ * This sample also permits use of environment variables for the
+ * parameters, which might be preferable in some container
+ * deployments.
  *
  * A single message is put, containing a "hello" and timestamp.
  * Each MQI call prints its success or failure. The MsgId of the
@@ -14,7 +17,7 @@
 package main
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018,2021
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -54,8 +57,16 @@ func main() {
 func mainWithRc() int {
 
 	// The default queue manager and queue to be used. These can be overridden on command line.
-	qMgrName := "QM1"
-	qName := "DEV.QUEUE.1"
+	// Environment variables can also be used as that works well in a number of common
+	// container deployment models.
+	qMgrName := os.Getenv("QMGR")
+	if qMgrName == "" {
+		qMgrName = "QM1"
+	}
+	qName := os.Getenv("QUEUE")
+	if qName == "" {
+		qName = "DEV.QUEUE.1"
+	}
 
 	fmt.Println("Sample AMQSPUT.GO start")
 
