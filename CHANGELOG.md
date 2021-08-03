@@ -1,8 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## xxx xx 2021 - v5.xxx
+## Aug 03 2021 - v5.2.1
+* Update for MQ 9.2.3
 * Add a sample amqsbo.go to show how to deal with poison messages
+* samples - Containerised sample turned into multi-stage Dockerfile to reduce size of deployed app container
 
 ## Mar 25 2021 - v5.2.0 
 Scope of mqmetric changes seem to justify new minor number
