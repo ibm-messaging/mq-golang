@@ -1,7 +1,7 @@
 # Changelog
 Newest updates are at the top of this file.
 
-# Aug 04 2021 - v5.2.2
+## Aug 04 2021 - v5.2.2
 * mqmetric - Add 'uncommitted messages' to queue status response
 * mqmetric - Add qmgr_status metric so that Prometheus collector can report it even when qmgr is unavailable
 * mqmetric - Check more failure scenarios (#170)
