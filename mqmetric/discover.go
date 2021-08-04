@@ -374,10 +374,19 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 					return e2
 				}
 			}
-			if cl.Name != "STATAPP" {
-				cl.Parent.Classes[classIndex] = cl
-			} else {
+			// - The Native HA metrics introduced in MQ 9.2.3 are not currently tested for metric name maps
+			//   and might need additional configuration to fill in an object name
+			// - The STATAPP metrics are not very useful yet as they only work for apps known at subscription
+			//   time. As well as needing additional configuration.
+			// So we ignore these for now, but might enable them in future. Adding them to the subscription
+			// list by default would increase the handles in use without benefit.
+			switch cl.Name {
+			case "STATAPP":
 				logDebug("Not subscribing to Class STATAPP resources")
+			case "NHAREPLICA":
+				logDebug("Not subscribing to Class NHAREPLICA resources")
+			default:
+				cl.Parent.Classes[classIndex] = cl
 			}
 		}
 	}
@@ -945,7 +954,10 @@ func createSubscriptions() error {
 
 	for _, cl := range metrics.Classes {
 		for _, ty := range cl.Types {
-
+			// To support additional class/type metrics that have object names, such as
+			// STATAPP and NHAREPLICA
+			// then we'd need to associate a list of those names with the metric type.
+			// For now, we are only dealing with queues and so can assume use of qInfoMap
 			if strings.Contains(ty.ObjectTopic, "%s") {
 				im := qInfoMap
 
