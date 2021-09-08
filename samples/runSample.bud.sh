@@ -1,4 +1,5 @@
 # This is an example of running one of the sample programs in a container.
+# It used buildah/podman as an alternative to 'docker'.
 
 function latestSemVer {
   (for x in $*
@@ -23,17 +24,10 @@ fi
 TAG=mq-golang-sample-amqsput
 echo Building container with tag $TAG:$VER
 
-# Build the container which includes compilation of the program. Can set the FROM
-# environment variable outside this script to choose which base image to work from.
-# The UBI variant is built on the Red Hat Universal Base Image set of containers; the
-# default is built on Ubuntu/Debian containers.
-if [ "$FROM" = "UBI" ]
-then
-  dfile="runSample.ubi.Dockerfile"
-else
-  dfile="runSample.deb.Dockerfile"
-fi
-docker build -t $TAG:$VER -f  $dfile .
+# Build the container which includes compilation of the program.
+# The UBI variant is built on the Red Hat Universal Base Image set of containers.
+dfile="runSample.ubi.Dockerfile"
+buildah bud -t $TAG:$VER -f $dfile .
 
 if [ $? -eq 0 ]
 then
@@ -46,9 +40,9 @@ then
 
   if [ ! -z "addr" ]
   then
-    # Run the container. Can override default command line values in amqsput via
-    # env vars here.
-    docker run -e MQSERVER="SYSTEM.DEF.SVRCONN/TCP/$addr($port)" \
+    # Run the container.
+    # We override default command line values in amqsput via env vars.
+    podman run -e MQSERVER="SYSTEM.DEF.SVRCONN/TCP/$addr($port)" \
        -e QUEUE=DEV.QUEUE.1 \
        -e QMGR=QM1 \
        $TAG:$VER

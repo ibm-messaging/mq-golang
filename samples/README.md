@@ -39,9 +39,13 @@ Some trivial scripts run the sample programs in matching pairs:
 * pubsub.sh  : Start amqssub and then run the amqspub program immediately
 
 Building a container:
-* runSample.sh         : Drives the process to get `amqsput` into the container
-* runSample.Dockerfile : Instructions to create the container with its dependencies
-* runSample.gomod      : Copied into the container as `go.mod`
+* runSample.sh           : Drives the process to get `amqsput` into the container
+* runSample.bud.sh       : Drives the process to get `amqsput` into the container using podman/buildah as an alternative approach
+* runSample.*.Dockerfile : Instructions to create containers with runtime dependencies
+* runSample.gomod        : Copied into the container as `go.mod`
+Two variants of the Dockerfile are provided. Set the `FROM` environment variable to "UBI"
+to use Red Hat Universal Base Images as the starting points for building and runtime;
+otherwise an Ubuntu/Debian combination is used.
 
 The `mqitest` sample program in its own subdirectory is a more general demonstration
 of many of the features available from the MQI rather than focussed on a specific
@@ -64,7 +68,7 @@ For example
   go run amqsput.go DEV.QUEUE.1 QM1
 ```
 
-The amqsput.go program also allows the queue and queue manager names to 
+The amqsput.go program also allows the queue and queue manager names to
 be provided by environment variables, to show another configuration
 mechanism. That approach will often be used in container deployments,
 and is demonstrated in the runSample set of files.
@@ -76,7 +80,7 @@ there is something waiting to receive the publications when they are made. The
 
 ## Building a container for running samples
 There is an set of files in here that will show how to create a container that runs
-the `amqsput` program. The `runSample.sh` script drives the process. It will try to
+the `amqsput` program. The `runSample*.sh` scripts drive the process. It will try to
 connect to a queue manager running on the host machine.
 
 The process is split into two pieces - the first is used to compile the program, and
