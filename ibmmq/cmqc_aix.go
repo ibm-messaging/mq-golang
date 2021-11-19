@@ -32,8 +32,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  7/8/21 3:14 PM
-*   Build Level:   p923-L210708
+*   Generated on:  11/4/21 3:44 PM
+*   Build Level:   p924-L211104
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -201,8 +201,9 @@ const (
 	MQBACF_FIRST                   int32  = 7001
 	MQBACF_GENERIC_CONNECTION_ID   int32  = 7007
 	MQBACF_GROUP_ID                int32  = 7012
-	MQBACF_LAST_USED               int32  = 7038
+	MQBACF_LAST_USED               int32  = 7039
 	MQBACF_MESSAGE_DATA            int32  = 7020
+	MQBACF_MQBNO_STRUCT            int32  = 7039
 	MQBACF_MQBO_STRUCT             int32  = 7021
 	MQBACF_MQCBC_STRUCT            int32  = 7023
 	MQBACF_MQCBD_STRUCT            int32  = 7024
@@ -247,6 +248,18 @@ const (
 	MQBND_BIND_NOT_FIXED           int32  = 1
 	MQBND_BIND_ON_GROUP            int32  = 2
 	MQBND_BIND_ON_OPEN             int32  = 0
+	MQBNO_BALTYPE_RA_MANAGED       int32  = 65536
+	MQBNO_BALTYPE_REQREP           int32  = 1
+	MQBNO_BALTYPE_SIMPLE           int32  = 0
+	MQBNO_CURRENT_LENGTH           int32  = 20
+	MQBNO_CURRENT_VERSION          int32  = 1
+	MQBNO_LENGTH_1                 int32  = 20
+	MQBNO_OPTIONS_IGNORE_TRANS     int32  = 1
+	MQBNO_OPTIONS_NONE             int32  = 0
+	MQBNO_TIMEOUT_AS_DEFAULT       int32  = -1
+	MQBNO_TIMEOUT_IMMEDIATE        int32  = 0
+	MQBNO_TIMEOUT_NEVER            int32  = -2
+	MQBNO_VERSION_1                int32  = 1
 	MQBO_CURRENT_LENGTH            int32  = 12
 	MQBO_CURRENT_VERSION           int32  = 1
 	MQBO_LENGTH_1                  int32  = 12
@@ -1008,7 +1021,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 923
+	MQCMDL_CURRENT_LEVEL           int32  = 924
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1053,6 +1066,7 @@ const (
 	MQCMDL_LEVEL_921               int32  = 921
 	MQCMDL_LEVEL_922               int32  = 922
 	MQCMDL_LEVEL_923               int32  = 923
+	MQCMDL_LEVEL_924               int32  = 924
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1266,8 +1280,8 @@ const (
 	MQCNO_ALL_CONVS_SHARE          int32  = 262144
 	MQCNO_CD_FOR_OUTPUT_ONLY       int32  = 524288
 	MQCNO_CLIENT_BINDING           int32  = 2048
-	MQCNO_CURRENT_LENGTH           int32  = 256
-	MQCNO_CURRENT_VERSION          int32  = 7
+	MQCNO_CURRENT_LENGTH           int32  = 272
+	MQCNO_CURRENT_VERSION          int32  = 8
 	MQCNO_FASTPATH_BINDING         int32  = 1
 	MQCNO_GENERATE_CONN_TAG        int32  = 2097152
 	MQCNO_HANDLE_SHARE_BLOCK       int32  = 64
@@ -1281,6 +1295,7 @@ const (
 	MQCNO_LENGTH_5                 int32  = 200
 	MQCNO_LENGTH_6                 int32  = 224
 	MQCNO_LENGTH_7                 int32  = 256
+	MQCNO_LENGTH_8                 int32  = 272
 	MQCNO_LOCAL_BINDING            int32  = 1024
 	MQCNO_NONE                     int32  = 0
 	MQCNO_NO_CONV_SHARING          int32  = 65536
@@ -1302,6 +1317,7 @@ const (
 	MQCNO_VERSION_5                int32  = 5
 	MQCNO_VERSION_6                int32  = 6
 	MQCNO_VERSION_7                int32  = 7
+	MQCNO_VERSION_8                int32  = 8
 	MQCODL_AS_INPUT                int32  = -1
 	MQCOMPRESS_ANY                 int32  = 268435455
 	MQCOMPRESS_NONE                int32  = 0
@@ -1719,6 +1735,9 @@ const (
 	MQIACF_AUX_ERROR_DATA_INT_2    int32  = 1071
 	MQIACF_BACKOUT_COUNT           int32  = 1241
 	MQIACF_BALANCED                int32  = 1433
+	MQIACF_BALANCING_OPTIONS       int32  = 1440
+	MQIACF_BALANCING_TIMEOUT       int32  = 1441
+	MQIACF_BALANCING_TYPE          int32  = 1439
 	MQIACF_BALSTATE                int32  = 1434
 	MQIACF_BRIDGE_TYPE             int32  = 1073
 	MQIACF_BROKER_COUNT            int32  = 1088
@@ -1811,7 +1830,7 @@ const (
 	MQIACF_INVALID_DEST_COUNT      int32  = 1371
 	MQIACF_ITEM_COUNT              int32  = 1378
 	MQIACF_KNOWN_DEST_COUNT        int32  = 1369
-	MQIACF_LAST_USED               int32  = 1438
+	MQIACF_LAST_USED               int32  = 1444
 	MQIACF_LDAP_CONNECTION_STATUS  int32  = 1409
 	MQIACF_LISTENER_ATTRS          int32  = 1222
 	MQIACF_LISTENER_STATUS_ATTRS   int32  = 1223
@@ -1994,8 +2013,12 @@ const (
 	MQIACF_SYSP_RESLEVEL_AUDIT     int32  = 1195
 	MQIACF_SYSP_ROUTING_CODE       int32  = 1196
 	MQIACF_SYSP_SMF_ACCOUNTING     int32  = 1197
+	MQIACF_SYSP_SMF_ACCT_TIME_MINS int32  = 1443
+	MQIACF_SYSP_SMF_ACCT_TIME_SECS int32  = 1444
 	MQIACF_SYSP_SMF_INTERVAL       int32  = 1199
 	MQIACF_SYSP_SMF_STATS          int32  = 1198
+	MQIACF_SYSP_SMF_STAT_TIME_MINS int32  = 1199
+	MQIACF_SYSP_SMF_STAT_TIME_SECS int32  = 1442
 	MQIACF_SYSP_TIMESTAMP          int32  = 1213
 	MQIACF_SYSP_TOTAL_LOGS         int32  = 1220
 	MQIACF_SYSP_TRACE_CLASS        int32  = 1200
@@ -2074,6 +2097,7 @@ const (
 	MQIACH_ALLOC_RETRY             int32  = 1570
 	MQIACH_ALLOC_SLOW_TIMER        int32  = 1572
 	MQIACH_AMQP_KEEP_ALIVE         int32  = 1644
+	MQIACH_AUTH_INFO_TYPES         int32  = 1622
 	MQIACH_AVAILABLE_CIPHERSPECS   int32  = 1636
 	MQIACH_BACKLOG                 int32  = 1602
 	MQIACH_BATCHES                 int32  = 1537
@@ -2639,6 +2663,8 @@ const (
 	MQIMGRCOV_NO                   int32  = 0
 	MQIMGRCOV_YES                  int32  = 1
 	MQIMMREASON_APPLNAME_CHANGED   int32  = 4
+	MQIMMREASON_AWAITS_REPLY       int32  = 6
+	MQIMMREASON_IN_TRANSACTION     int32  = 5
 	MQIMMREASON_MOVING             int32  = 3
 	MQIMMREASON_NONE               int32  = 0
 	MQIMMREASON_NOT_CLIENT         int32  = 1
@@ -3569,6 +3595,7 @@ const (
 	MQRC_BAG_WRONG_TYPE            int32  = 2326
 	MQRC_BINARY_DATA_LENGTH_ERROR  int32  = 6111
 	MQRC_BMHO_ERROR                int32  = 2489
+	MQRC_BNO_ERROR                 int32  = 2602
 	MQRC_BO_ERROR                  int32  = 2134
 	MQRC_BRIDGE_STARTED            int32  = 2125
 	MQRC_BRIDGE_STOPPED            int32  = 2126
@@ -3865,6 +3892,7 @@ const (
 	MQRC_OPTION_ENVIRONMENT_ERROR  int32  = 2274
 	MQRC_OPTION_NOT_VALID_FOR_TYPE int32  = 2045
 	MQRC_ORIGINAL_LENGTH_ERROR     int32  = 2252
+	MQRC_OUTBOUND_SNI_NOT_VALID    int32  = 2603
 	MQRC_OUTCOME_MIXED             int32  = 2123
 	MQRC_OUTCOME_PENDING           int32  = 2124
 	MQRC_OUT_SELECTOR_ERROR        int32  = 2310

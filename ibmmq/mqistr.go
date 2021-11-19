@@ -531,6 +531,40 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "BNO_BALTYPE":
+		switch v {
+		case 0:
+			s = "MQBNO_BALTYPE_SIMPLE"
+		case 1:
+			s = "MQBNO_BALTYPE_REQREP"
+		case 65536:
+			s = "MQBNO_BALTYPE_RA_MANAGED"
+		default:
+			s = ""
+		}
+
+	case "BNO_OPTIONS":
+		switch v {
+		case 0:
+			s = "MQBNO_OPTIONS_NONE"
+		case 1:
+			s = "MQBNO_OPTIONS_IGNORE_TRANS"
+		default:
+			s = ""
+		}
+
+	case "BNO_TIMEOUT":
+		switch v {
+		case -2:
+			s = "MQBNO_TIMEOUT_NEVER"
+		case -1:
+			s = "MQBNO_TIMEOUT_AS_DEFAULT"
+		case 0:
+			s = "MQBNO_TIMEOUT_IMMEDIATE"
+		default:
+			s = ""
+		}
+
 	case "BO":
 		switch v {
 		case 0:
@@ -1385,6 +1419,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_922"
 		case 923:
 			s = "MQCMDL_LEVEL_923"
+		case 924:
+			s = "MQCMDL_LEVEL_924"
 		default:
 			s = ""
 		}
@@ -2455,6 +2491,10 @@ func MQItoString(class string, value int) string {
 			s = "MQIMMREASON_MOVING"
 		case 4:
 			s = "MQIMMREASON_APPLNAME_CHANGED"
+		case 5:
+			s = "MQIMMREASON_IN_TRANSACTION"
+		case 6:
+			s = "MQIMMREASON_AWAITS_REPLY"
 		default:
 			s = ""
 		}

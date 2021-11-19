@@ -32,7 +32,7 @@ to select what can be done.
 #include <cmqc.h>
 #include <cmqxc.h>
 
-void freeCCDTUrl(MQCNO *mqcno) {
+void freeCnoCCDTUrl(MQCNO *mqcno) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
 	if (mqcno->CCDTUrlPtr != NULL) {
 		free(mqcno->CCDTUrlPtr);
@@ -40,7 +40,7 @@ void freeCCDTUrl(MQCNO *mqcno) {
 #endif
 }
 
-void setCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
+void setCnoCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
   if (mqcno->Version < MQCNO_VERSION_6) {
 	  mqcno->Version = MQCNO_VERSION_6;
@@ -75,6 +75,35 @@ void setCnoApplName(MQCNO *mqcno, PMQCHAR applName, MQLONG length) {
   return;
 }
 
+// A totally new structure in MQ 9.2.4. In order to handle builds against older versions of MQ
+// we have to extract the individual fields from the Go version of the structure first. And
+// we then use those as separate parameters to this function.
+void setCnoBalanceParms(MQCNO *mqcno, MQLONG ApplType, MQLONG Timeout, MQLONG Options) {
+#if defined(MQCNO_VERSION_8) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_8
+  PMQBNO pmqbno = malloc(MQBNO_CURRENT_LENGTH); // This is freed on return from the C function
+  pmqbno->Version = MQBNO_VERSION_1;
+	memcpy(pmqbno->StrucId,MQBNO_STRUC_ID,4);
+  pmqbno->ApplType = ApplType;
+  pmqbno->Timeout = Timeout;
+  pmqbno->Options = Options;
+  mqcno->BalanceParmsPtr = pmqbno;
+	mqcno->BalanceParmsOffset = 0;
+  if (mqcno->Version < MQCNO_VERSION_8) {
+  	mqcno->Version = MQCNO_VERSION_8;
+  }
+#endif
+  return;
+}
+
+void freeCnoBalanceParms(MQCNO *mqcno) {
+#if defined(MQCNO_VERSION_8) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_8
+  if (mqcno->Version >= MQCNO_VERSION_8 && mqcno->BalanceParmsPtr != NULL) {
+	  free(mqcno->BalanceParmsPtr);
+	}
+#endif
+  return;
+}
+
 */
 import "C"
 import "unsafe"
@@ -92,6 +121,7 @@ type MQCNO struct {
 	ClientConn    *MQCD
 	SSLConfig     *MQSCO
 	ApplName      string
+	BalanceParms  *MQBNO
 }
 
 /*
@@ -101,6 +131,15 @@ type MQCSP struct {
 	AuthenticationType int32
 	UserId             string
 	Password           string
+}
+
+/*
+MQBNO is a structure to allow an application provision of balancing options
+*/
+type MQBNO struct {
+	ApplType int32
+	Timeout  int32
+	Options  int32
 }
 
 /*
@@ -130,6 +169,20 @@ func NewMQCSP() *MQCSP {
 	csp.Password = ""
 
 	return csp
+}
+
+/*
+NewMQBNO fills in default values for the MQBNO structure. We
+use the constants directly as the #define macros may not be
+available when building against older levels of the MQ client code.
+*/
+func NewMQBNO() *MQBNO {
+	bno := new(MQBNO)
+	bno.ApplType = 0 /* MQBNO_BALTYPE_SIMPLE */
+	bno.Timeout = -1 /* MQBNO_TIMEOUT_AS_DEFAULT */
+	bno.Options = 0  /* MQBNO_OPTIONS_NONE */
+
+	return bno
 }
 
 func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
@@ -216,7 +269,7 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	// versions of MQ, setting of it has been moved to a C function that can use
 	// the pre-processor to decide whether it's needed.
 	if gocno.CCDTUrl != "" {
-		C.setCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
+		C.setCnoCCDTUrl(mqcno, C.PMQCHAR(C.CString(gocno.CCDTUrl)), C.MQLONG(len(gocno.CCDTUrl)))
 	}
 
 	// The ApplName option to the CNO was introduced in MQ V9.1.2. To compile against
@@ -224,6 +277,13 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	// will free() the CString-allocated buffer regardless of MQ version.
 	if gocno.ApplName != "" {
 		C.setCnoApplName(mqcno, C.PMQCHAR(C.CString(gocno.ApplName)), C.MQ_APPL_NAME_LENGTH)
+	}
+
+	// The BalanceParms structure was added to the CNO in MQ 9.2.4. To compile against
+	// older versions of MQ, setting has been moved to a C function.
+	if gocno.BalanceParms != nil {
+		bno := gocno.BalanceParms
+		C.setCnoBalanceParms(mqcno, C.MQLONG(bno.ApplType), C.MQLONG(bno.Timeout), C.MQLONG(bno.Options))
 	}
 
 	return
@@ -253,9 +313,12 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		C.free(unsafe.Pointer(mqcno.SSLConfigPtr))
 	}
 
-	C.freeCCDTUrl(mqcno)
-
+	// Do any freeing up of control blocks malloced by the C functions used to permit
+	// compilation against older versions of MQ.
+	C.freeCnoCCDTUrl(mqcno)
+	C.freeCnoBalanceParms(mqcno)
 	// ApplName is input-only so we don't need to do any version-specific processing
 	// for it in this function.
+
 	return
 }

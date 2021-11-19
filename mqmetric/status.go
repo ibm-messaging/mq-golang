@@ -128,9 +128,10 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 		if err == nil {
 			diff := now.Sub(parsedT).Seconds() + ci.tzOffsetSecs
 
-			if diff < 0 { // Cannot have status from the future
+			if diff < -(60 * 5) { // Cannot have status from the future but allow a tiny amount of flex
 				if !timeTravelWarningIssued {
-					logError("Status reports appear to be from the future. Check the TZ Offset value in the program configuration.")
+					logError("Status reports appear to be from the future. Difference is approximately %d seconds. Check the TZ Offset value in the program configuration.", int64(-diff))
+					//logError("statusTimeDiff d:%s t:%s diff:%f tzoffset: %f err:%v\n", d, t, diff, ci.tzOffsetSecs, err)
 					timeTravelWarningIssued = true
 				}
 				diff = 0
@@ -138,7 +139,7 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 			rc = int64(diff)
 		}
 	}
-	//fmt.Printf("statusTimeDiff d:%s t:%s diff:%d tzoffset: %f err:%v\n", d, t, rc, tzOffsetSecs, err)
+	//logError("statusTimeDiff d:%s t:%s diff:%d tzoffset: %f err:%v\n", d, t, rc, ci.tzOffsetSecs, err)
 	traceExitF("statusTimeDiff", 0, "Diff: %d", rc)
 	return rc
 }

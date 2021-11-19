@@ -691,7 +691,7 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 					ci = new(ObjInfo)
 					infoMap[chlName] = ci
 				}
-				ci.Description = v
+				ci.Description = printableStringUTF8(v)
 				ci.exists = true
 			}
 		}
