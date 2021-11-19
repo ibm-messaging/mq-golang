@@ -38,6 +38,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
@@ -864,21 +865,12 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 			return objectList, err
 		}
 
-		// Now get the response
-
-		getmqmd := ibmmq.NewMQMD()
-		gmo := ibmmq.NewMQGMO()
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
-		gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING
-		gmo.Options |= ibmmq.MQGMO_WAIT
-		gmo.Options |= ibmmq.MQGMO_CONVERT
-		gmo.WaitInterval = 30 * 1000
-
 		// Use a loop to make sure we're looking at the proper response from a
-		// z/OS queue manager using the MQCFT_XR mechanism
+		// z/OS queue manager using the MQCFT_XR mechanism. There is a 2ary loop
+		// inside getWithoutTruncation to try to get a complete message
 		for xr := true; xr; {
-			buf, datalen, err = getWithoutTruncation(ci.si.statusReplyQObj, getmqmd, gmo)
-
+			buf, datalen, err = getWithoutTruncation(ci.si.statusReplyQObj)
+			//logTrace("Buf starts %v",buf[0:128])
 			if err == nil {
 				cfh, offset := ibmmq.ReadPCFHeader(buf)
 				if cfh.CompCode != ibmmq.MQCC_OK {
@@ -1526,10 +1518,11 @@ func trimToNull(s string) string {
 		rc = s[0:i]
 	}
 	return strings.TrimSpace(rc)
-
 }
 
-func getWithoutTruncation(hObj ibmmq.MQObject, md *ibmmq.MQMD, gmo *ibmmq.MQGMO) ([]byte, int, error) {
+// Return a complete message - if the default buffer is too small, iterate until
+// we no longer get the MQRC_TRUNCATED_MSG_FAILED
+func getWithoutTruncation(hObj ibmmq.MQObject) ([]byte, int, error) {
 	var err error
 	datalen := 0
 	traceEntry("getWithoutTruncation")
@@ -1544,7 +1537,16 @@ func getWithoutTruncation(hObj ibmmq.MQObject, md *ibmmq.MQMD, gmo *ibmmq.MQGMO)
 	}
 
 	for trunc := true; trunc; {
-		logTrace("getWithoutTruncation: Trying MQGET with buffer size %d", len(ci.si.statusReplyBuf))
+		// Now get the response. Reset the MD and GMO on each iteration to ensure we don't get mixed up
+		// with anything that gets modified (like the CCSID) even on failed/truncated GETs.
+		md := ibmmq.NewMQMD()
+		gmo := ibmmq.NewMQGMO()
+		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
+		gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING
+		gmo.Options |= ibmmq.MQGMO_WAIT
+		gmo.Options |= ibmmq.MQGMO_CONVERT
+		gmo.WaitInterval = 30 * 1000
+		logTrace("getWithoutTruncation: Trying MQGET with buffer size %d gmo.Options %x md.ccsid %d", len(ci.si.statusReplyBuf), gmo.Options, md.CodedCharSetId)
 		datalen, err = hObj.Get(md, gmo, ci.si.statusReplyBuf)
 		if err != nil {
 			mqreturn := err.(*ibmmq.MQReturn)
@@ -1565,4 +1567,21 @@ func getWithoutTruncation(hObj ibmmq.MQObject, md *ibmmq.MQMD, gmo *ibmmq.MQGMO)
 
 	traceExit("getWithoutTruncation", 0)
 	return ci.si.statusReplyBuf, datalen, err
+}
+
+// Convert a string into something containing only valid UTF8 characters
+func printableStringUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	} else {
+		//logDebug("Fixing UTF for string %s",s)
+		return strings.Map(fixUtf8, s)
+	}
+}
+
+func fixUtf8(r rune) rune {
+	if r == utf8.RuneError {
+		return '.'
+	}
+	return r
 }

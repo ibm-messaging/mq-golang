@@ -10,7 +10,13 @@ function latestSemVer {
 # Assume repo tags have been created in a sensible order. Find the mq-golang
 # version in the root go.mod file and the current Git tag for this repo.
 # Then pick the latest version to create the Docker tag
-VERDEP=`cat ../go.mod | awk '/mq-golang/ {print $2}' `
+for m in ../go.mod ../../go.mod
+do
+  if [ -r $m ]
+  then
+   VERDEP=`cat $m | awk '/mq-golang/ {print $2}' `
+  fi
+done
 VERREPO=`git tag -l 2>/dev/null| sort | tail -1 `
 
 VER=`latestSemVer $VERDEP $VERREPO`

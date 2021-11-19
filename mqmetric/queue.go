@@ -580,7 +580,7 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 			v := elem.String[0]
 			if v != "" {
 				if qInfo, ok := qInfoMap[qName]; ok {
-					qInfo.Description = v
+					qInfo.Description = printableStringUTF8(v)
 				}
 			}
 		}
