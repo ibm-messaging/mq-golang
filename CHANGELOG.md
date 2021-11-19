@@ -1,7 +1,7 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## Nov 19 2021 - v5.2.3
+## Nov 19 2021 - v5.2.4
 * Update for MQ 9.2.4
 * ibmmq - Support for MQBNO (application balancing) structure
 * mqmetric - Ensure DESCR fields are valid UTF8 
