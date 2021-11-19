@@ -289,3 +289,33 @@ func TestRoundTo4(t *testing.T) {
 		}
 	}
 }
+
+func TestNewMQDLHWithNilMQMD(t *testing.T) {
+	dlh := NewMQDLH(nil)
+	if dlh == nil {
+		t.Logf("Expected the MQDLH to not be nil, Got: %v", dlh)
+		t.Fail()
+	}
+}
+
+func TestNewMQDLHWithMQMD(t *testing.T) {
+	mqmd := NewMQMD()
+	mqmd.PutDate = "20060102"
+	mqmd.PutTime = "150405.00"
+
+	dlh := NewMQDLH(mqmd)
+	if dlh == nil {
+		t.Logf("Expected the MQDLH to not be nil. Got: %v", dlh)
+		t.Fail()
+	}
+
+	if dlh.PutDate != mqmd.PutDate {
+		t.Logf("PutDate is wrong. Expected: %q. Got: %q", mqmd.PutDate, dlh.PutDate)
+		t.Fail()
+	}
+
+	if dlh.PutTime != mqmd.PutTime {
+		t.Logf("PutTime is wrong. Expected: %q. Got: %q", mqmd.PutTime, dlh.PutTime)
+		t.Fail()
+	}
+}
