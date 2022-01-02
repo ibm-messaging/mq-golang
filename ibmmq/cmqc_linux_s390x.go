@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2021
+* Copyright (c) IBM Corporation 1993, 2022
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -5091,4 +5091,12 @@ const (
 	MQFMT_TRIGGER                  string = "MQTRIG"
 	MQFMT_WORK_INFO_HEADER         string = "MQHWIH"
 	MQFMT_XMIT_Q_HEADER            string = "MQXMIT"
+	MQGS_NOT_IN_GROUP              rune   = ' '
+	MQGS_MSG_IN_GROUP              rune   = 'G'
+	MQGS_LAST_MSG_IN_GROUP         rune   = 'L'
+	MQSS_NOT_A_SEGMENT             rune   = ' '
+	MQSS_SEGMENT                   rune   = 'S'
+	MQSS_LAST_SEGMENT              rune   = 'L'
+	MQSEG_INHIBITED                rune   = ' '
+	MQSEG_ALLOWED                  rune   = 'A'
 )
