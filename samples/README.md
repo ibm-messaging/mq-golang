@@ -33,6 +33,7 @@ Allow use of a userid/password for authentication. There are no default values f
 * amqscb.go  : Demonstrate use of the CALLBACK capability for asynchronous consumption of messages
 * amqsbo.go  : Show how to deal with poison messages by putting them to a configured backout queue
 * amqsdlh.go : Putting a message to a DLQ with a dead-letter header
+* amqspcf.go : Demonstrate use of the PCF functions to create a command and parse a response
 
 Some trivial scripts run the sample programs in matching pairs:
 * putget.sh  : Run amqsput and then use the generated MsgId to get the same message with amqsget
