@@ -45,13 +45,11 @@ var qReplyObject ibmmq.MQObject
 const (
 	qCommandName = "SYSTEM.ADMIN.COMMAND.QUEUE"
 	qReplyName   = "SYSTEM.DEFAULT.MODEL.QUEUE"
-	blank8="        "
-	blank16 = blank8 + blank8
-		blank32 = blank16 + blank16
-		blank64 = blank32 + blank32
-
+	blank8       = "        "
+	blank16      = blank8 + blank8
+	blank32      = blank16 + blank16
+	blank64      = blank32 + blank32
 )
-
 
 func main() {
 	os.Exit(mainWithRc())
@@ -61,7 +59,7 @@ func main() {
 func mainWithRc() int {
 	// The default queue manager and queue to be used. These can be overridden on command line.
 	qMgrName := "QM1"
-	qName := "DEV.QUEUE.1"  // This is the queue on which we inquire; it is not actually opened
+	qName := "DEV.QUEUE.1" // This is the queue on which we inquire; it is not actually opened
 
 	fmt.Println("Sample AMQSPCF.GO start")
 
@@ -131,14 +129,13 @@ func mainWithRc() int {
 		}
 	}
 
-  // Now we can issue the PCF command to the queue manager and wait for responses
-  if err == nil {
-	  err = putCommandMessage(qName)
+	// Now we can issue the PCF command to the queue manager and wait for responses
+	if err == nil {
+		err = putCommandMessage(qName)
 	}
 	if err == nil {
-  	getReplies()
-  }
-
+		getReplies()
+	}
 
 	// Exit with any return code extracted from the failing MQI call.
 	// Deferred disconnect will happen after the return
@@ -160,7 +157,7 @@ func disc(qMgrObject ibmmq.MQQueueManager) error {
 	return err
 }
 
-func putCommandMessage(qName string)  error {
+func putCommandMessage(qName string) error {
 	// Create the MQMD and MQPMO structures that will
 	// be needed to put the message
 	putmqmd := ibmmq.NewMQMD()
@@ -171,14 +168,14 @@ func putCommandMessage(qName string)  error {
 	pmo.Options |= ibmmq.MQPMO_NEW_CORREL_ID
 	pmo.Options |= ibmmq.MQPMO_FAIL_IF_QUIESCING
 
-  // This is an ADMIN message, and replies need to be
+	// This is an ADMIN message, and replies need to be
 	// sent back to the designated replyQ
 	putmqmd.Format = "MQADMIN"
 	putmqmd.ReplyToQ = qReplyObject.Name
 	putmqmd.MsgType = ibmmq.MQMT_REQUEST
 	putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
-  // Create a buffer where the PCF contents will be put
+	// Create a buffer where the PCF contents will be put
 	buf := make([]byte, 0)
 
 	// A PCF command consists of the CFH structure followed
@@ -192,7 +189,7 @@ func putCommandMessage(qName string)  error {
 	// The INQUIRE_Q command is quite simple as it only needs
 	// the queue name. But the pattern is the same for each
 	// parameter, where this block gets replicated and modified as needed.
-  //
+	//
 	// The values of the parameters are put into an array;
 	// if starting again I might choose a different design for the PCFParameter
 	// structure but this works.
@@ -214,7 +211,7 @@ func putCommandMessage(qName string)  error {
 	// CFH header on the front of the buffer.
 	buf = append(cfh.Bytes(), buf...)
 
-  // Now put the message
+	// Now put the message
 	err := qCommandObject.Put(putmqmd, pmo, buf)
 	if err != nil {
 		fmt.Printf("PutCommandMessage: error is %+v\n", err)
@@ -263,18 +260,18 @@ func getReplies() error {
 				fmt.Println(err)
 			}
 		} else {
-			fmt.Printf("Got message of format %s and length %d: \n", getmqmd.Format,datalen)
+			fmt.Printf("Got message of format %s and length %d: \n", getmqmd.Format, datalen)
 
 			cfh, offset := ibmmq.ReadPCFHeader(buffer)
-      //fmt.Printf("CFH is %+v\n",cfh)
+			//fmt.Printf("CFH is %+v\n",cfh)
 
-      reason := cfh.Reason
+			reason := cfh.Reason
 			if cfh.Control == ibmmq.MQCFC_LAST {
 				allDone = true
 			}
 
 			if reason != ibmmq.MQRC_NONE {
-				fmt.Printf("Command returned error %s [%d]\n",ibmmq.MQItoString("MQRC",int(reason)),reason)
+				fmt.Printf("Command returned error %s [%d]\n", ibmmq.MQItoString("MQRC", int(reason)), reason)
 			}
 			// Can now walk through the returned buffer, extracting one parameter at a time. The
 			// bytesRead value returned from each iteration tells us where the next structure starts. Using a slice
@@ -296,26 +293,26 @@ func getReplies() error {
 // transformed into the string equivalent. The amqsevta.c sample program in the MQ product
 // has much fuller examples of how to recognise and convert the different elements.
 func printPcfParm(p *ibmmq.PCFParameter) {
-	name:=""
-	val:=""
+	name := ""
+	val := ""
 	switch p.Type {
 	case ibmmq.MQCFT_INTEGER:
-	  name = ibmmq.MQItoString("MQIA",int(p.Parameter))
+		name = ibmmq.MQItoString("MQIA", int(p.Parameter))
 		v := int(p.Int64Value[0])
 		if p.Parameter == ibmmq.MQIA_Q_TYPE {
-			val = ibmmq.MQItoString("MQQT",v)
+			val = ibmmq.MQItoString("MQQT", v)
 		} else {
-		  val  = fmt.Sprintf("%d",v)
-	  }
+			val = fmt.Sprintf("%d", v)
+		}
 	case ibmmq.MQCFT_STRING:
-		name = ibmmq.MQItoString("MQCA",int(p.Parameter))
-		val  = p.String[0]
+		name = ibmmq.MQItoString("MQCA", int(p.Parameter))
+		val = p.String[0]
 	default:
-	  // Do nothing for this example even though other types might be returned
-  }
+		// Do nothing for this example even though other types might be returned
+	}
 	if name != "" {
-	  fmt.Printf("Name: %s Value: %v\n",(name + blank64)[0:33],val)
-  }
+		fmt.Printf("Name: %s Value: %v\n", (name + blank64)[0:33], val)
+	}
 }
 
 // Close the queue if it was opened
