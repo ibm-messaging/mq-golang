@@ -1,6 +1,13 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Feb 25 2022 - v5.2.5
+* Update for MQ 9.2.5
+* ibmmq - Add MQI character constants for Group/Segment status
+* ibmmq - PCF parser now understands PCF Groups
+* samples - Add a PCF command creator/parser
+* mqmetric - Optional ReplyQ2 config parm as separate name (ibm-messaging/mq-metric-samples#100)
+
 ## Nov 19 2021 - v5.2.4
 * Update for MQ 9.2.4
 * ibmmq - Support for MQBNO (application balancing) structure

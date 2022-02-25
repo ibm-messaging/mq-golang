@@ -81,13 +81,13 @@ InitConnection connects to the queue manager, and then
 opens both the command queue and a dynamic reply queue
 to be used for all responses including the publications
 */
-func InitConnection(qMgrName string, replyQ string, cc *ConnectionConfig) error {
-	return initConnectionKey("", qMgrName, replyQ, cc)
+func InitConnection(qMgrName string, replyQ string, replyQ2 string, cc *ConnectionConfig) error {
+	return initConnectionKey("", qMgrName, replyQ, replyQ2, cc)
 }
-func InitConnectionKey(key string, qMgrName string, replyQ string, cc *ConnectionConfig) error {
-	return initConnectionKey(key, qMgrName, replyQ, cc)
+func InitConnectionKey(key string, qMgrName string, replyQ string, replyQ2 string, cc *ConnectionConfig) error {
+	return initConnectionKey(key, qMgrName, replyQ, replyQ2, cc)
 }
-func initConnectionKey(key string, qMgrName string, replyQ string, cc *ConnectionConfig) error {
+func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 string, cc *ConnectionConfig) error {
 	var err error
 	var gocd *ibmmq.MQCD
 	var mqreturn *ibmmq.MQReturn
@@ -238,7 +238,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, cc *Connectio
 	// MQOPEN of a reply queue also used for subscription delivery
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
-		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE | ibmmq.MQOO_FAIL_IF_QUIESCING
 		openOptions |= ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
@@ -246,8 +246,9 @@ func initConnectionKey(key string, qMgrName string, replyQ string, cc *Connectio
 		ci.si.replyQBaseName = replyQ
 		if err == nil {
 			ci.si.queuesOpened = true
+			clearQ(ci.si.replyQObj)
 		} else {
-			errorString = "Cannot open queue " + replyQ
+			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
 		}
 	}
@@ -255,13 +256,20 @@ func initConnectionKey(key string, qMgrName string, replyQ string, cc *Connectio
 	// MQOPEN of a second reply queue used for status polling
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
-		openOptions := ibmmq.MQOO_INPUT_AS_Q_DEF | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE | ibmmq.MQOO_FAIL_IF_QUIESCING
 		mqod.ObjectType = ibmmq.MQOT_Q
-		mqod.ObjectName = replyQ
+		ci.si.replyQ2BaseName = replyQ2
+		if replyQ2 != "" {
+			mqod.ObjectName = replyQ2
+		} else {
+			mqod.ObjectName = replyQ
+		}
 		ci.si.statusReplyQObj, err = ci.si.qMgr.Open(mqod, openOptions)
 		if err != nil {
-			errorString = "Cannot open queue " + replyQ
+			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
+		} else {
+			clearQ(ci.si.statusReplyQObj)
 		}
 	}
 

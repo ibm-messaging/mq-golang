@@ -15,6 +15,8 @@ The following interfaces are planned to be removed:
   * The replacement APIs is already available in the v5 stream.
 * InqMap - was a temporary route to replace original Inq function
   * Replacement is the current Inq function
+* The PCFParameter class will change so that instead of separate
+  int64/string etc values, there's a single {} interface object
 
 #### Package mqmetric
 * Remove direct access to xxxStatus variables.

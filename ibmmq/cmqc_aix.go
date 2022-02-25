@@ -32,8 +32,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  11/4/21 3:44 PM
-*   Build Level:   p924-L211104
+*   Generated on:  2/7/22 6:36 PM
+*   Build Level:   p925-L220207
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1021,7 +1021,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 924
+	MQCMDL_CURRENT_LEVEL           int32  = 925
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1067,6 +1067,7 @@ const (
 	MQCMDL_LEVEL_922               int32  = 922
 	MQCMDL_LEVEL_923               int32  = 923
 	MQCMDL_LEVEL_924               int32  = 924
+	MQCMDL_LEVEL_925               int32  = 925
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -2669,6 +2670,7 @@ const (
 	MQIMMREASON_NONE               int32  = 0
 	MQIMMREASON_NOT_CLIENT         int32  = 1
 	MQIMMREASON_NOT_RECONNECTABLE  int32  = 2
+	MQIMMREASON_NO_REDIRECT        int32  = 7
 	MQIMPO_CONVERT_TYPE            int32  = 2
 	MQIMPO_CONVERT_VALUE           int32  = 32
 	MQIMPO_CURRENT_LENGTH          int32  = 64

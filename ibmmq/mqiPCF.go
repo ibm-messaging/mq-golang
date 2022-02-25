@@ -51,6 +51,20 @@ type MQCFH struct {
 }
 
 /*
+MQEPH is a structure containing the MQ PCF Embedded Header fields
+It is always followed by a CFH which we do not include here
+*/
+type MQEPH struct {
+	Version        int32
+	StrucLength    int32
+	Encoding       int32
+	CodedCharSetId int32
+	Format         string
+	Control        int32
+	Flags          int32
+}
+
+/*
 PCFParameter is a structure containing the data associated with
 various types of PCF element. Use the Type field to decide which
 of the data fields is relevant.
@@ -83,6 +97,21 @@ func NewMQCFH() *MQCFH {
 	cfh.ParameterCount = 0
 
 	return cfh
+}
+
+/*
+NewMQEPH returns a PCF Embedded Header structure with correct initialisation
+*/
+func NewMQEPH() *MQEPH {
+	eph := new(MQEPH)
+	eph.StrucLength = C.MQEPH_STRUC_LENGTH_FIXED
+	eph.Version = C.MQCFH_VERSION_1
+	eph.Encoding = 0
+	eph.CodedCharSetId = C.MQCCSI_UNDEFINED
+	eph.Format = C.MQFMT_NONE
+	eph.Flags = C.MQEPH_NONE
+
+	return eph
 }
 
 /*
@@ -128,6 +157,23 @@ func (p *PCFParameter) Bytes() []byte {
 	var buf []byte
 
 	switch p.Type {
+	case C.MQCFT_GROUP:
+		buf = make([]byte, C.MQCFGR_STRUC_LENGTH)
+		offset := 0
+		l := len(p.GroupList)
+
+		endian.PutUint32(buf[offset:], uint32(p.Type))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(len(buf)))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(p.Parameter))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(l))
+		offset += 4
+		for i := 0; i < l; i++ {
+			buf = append(buf, p.GroupList[i].Bytes()...)
+		}
+
 	case C.MQCFT_INTEGER:
 		buf = make([]byte, C.MQCFIN_STRUC_LENGTH)
 		offset := 0
@@ -208,6 +254,46 @@ func ReadPCFHeader(buf []byte) (*MQCFH, int) {
 }
 
 /*
+ReadPCFEmbeddedHeader extracts the MQCFH from an MQ message
+*/
+func ReadPCFEmbeddedHeader(buf []byte) (*MQEPH, int) {
+	var dummy int32
+
+	fullLen := len(buf)
+	if fullLen < C.MQEPH_STRUC_LENGTH_FIXED {
+		return nil, 0
+	}
+
+	eph := new(MQEPH)
+	p := bytes.NewBuffer(buf)
+
+	offset := 0
+	binary.Read(p, endian, &dummy)
+	offset += 4
+	binary.Read(p, endian, &eph.Version)
+	offset += 4
+
+	binary.Read(p, endian, &eph.StrucLength)
+	offset += 4
+
+	binary.Read(p, endian, &eph.Encoding)
+	offset += 4
+
+	binary.Read(p, endian, &eph.CodedCharSetId)
+	offset += 4
+
+	s := string(buf[offset : offset+8])
+	s = trimToNull(s)
+	offset += 8
+	p.Next(8)
+
+	binary.Read(p, endian, &eph.Flags)
+	bytesRead := fullLen - p.Len()
+
+	return eph, bytesRead
+}
+
+/*
 ReadPCFParameter extracts the next PCF parameter element from an
 MQ message.
 */
@@ -278,8 +364,18 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		p.Next(int(pcfParm.strucLength - C.MQCFSL_STRUC_LENGTH_FIXED))
 
 	case C.MQCFT_GROUP:
+		// This reads the entire group, including the group elements.
+		// Which might in turn be nested groups
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &pcfParm.ParameterCount)
+		offset := 16 // Include the Type/StrucLength words in the already-read count
+		bytesRead := 0
+		pcfParm.GroupList = make([]*PCFParameter, pcfParm.ParameterCount)
+		for i := 0; i < int(pcfParm.ParameterCount); i++ {
+			pcfParm.GroupList[i], bytesRead = ReadPCFParameter(buf[offset:])
+			offset += bytesRead
+		}
+		return pcfParm, offset
 
 	case C.MQCFT_BYTE_STRING:
 		// The byte string is converted to a hex string as that's how
@@ -297,7 +393,9 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		// TODO: Put this in something like an environment variable control option
 		localerr := fmt.Errorf("mqiPCF.go: Unknown PCF type %d", pcfParm.Type)
 		fmt.Println("Error: ", localerr)
+		fmt.Println("Buffer Len: ", len(buf))
 		fmt.Println("Buffer: ", buf)
+
 		debug.PrintStack()
 		// After dumping the stack, we will try to carry on regardless.
 		// Skip the remains of this structure, assuming it really is

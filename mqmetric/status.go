@@ -144,10 +144,7 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 	return rc
 }
 
-func statusClearReplyQ() {
-	traceEntry("statusClearReplyQ")
-	ci := getConnection(GetConnectionKey())
-
+func clearQ(hObj ibmmq.MQObject) {
 	buf := make([]byte, 0)
 	// Empty replyQ in case any left over from previous errors
 	for ok := true; ok; {
@@ -158,12 +155,21 @@ func statusClearReplyQ() {
 		gmo.Options |= ibmmq.MQGMO_NO_WAIT
 		gmo.Options |= ibmmq.MQGMO_CONVERT
 		gmo.Options |= ibmmq.MQGMO_ACCEPT_TRUNCATED_MSG
-		_, err := ci.si.statusReplyQObj.Get(getmqmd, gmo, buf)
+		_, err := hObj.Get(getmqmd, gmo, buf)
 
 		if err != nil && err.(*ibmmq.MQReturn).MQCC == ibmmq.MQCC_FAILED {
 			ok = false
 		}
 	}
+	return
+}
+
+func statusClearReplyQ() {
+	traceEntry("statusClearReplyQ")
+	ci := getConnection(GetConnectionKey())
+
+	clearQ(ci.si.statusReplyQObj)
+
 	traceExit("statusClearReplyQ", 0)
 	return
 }

@@ -319,7 +319,7 @@ func printPcfParm(p *ibmmq.PCFParameter) {
 func close(object ibmmq.MQObject) error {
 	err := object.Close(0)
 	if err == nil {
-		fmt.Println("Closed queue")
+		fmt.Println("Closed queue " + object.Name)
 	} else {
 		fmt.Println(err)
 	}

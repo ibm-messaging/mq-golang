@@ -185,11 +185,14 @@ func VerifyConfig() (int32, error) {
 
 			// Make sure this reply queue that has been opened is not a predefined queue, so it
 			// has come from a model definition. The base replyQ is opened twice for different reasons.
-			// A LOCAL queue would end up with mixed sets of replies/publications
-			defType := v[ibmmq.MQIA_DEFINITION_TYPE].(int32)
-			if defType == ibmmq.MQQDT_PREDEFINED {
-				err = fmt.Errorf("Error: ReplyQ parameter %s must refer to a MODEL queue,", ci.si.replyQBaseName)
-				compCode = ibmmq.MQCC_FAILED
+			// A LOCAL queue would end up with mixed sets of replies/publications.
+			// This test is bypassed if 2 different reply queue names are configured.
+			if ci.si.replyQ2BaseName == "" || ci.si.replyQ2BaseName == ci.si.replyQBaseName {
+				defType := v[ibmmq.MQIA_DEFINITION_TYPE].(int32)
+				if defType == ibmmq.MQQDT_PREDEFINED {
+					err = fmt.Errorf("Error: ReplyQ parameter %s must refer to a MODEL queue,", ci.si.replyQBaseName)
+					compCode = ibmmq.MQCC_FAILED
+				}
 			}
 		}
 	}
@@ -1198,13 +1201,14 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
 		offset += bytesRead
 		// Have we now reached the end of the message
+		// We now understand PCF Groups so don't need to extract them explicitly
 		elemList = append(elemList, elem)
 		if elem.Type == ibmmq.MQCFT_GROUP {
 			groupElem := elem
 			for j := 0; j < int(groupElem.ParameterCount); j++ {
-				elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
-				offset += bytesRead
-				groupElem.GroupList = append(groupElem.GroupList, elem)
+				//elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+				//offset += bytesRead
+				//groupElem.GroupList = append(groupElem.GroupList, elem)
 			}
 		}
 

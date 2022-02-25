@@ -1421,6 +1421,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_923"
 		case 924:
 			s = "MQCMDL_LEVEL_924"
+		case 925:
+			s = "MQCMDL_LEVEL_925"
 		default:
 			s = ""
 		}
@@ -2495,6 +2497,8 @@ func MQItoString(class string, value int) string {
 			s = "MQIMMREASON_IN_TRANSACTION"
 		case 6:
 			s = "MQIMMREASON_AWAITS_REPLY"
+		case 7:
+			s = "MQIMMREASON_NO_REDIRECT"
 		default:
 			s = ""
 		}

@@ -29,6 +29,7 @@ type sessionInfo struct {
 	replyQObj       ibmmq.MQObject
 	qMgrObject      ibmmq.MQObject
 	replyQBaseName  string
+	replyQ2BaseName string
 	statusReplyQObj ibmmq.MQObject
 	statusReplyBuf  []byte
 

@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2021
+  Copyright (c) IBM Corporation 2016,2022
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -34,9 +34,9 @@ to select what can be done.
 
 void freeCnoCCDTUrl(MQCNO *mqcno) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
-	if (mqcno->CCDTUrlPtr != NULL) {
-		free(mqcno->CCDTUrlPtr);
-	}
+  if (mqcno->CCDTUrlPtr != NULL) {
+    free(mqcno->CCDTUrlPtr);
+  }
 #endif
 }
 
@@ -44,17 +44,17 @@ void setCnoCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
   if (mqcno->Version < MQCNO_VERSION_6) {
 	  mqcno->Version = MQCNO_VERSION_6;
-	}
-	mqcno->CCDTUrlOffset = 0;
-	mqcno->CCDTUrlPtr = NULL;
-	mqcno->CCDTUrlLength = length;
-	if (url != NULL && length > 0) {
-		mqcno->CCDTUrlPtr = url;
-	}
+  }
+  mqcno->CCDTUrlOffset = 0;
+  mqcno->CCDTUrlPtr = NULL;
+  mqcno->CCDTUrlLength = length;
+  if (url != NULL && length > 0) {
+    mqcno->CCDTUrlPtr = url;
+  }
 #else
-	if (url != NULL) {
-		free(url);
-	}
+  if (url != NULL) {
+    free(url);
+  }
 #endif
 }
 
@@ -75,21 +75,21 @@ void setCnoApplName(MQCNO *mqcno, PMQCHAR applName, MQLONG length) {
   return;
 }
 
-// A totally new structure in MQ 9.2.4. In order to handle builds against older versions of MQ
+// A new structure in MQ 9.2.4. In order to handle builds against older versions of MQ
 // we have to extract the individual fields from the Go version of the structure first. And
 // we then use those as separate parameters to this function.
 void setCnoBalanceParms(MQCNO *mqcno, MQLONG ApplType, MQLONG Timeout, MQLONG Options) {
 #if defined(MQCNO_VERSION_8) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_8
   PMQBNO pmqbno = malloc(MQBNO_CURRENT_LENGTH); // This is freed on return from the C function
   pmqbno->Version = MQBNO_VERSION_1;
-	memcpy(pmqbno->StrucId,MQBNO_STRUC_ID,4);
+  memcpy(pmqbno->StrucId,MQBNO_STRUC_ID,4);
   pmqbno->ApplType = ApplType;
   pmqbno->Timeout = Timeout;
   pmqbno->Options = Options;
   mqcno->BalanceParmsPtr = pmqbno;
-	mqcno->BalanceParmsOffset = 0;
+  mqcno->BalanceParmsOffset = 0;
   if (mqcno->Version < MQCNO_VERSION_8) {
-  	mqcno->Version = MQCNO_VERSION_8;
+    mqcno->Version = MQCNO_VERSION_8;
   }
 #endif
   return;
@@ -98,8 +98,8 @@ void setCnoBalanceParms(MQCNO *mqcno, MQLONG ApplType, MQLONG Timeout, MQLONG Op
 void freeCnoBalanceParms(MQCNO *mqcno) {
 #if defined(MQCNO_VERSION_8) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_8
   if (mqcno->Version >= MQCNO_VERSION_8 && mqcno->BalanceParmsPtr != NULL) {
-	  free(mqcno->BalanceParmsPtr);
-	}
+    free(mqcno->BalanceParmsPtr);
+  }
 #endif
   return;
 }
