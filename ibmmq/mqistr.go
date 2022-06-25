@@ -1423,6 +1423,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_924"
 		case 925:
 			s = "MQCMDL_LEVEL_925"
+		case 930:
+			s = "MQCMDL_LEVEL_930"
 		default:
 			s = ""
 		}
@@ -2081,6 +2083,8 @@ func MQItoString(class string, value int) string {
 			s = "MQFB_IIH_ERROR"
 		case 298:
 			s = "MQFB_NOT_AUTHORIZED_FOR_IMS"
+		case 299:
+			s = "MQFB_DATA_LENGTH_TOO_SHORT"
 		case 300:
 			s = "MQFB_IMS_ERROR"
 		case 401:

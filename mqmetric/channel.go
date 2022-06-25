@@ -354,6 +354,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	ci := getConnection(GetConnectionKey())
 	os := &ci.objectStatus[OT_CHANNEL]
 	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
+	chlType := ibmmq.MQCHT_ALL
 	chlName := ""
 	connName := ""
 	jobName := ""
@@ -396,6 +397,8 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			startTime = strings.TrimSpace(elem.String[0])
 		case ibmmq.MQCACH_CHANNEL_START_DATE:
 			startDate = strings.TrimSpace(elem.String[0])
+		case ibmmq.MQIACH_CHANNEL_TYPE:
+			chlType = int32(elem.Int64Value[0])
 		}
 	}
 
@@ -407,6 +410,10 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		rqmName = DUMMY_STRING
 	}
 	if jobName == "" || allZero(jobName) {
+		jobName = DUMMY_STRING
+	}
+
+	if chlType == ibmmq.MQCHT_SVRCONN && ci.hideSvrConnJobname {
 		jobName = DUMMY_STRING
 	}
 

@@ -39,7 +39,16 @@ then
 else
   dfile="runSample.deb.Dockerfile"
 fi
-docker build -t $TAG:$VER -f  $dfile .
+
+# Setting NOCACHE environment variable will force a complete rebuild of the container
+# which might be useful for some testing
+if [ ! -z "$NOCACHE" ]
+then
+  nocache="--no-cache"
+else
+  nocache=""
+fi
+docker build $nocache -t $TAG:$VER -f  $dfile .
 
 if [ $? -eq 0 ]
 then

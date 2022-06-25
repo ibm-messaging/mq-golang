@@ -26,6 +26,32 @@ package ibmmq
 #include <cmqc.h>
 #include <cmqxc.h>
 
+void setScoKeyRepoPassword(MQSCO *mqsco, PMQCHAR keyRepoPassword, MQLONG length) {
+#if defined(MQSCO_VERSION_6) && MQSCO_CURRENT_VERSION >= MQSCO_VERSION_6
+  if (mqsco->Version < MQSCO_VERSION_6) {
+	  mqsco->Version = MQSCO_VERSION_6;
+  }
+  mqsco->KeyRepoPasswordOffset = 0;
+  mqsco->KeyRepoPasswordPtr = NULL;
+  mqsco->KeyRepoPasswordLength = length;
+  if (keyRepoPassword != NULL && length > 0) {
+    mqsco->KeyRepoPasswordPtr = keyRepoPassword;
+  }
+#else
+  if (keyRepoPasswordPtr != NULL) {
+    free(keyRepoPasswordPtr);
+  }
+#endif
+}
+
+void freeScoKeyRepoPassword(MQSCO *mqsco) {
+#if defined(MQSCO_VERSION_6) && MQSCO_CURRENT_VERSION >= MQSCO_VERSION_6
+  if (mqsco->KeyRepoPasswordPtr != NULL) {
+    free(mqsco->KeyRepoPasswordPtr);
+  }
+#endif
+}
+
 */
 import "C"
 
@@ -41,6 +67,7 @@ type MQSCO struct {
 	EncryptionPolicySuiteB [4]int32
 	CertificateValPolicy   int32
 	CertificateLabel       string
+	KeyRepoPassword        string
 }
 
 /*
@@ -60,6 +87,7 @@ func NewMQSCO() *MQSCO {
 	}
 	sco.CertificateValPolicy = int32(C.MQ_CERT_VAL_POLICY_DEFAULT)
 	sco.CertificateLabel = ""
+	sco.KeyRepoPassword = ""
 
 	return sco
 }
@@ -89,13 +117,17 @@ func copySCOtoC(mqsco *C.MQSCO, gosco *MQSCO) {
 	mqsco.CertificateValPolicy = C.MQLONG(gosco.CertificateValPolicy)
 	setMQIString((*C.char)(&mqsco.CertificateLabel[0]), gosco.CertificateLabel, C.MQ_CERT_LABEL_LENGTH)
 
+	if gosco.KeyRepoPassword != "" {
+		C.setScoKeyRepoPassword(mqsco, C.PMQCHAR(C.CString(gosco.KeyRepoPassword)), C.MQLONG(len(gosco.KeyRepoPassword)))
+	}
 	return
 }
 
 /*
-All of the parameters in the MQSCO are input only.
+Only need to free the KeyRepoPassword if it were set
 */
 func copySCOfromC(mqsco *C.MQSCO, gosco *MQSCO) {
+	C.freeScoKeyRepoPassword(mqsco) // The code in this function checks validity
 
 	return
 }

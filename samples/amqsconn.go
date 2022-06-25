@@ -79,7 +79,7 @@ func main() {
 
 	// MQ V9.1.2 allows applications to specify their own names. This is ignored
 	// by older levels of the MQ libraries.
-	cno.ApplName = "Golang 9.1.2 ApplName"
+	cno.ApplName = "Golang ApplName"
 
 	// Also fill in the userid and password if the MQSAMP_USER_ID
 	// environment variable is set. This is the same variable used by the C

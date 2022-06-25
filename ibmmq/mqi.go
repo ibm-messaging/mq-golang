@@ -126,6 +126,14 @@ func (e *MQReturn) Error() string {
 	return mqstrerror(e.verb, C.MQLONG(e.MQCC), C.MQLONG(e.MQRC))
 }
 
+func IsUsableHObj(o MQObject) bool {
+	if o.hObj != C.MQHO_UNUSABLE_HOBJ {
+		return true
+	} else {
+		return false
+	}
+}
+
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
 const space8 = "        "
 const (

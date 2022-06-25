@@ -44,10 +44,13 @@ type ConnectionConfig struct {
 	UseStatus            bool
 	UseResetQStats       bool
 	ShowInactiveChannels bool
+	HideSvrConnJobname   bool
 
 	CcdtUrl  string
 	ConnName string
 	Channel  string
+
+	DurableSubPrefix string
 }
 
 // Which objects are available for subscription. How
@@ -73,6 +76,13 @@ type MQMetricError struct {
 	MQReturn *ibmmq.MQReturn
 }
 
+type MQTopicDescriptor struct {
+	hObj    ibmmq.MQObject
+	topic   string
+	durable bool
+	managed bool
+}
+
 func (e MQMetricError) Error() string { return e.Err + " : " + e.MQReturn.Error() }
 func (e MQMetricError) Unwrap() error { return e.MQReturn }
 
@@ -93,7 +103,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 	var mqreturn *ibmmq.MQReturn
 	var errorString = ""
 
-	traceEntryF("InitConnection", "QMgrName %s", qMgrName)
+	traceEntryF("initConnectionKey", "QMgrName %s", qMgrName)
 
 	initConnection(key)
 
@@ -105,6 +115,8 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 
 	ci.tzOffsetSecs = cc.TZOffsetSecs
 	ci.showInactiveChannels = cc.ShowInactiveChannels
+	ci.hideSvrConnJobname = cc.HideSvrConnJobname
+	ci.durableSubPrefix = cc.DurableSubPrefix
 
 	// Explicitly force client mode if requested. Otherwise use the "default"
 	// Client mode can be come from a simple boolean, or from having
@@ -199,8 +211,9 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 				} else {
 					if cc.UsePublications == true {
 						if ci.si.commandLevel < 900 && ci.si.platform != ibmmq.MQPL_APPLIANCE {
-							//err = fmt.Errorf("Queue manager must be at least V9.0 for full monitoring. The ibmmq.usePublications configuration parameter can be used to permit limited monitoring.")
-							errorString = "Unsupported system"
+							errorString = "Unsupported system: Queue manager must be at least V9.0 for full monitoring. Disable the usePublications attribute for limited capability."
+							err = fmt.Errorf(errorString)
+							mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_FAILED, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
 						} else {
 							ci.usePublications = cc.UsePublications
 						}
@@ -273,16 +286,21 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 		}
 	}
 
+	// Start from a clean set of subscriptions. Errors from this can be ignored.
+	if err == nil && ci.durableSubPrefix != "" && ci.usePublications {
+		clearDurableSubscriptions(ci.durableSubPrefix, ci.si.cmdQObj, ci.si.statusReplyQObj)
+	}
+
 	if err != nil {
 		if mqreturn == nil {
 			mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_WARNING, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
 		}
-		traceExitErr("InitConnection", 1, mqreturn)
+		traceExitErr("initConnectionKey", 1, mqreturn)
 		return MQMetricError{Err: errorString, MQReturn: mqreturn}
 	}
 
-	logTrace("initConnection: Queue manager resolved info - %+v", ci.si)
-	traceExitErr("InitConnection", 0, mqreturn)
+	logTrace("initConnectionKey: Queue manager resolved info - %+v", ci /*.si*/)
+	traceExitErr("initConnectionKey", 0, mqreturn)
 
 	return err
 }
@@ -304,7 +322,7 @@ func EndConnection() {
 		for _, cl := range m.Classes {
 			for _, ty := range cl.Types {
 				for _, hObj := range ty.subHobj {
-					hObj.Close(0)
+					hObj.unsubscribe()
 				}
 			}
 		}
@@ -376,27 +394,41 @@ replyQ is used for publications; we do not use a managed queue here,
 so that everything can be read from one queue. The object handle for the
 subscription is returned so we can close it when it's no longer needed.
 */
-func subscribe(topic string, pubQObj *ibmmq.MQObject) (ibmmq.MQObject, error) {
-	return subscribeWithOptions(topic, pubQObj, false)
+func subscribe(topic string, pubQObj *ibmmq.MQObject) (*MQTopicDescriptor, error) {
+	return subscribeWithOptions(topic, pubQObj, false, false)
+}
+
+func subscribeDurable(topic string, pubQObj *ibmmq.MQObject) (*MQTopicDescriptor, error) {
+	return subscribeWithOptions(topic, pubQObj, false, true)
 }
 
 /*
-subscribe to the nominated topic, but ask the queue manager to
+subscribe to the 	} else {
+								s.removeSubscription()
+							}nominated topic, but ask the queue manager to
 allocate the replyQ for us
 */
-func subscribeManaged(topic string, pubQObj *ibmmq.MQObject) (ibmmq.MQObject, error) {
-	return subscribeWithOptions(topic, pubQObj, true)
+func subscribeManaged(topic string, pubQObj *ibmmq.MQObject) (*MQTopicDescriptor, error) {
+	return subscribeWithOptions(topic, pubQObj, true, false)
 }
 
-func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (ibmmq.MQObject, error) {
+func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool, durable bool) (*MQTopicDescriptor, error) {
 	var err error
 
 	traceEntry("subscribeWithOptions")
+
+	mqtd := new(MQTopicDescriptor)
 	ci := getConnection(GetConnectionKey())
 
 	mqsd := ibmmq.NewMQSD()
 	mqsd.Options = ibmmq.MQSO_CREATE
-	mqsd.Options |= ibmmq.MQSO_NON_DURABLE
+
+	if durable {
+		mqsd.Options |= ibmmq.MQSO_DURABLE | ibmmq.MQSO_RESUME
+		mqsd.SubName = ci.durableSubPrefix + "_" + topic
+	} else {
+		mqsd.Options |= ibmmq.MQSO_NON_DURABLE
+	}
 	mqsd.Options |= ibmmq.MQSO_FAIL_IF_QUIESCING
 	if managed {
 		mqsd.Options |= ibmmq.MQSO_MANAGED
@@ -404,21 +436,213 @@ func subscribeWithOptions(topic string, pubQObj *ibmmq.MQObject, managed bool) (
 
 	mqsd.ObjectString = topic
 
-	subObj, err := ci.si.qMgr.Sub(mqsd, pubQObj)
+	hObj, err := ci.si.qMgr.Sub(mqsd, pubQObj)
 	if err != nil {
 		extraInfo := ""
 		mqrc := err.(*ibmmq.MQReturn).MQRC
 		switch mqrc {
 		case ibmmq.MQRC_HANDLE_NOT_AVAILABLE:
 			extraInfo = "You may need to increase the MAXHANDS attribute on the queue manager."
+		case ibmmq.MQRC_INVALID_DESTINATION:
+			extraInfo = "You cannot use durable subcriptions with temporary dynamic (model) reply queues. Configure system with predefined reply queues"
 		}
+
 		e2 := fmt.Errorf("Error subscribing to topic '%s': %v %s", topic, err, extraInfo)
 		traceExitErr("subscribeWithOptions", 1, e2)
-		return subObj, e2
+		return mqtd, e2
+	}
+
+	mqtd.hObj = hObj
+	mqtd.durable = durable
+	mqtd.topic = topic
+	mqtd.managed = managed
+
+	if durable {
+		// The subscription can be closed immediately, but still left to
+		// collect messages (ie don't use the MQCO_REMOVE_DURABLE option).
+		// This can help reduce MAXHANDS impact.
+		mqtd.hObj.Close(0)
 	}
 
 	traceExitErr("subscribeWithOptions", 0, err)
-	return subObj, err
+	return mqtd, err
+}
+
+/*
+We work with durable subscriptions normally by closing them immediately after setting them up. Leaving the
+subscription in place, publications are still going to the designated output queue. But if we want to
+delete them, then we need an hObj. So we redo the subscribe in order to get the hObj that allows it to be
+deleted. We have to use the same destination queue as is already being used.
+*/
+func (mqtd *MQTopicDescriptor) unsubscribe() {
+	var err error
+
+	traceEntry("unsubscribe")
+	topic := mqtd.topic
+	logTrace("Removing subscription for %+v ", mqtd)
+	if mqtd.durable {
+		if ibmmq.IsUsableHObj(mqtd.hObj) {
+			mqtd.hObj.Close(ibmmq.MQCO_REMOVE_SUB)
+		} else {
+
+			ci := getConnection(GetConnectionKey())
+
+			mqsd := ibmmq.NewMQSD()
+			mqsd.Options = ibmmq.MQSO_CREATE | ibmmq.MQSO_RESUME | ibmmq.MQSO_DURABLE | ibmmq.MQSO_FAIL_IF_QUIESCING
+			mqsd.SubName = ci.durableSubPrefix + "_" + topic
+			mqsd.ObjectString = topic
+
+			subObj, err := ci.si.qMgr.Sub(mqsd, &ci.si.replyQObj)
+			if err == nil {
+				err = subObj.Close(ibmmq.MQCO_REMOVE_SUB)
+			} else {
+				logDebug("Resub failed for %s with %v %+v", topic, err, subObj)
+			}
+		}
+	} else {
+		err = mqtd.hObj.Close(ibmmq.MQCO_REMOVE_SUB)
+	}
+
+	// The error is not returned, but we do log it in the trace
+	traceExitErr("unsubscribe", 0, err)
+}
+
+/*
+Try to delete any durable subscriptions that exist at startup that correspond to our prefix.
+Any errors are ignored here, as this is best-effort. Deletion can only be done one object at a
+time (no wildcards). So we have to first issue an inquire to get a list of the subscriptions
+associated with our prefix. For each of them, then do the delete. This is a best-effort cleanup
+so mostly ignore errors.
+
+We can't use the resubscribe/close technique here because a) we don't know in advance what the
+subscription names are and b) we don't know which queue is attached - the collector configuration
+might have changed. So we do this cleanup using the PCF commands.
+*/
+func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj ibmmq.MQObject) {
+	var err error
+
+	subNameList := make(map[string]string)
+	traceEntry("clearDurableSubscriptions")
+
+	clearQ(replyQObj)
+	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+
+	// Can allow all the other fields to default
+	cfh.Command = ibmmq.MQCMD_INQUIRE_SUBSCRIPTION
+
+	// Add the parameters one at a time into a buffer
+	pcfparm := new(ibmmq.PCFParameter)
+	pcfparm.Type = ibmmq.MQCFT_STRING
+	pcfparm.Parameter = ibmmq.MQCACF_SUB_NAME
+	pcfparm.String = []string{prefix + "_*"} // This is the pattern for all our durable subs
+	cfh.ParameterCount++
+	buf = append(buf, pcfparm.Bytes()...)
+
+	pcfparm = new(ibmmq.PCFParameter)
+	pcfparm.Type = ibmmq.MQCFT_INTEGER
+	pcfparm.Parameter = ibmmq.MQIACF_DURABLE_SUBSCRIPTION
+	pcfparm.Int64Value = []int64{int64(ibmmq.MQSUB_DURABLE_YES)} // This is the pattern for all our durable subs
+	cfh.ParameterCount++
+	buf = append(buf, pcfparm.Bytes()...)
+
+	// Once we know the total number of parameters, put the
+	// CFH header on the front of the buffer.
+	buf = append(cfh.Bytes(), buf...)
+
+	// And now put the command to the queue
+	err = cmdQObj.Put(putmqmd, pmo, buf)
+	if err != nil {
+		traceExitErr("clearDurableSubscriptions", 1, err)
+		return
+	}
+
+	// Now get the responses - loop until all have been received (one
+	// per queue) or we run out of time
+	for allReceived := false; !allReceived; {
+		cfh, buf, allReceived, err = statusGetReply()
+		if buf != nil {
+			subName, subId := parseInqSubData(cfh, buf)
+			if subName != "" {
+				subNameList[subName] = subId
+			}
+		}
+	}
+
+	// For each of th returned subscription names, do the delete
+	for subName, _ := range subNameList {
+		logDebug("About to delete subscription %s", subName)
+		clearQ(replyQObj)
+
+		putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+		// Can allow all the other fields to default
+		cfh.Command = ibmmq.MQCMD_DELETE_SUBSCRIPTION
+
+		// Add the parameters one at a time into a buffer
+		pcfparm := new(ibmmq.PCFParameter)
+		pcfparm.Type = ibmmq.MQCFT_STRING
+		pcfparm.Parameter = ibmmq.MQCACF_SUB_NAME
+		pcfparm.String = []string{subName}
+		cfh.ParameterCount++
+		buf = append(buf, pcfparm.Bytes()...)
+
+		// Once we know the total number of parameters, put the
+		// CFH header on the front of the buffer.
+		buf = append(cfh.Bytes(), buf...)
+
+		// And now put the command to the queue
+		err = cmdQObj.Put(putmqmd, pmo, buf)
+		if err != nil {
+			traceExitErr("clearDurableSubscriptions", 2, err)
+			return
+		}
+
+		// Don't really care about the responses, just loop until
+		// the operation is complete one way or the other
+		for allReceived := false; !allReceived; {
+			_, _, allReceived, _ = statusGetReply()
+		}
+	}
+
+	traceExitErr("clearDurableSubscriptions", 0, err)
+
+}
+
+// Given a PCF response message, parse it to extract the desired fields
+func parseInqSubData(cfh *ibmmq.MQCFH, buf []byte) (string, string) {
+	var elem *ibmmq.PCFParameter
+
+	traceEntry("parseInqSubData")
+
+	subName := ""
+	subId := ""
+
+	parmAvail := true
+	bytesRead := 0
+	offset := 0
+	datalen := len(buf)
+	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseInqSubData", 1)
+		return "", ""
+	}
+
+	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+		offset += bytesRead
+		// Have we now reached the end of the message
+		if offset >= datalen {
+			parmAvail = false
+		}
+
+		switch elem.Parameter {
+		case ibmmq.MQCACF_SUB_NAME:
+			subName = trimToNull(elem.String[0])
+		case ibmmq.MQBACF_SUB_ID:
+			subId = trimToNull(elem.String[0])
+		}
+	}
+
+	traceExitF("parseInqSubData", 0, "SubName: %s SubId:%s ", subName, subId)
+	return subName, subId
 }
 
 /*

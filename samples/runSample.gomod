@@ -3,5 +3,5 @@ module amqsput/v5
 go 1.13
 
 require (
-	github.com/ibm-messaging/mq-golang/v5 v5
+	github.com/ibm-messaging/mq-golang/v5 latest
 )
