@@ -38,8 +38,8 @@ void setScoKeyRepoPassword(MQSCO *mqsco, PMQCHAR keyRepoPassword, MQLONG length)
     mqsco->KeyRepoPasswordPtr = keyRepoPassword;
   }
 #else
-  if (keyRepoPasswordPtr != NULL) {
-    free(keyRepoPasswordPtr);
+  if (keyRepoPassword != NULL) {
+    free(keyRepoPassword);
   }
 #endif
 }

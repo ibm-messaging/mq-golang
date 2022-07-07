@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Jul 23 2022 - v5.3.1
+- Fix #189 compile problem
+
 ## Jun 23 2022 - v5.3.0
 - Update for MQ 9.3.0
 - ibmmq - Add MQI parameters for keystore passwords
