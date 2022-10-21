@@ -26,7 +26,7 @@
 # Start by setting some global variables that can still be overridden on the build command line.
 ARG BASE_IMAGE=ubuntu:18.04
 ARG GOPATH_ARG="/go"
-ARG GOVERSION=1.13.15
+ARG GOVERSION=1.17       
 
 ###########################################################
 # This starts the BUILD phase
@@ -74,7 +74,7 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
-    VRMF=9.3.0.0
+    VRMF=9.3.1.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package

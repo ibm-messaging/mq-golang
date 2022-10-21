@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  6/6/22 6:08 PM
-*   Build Level:   p930-L220606
+*   Generated on:  9/29/22 4:30 PM
+*   Build Level:   p931-L220929.1
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -811,6 +811,8 @@ const (
 	MQCD_VERSION_7                 int32  = 7
 	MQCD_VERSION_8                 int32  = 8
 	MQCD_VERSION_9                 int32  = 9
+	MQCEX_AS_PARENT                int32  = -2
+	MQCEX_NOLIMIT                  int32  = -1
 	MQCFACCESS_DISABLED            int32  = 2
 	MQCFACCESS_ENABLED             int32  = 0
 	MQCFACCESS_SUSPENDED           int32  = 1
@@ -1021,7 +1023,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 930
+	MQCMDL_CURRENT_LEVEL           int32  = 931
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1069,6 +1071,7 @@ const (
 	MQCMDL_LEVEL_924               int32  = 924
 	MQCMDL_LEVEL_925               int32  = 925
 	MQCMDL_LEVEL_930               int32  = 930
+	MQCMDL_LEVEL_931               int32  = 931
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1604,6 +1607,7 @@ const (
 	MQFC_YES                       int32  = 1
 	MQFIELD_WQR_CLWLQueuePriority  int32  = 8013
 	MQFIELD_WQR_CLWLQueueRank      int32  = 8014
+	MQFIELD_WQR_CapExpiry          int32  = 8016
 	MQFIELD_WQR_ClusterRecOffset   int32  = 8006
 	MQFIELD_WQR_DefBind            int32  = 8009
 	MQFIELD_WQR_DefPersistence     int32  = 8010
@@ -2417,6 +2421,7 @@ const (
 	MQIA_BASE_TYPE                 int32  = 193
 	MQIA_BATCH_INTERFACE_AUTO      int32  = 86
 	MQIA_BRIDGE_EVENT              int32  = 74
+	MQIA_CAP_EXPIRY                int32  = 276
 	MQIA_CERT_VAL_POLICY           int32  = 252
 	MQIA_CF_CFCONLOS               int32  = 246
 	MQIA_CF_LEVEL                  int32  = 70
@@ -2488,7 +2493,7 @@ const (
 	MQIA_IP_ADDRESS_VERSION        int32  = 93
 	MQIA_KEY_REUSE_COUNT           int32  = 267
 	MQIA_LAST                      int32  = 2000
-	MQIA_LAST_USED                 int32  = 275
+	MQIA_LAST_USED                 int32  = 276
 	MQIA_LDAP_AUTHORMD             int32  = 263
 	MQIA_LDAP_NESTGRP              int32  = 264
 	MQIA_LDAP_SECURE_COMM          int32  = 261
@@ -4602,14 +4607,21 @@ const (
 	MQWQR3_LENGTH_1                int32  = 200
 	MQWQR3_LENGTH_2                int32  = 208
 	MQWQR3_LENGTH_3                int32  = 212
-	MQWQR_CURRENT_LENGTH           int32  = 212
-	MQWQR_CURRENT_VERSION          int32  = 3
+	MQWQR4_CURRENT_LENGTH          int32  = 216
+	MQWQR4_LENGTH_1                int32  = 200
+	MQWQR4_LENGTH_2                int32  = 208
+	MQWQR4_LENGTH_3                int32  = 212
+	MQWQR4_LENGTH_4                int32  = 216
+	MQWQR_CURRENT_LENGTH           int32  = 216
+	MQWQR_CURRENT_VERSION          int32  = 4
 	MQWQR_LENGTH_1                 int32  = 200
 	MQWQR_LENGTH_2                 int32  = 208
 	MQWQR_LENGTH_3                 int32  = 212
+	MQWQR_LENGTH_4                 int32  = 216
 	MQWQR_VERSION_1                int32  = 1
 	MQWQR_VERSION_2                int32  = 2
 	MQWQR_VERSION_3                int32  = 3
+	MQWQR_VERSION_4                int32  = 4
 	MQWS_CHAR                      int32  = 1
 	MQWS_DEFAULT                   int32  = 0
 	MQWS_TOPIC                     int32  = 2

@@ -35,6 +35,8 @@ FROM $BASE_IMAGE AS builder
 ARG GOPATH_ARG
 ENV GOPATH=$GOPATH_ARG \
     ORG="github.com/ibm-messaging"
+ARG GOVERSION=1.17
+
 
 # Install the Go compiler and some other tools. The version of Go that
 # is available from the repository is new enough that we don't need to
@@ -52,7 +54,7 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
-    VRMF=9.3.0.0
+    VRMF=9.3.1.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package

@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2021
+  Copyright (c) IBM Corporation 2018,2022
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -31,9 +31,10 @@ about MQ queues
 
 import (
 	//	"fmt"
-	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strings"
 	"time"
+
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 const (
@@ -352,7 +353,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQCA_Q_DESC)}
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQCA_Q_DESC), int64(ibmmq.MQCA_CLUSTER_NAME)}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -583,6 +584,14 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 					qInfo.Description = printableStringUTF8(v)
 				}
 			}
+
+		case ibmmq.MQCA_CLUSTER_NAME:
+			v := elem.String[0]
+			if v != "" {
+				if qInfo, ok := qInfoMap[qName]; ok {
+					qInfo.Cluster = printableStringUTF8(v)
+				}
+			}
 		}
 
 	}
@@ -594,4 +603,32 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 // Return a standardised value.
 func QueueNormalise(attr *StatusAttribute, v int64) float64 {
 	return statusNormalise(attr, v)
+}
+
+// Return the nominated MQCA* attribute from the object's attributes
+// stored in the map
+func GetQueueAttribute(key string, attribute int32) string {
+	var o *ObjInfo
+	v := "-"
+	ok := false
+
+	o, ok = qInfoMap[key]
+
+	if !ok {
+		// return something so Prometheus doesn't turn it into "0.0"
+		return "-"
+	}
+
+	switch attribute {
+	case ibmmq.MQCA_CLUSTER_NAME:
+		v = o.Cluster
+	default:
+		v = "-"
+	}
+	v = strings.TrimSpace(v)
+
+	if v == "" {
+		v = "-"
+	}
+	return v
 }

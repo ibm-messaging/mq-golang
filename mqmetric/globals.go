@@ -1,7 +1,7 @@
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2021
+  Copyright (c) IBM Corporation 2016, 2022
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -52,7 +52,9 @@ type connectionInfo struct {
 	useResetQStats       bool
 	showInactiveChannels bool
 	hideSvrConnJobname   bool
-	durableSubPrefix     string
+	hideAMQPClientId     bool
+
+	durableSubPrefix string
 
 	// Only issue the warning about a '/' in an object name once.
 	globalSlashWarning bool
@@ -94,12 +96,14 @@ const (
 	OT_BP            = 17
 	OT_PS            = 18
 	OT_CLUSTER       = 19
-	OT_LAST_USED     = OT_CLUSTER
+	OT_CHANNEL_AMQP  = 20
+	OT_LAST_USED     = OT_CHANNEL_AMQP
 )
 
 var connectionMap = make(map[string]*connectionInfo)
 var connectionKey string
 
+const DUMMY_STRING = "-" // To provide a non-empty value for certain fields
 const DEFAULT_CONNECTION_KEY = "@defaultConnection"
 
 // This are used externally so we need to maintain them as public exports until
@@ -110,6 +114,7 @@ var (
 	Metrics            AllMetrics
 	QueueManagerStatus StatusSet
 	ChannelStatus      StatusSet
+	ChannelAMQPStatus  StatusSet
 	QueueStatus        StatusSet
 	TopicStatus        StatusSet
 	SubStatus          StatusSet
@@ -132,6 +137,7 @@ func newConnectionInfo(key string) *connectionInfo {
 	ci.useResetQStats = false
 	ci.showInactiveChannels = false
 	ci.hideSvrConnJobname = false
+	ci.hideAMQPClientId = false
 
 	ci.globalSlashWarning = false
 	ci.localSlashWarning = false
@@ -172,6 +178,8 @@ func GetObjectStatus(key string, objectType int) *StatusSet {
 		switch objectType {
 		case OT_CHANNEL:
 			return &ChannelStatus
+		case OT_CHANNEL_AMQP:
+			return &ChannelAMQPStatus
 		case OT_Q_MGR:
 			return &QueueManagerStatus
 		case OT_Q:

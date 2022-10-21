@@ -1,7 +1,7 @@
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2020
+  Copyright (c) IBM Corporation 2016, 2022
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 
 import (
 	"fmt"
+
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
@@ -45,6 +46,7 @@ type ConnectionConfig struct {
 	UseResetQStats       bool
 	ShowInactiveChannels bool
 	HideSvrConnJobname   bool
+	HideAMQPClientId     bool
 
 	CcdtUrl  string
 	ConnName string
@@ -116,6 +118,8 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 	ci.tzOffsetSecs = cc.TZOffsetSecs
 	ci.showInactiveChannels = cc.ShowInactiveChannels
 	ci.hideSvrConnJobname = cc.HideSvrConnJobname
+	ci.hideAMQPClientId = cc.HideAMQPClientId
+
 	ci.durableSubPrefix = cc.DurableSubPrefix
 
 	// Explicitly force client mode if requested. Otherwise use the "default"
@@ -206,7 +210,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 					evEnabled := v[ibmmq.MQIA_PERFORMANCE_EVENT].(int32)
 					if ci.useResetQStats && evEnabled == 0 {
 						errorString = "Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)"
-						//err = fmt.Errorf(errorString) // Bypass the error for a while
+						err = fmt.Errorf(errorString)
 					}
 				} else {
 					if cc.UsePublications == true {

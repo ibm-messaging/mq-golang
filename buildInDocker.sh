@@ -30,24 +30,29 @@ cd $GOPATH/src
 echo "Using compiler:"
 go version
 
+# No longer need to explicitly build packages as
+# modules manage the download/installation. And the latest 
+# compilers have the original version of commands as 
+# errors. So we comment out that phase.
 for pkg in $ORG/$REPO/ibmmq $ORG/$REPO/mqmetric
 do
   lib=`basename $pkg`
-  echo "Building package: $lib"
-  go install  $pkg
+  : echo "Building package: $lib"
+  : go install  $pkg
 done
 
-# And do the sample program builds into the bin directory
+# Do the sample program builds into the bin directory
 cd $GOPATH
 srcdir=src/$ORG/$REPO/samples
 
-for samp in $srcdir/*.go
+cd $srcdir
+for samp in *.go
 do
   exe=`basename $samp .go`
   echo "Building program: $exe"
-  go build -o bin/$exe $samp
+  go build -o $GOPATH/bin/$exe $samp
 done
 
 echo "Building program: mqitest"
-go build -o bin/mqitest $srcdir/mqitest/mqitest.go
+go build -o $GOPATH/bin/mqitest mqitest/mqitest.go
 

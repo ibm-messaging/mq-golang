@@ -1,6 +1,16 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Oct 17 2022 - v5.3.2
+- Update for MQ 9.3.1
+- mqmetric - New metric channel_cur_inst. All instances of a given channel name have this aggregated value.
+             Done this way because the other labels for a channel object (eg jobname) make them unique so harder
+             to see how many exist with the same basic name
+- mqmetric - Add metrics for AMQP channels
+- mqmetric - Add cluster name as tag for queues (#191)
+- Rewrite README to better match recent compiler versions and module management
+- Update expected Go compiler version 
+
 ## Jul 23 2022 - v5.3.1
 - Fix #189 compile problem
 

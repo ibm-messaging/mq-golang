@@ -25,13 +25,12 @@ package mqmetric
 */
 
 /*
-Functions in this file use the DISPLAY CHSTATUS command to extract metrics
-about running MQ channels
+Functions in this file use the DISPLAY CHSTATUS CLIENTID(*) command to extract metrics
+about running MQ AMQP channels
 */
 
 import (
 	_ "fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -39,38 +38,11 @@ import (
 )
 
 const (
-	ATTR_CHL_NAME     = "name"
-	ATTR_CHL_CONNNAME = "connname"
-	ATTR_CHL_JOBNAME  = "jobname"
-	ATTR_CHL_RQMNAME  = "rqmname"
-
-	ATTR_CHL_MESSAGES      = "messages"
-	ATTR_CHL_BYTES_SENT    = "bytes_sent"
-	ATTR_CHL_BYTES_RCVD    = "bytes_rcvd"
-	ATTR_CHL_BUFFERS_SENT  = "buffers_sent"
-	ATTR_CHL_BUFFERS_RCVD  = "buffers_rcvd"
-	ATTR_CHL_BATCHES       = "batches"
-	ATTR_CHL_STATUS        = "status"
-	ATTR_CHL_STATUS_SQUASH = ATTR_CHL_STATUS + "_squash"
-	ATTR_CHL_SUBSTATE      = "substate"
-	ATTR_CHL_TYPE          = "type"
-	ATTR_CHL_INSTANCE_TYPE = "instance_type"
-	ATTR_CHL_SINCE_MSG     = "time_since_msg"
-
-	ATTR_CHL_NETTIME_SHORT = "nettime_short"
-	ATTR_CHL_NETTIME_LONG  = "nettime_long"
-	ATTR_CHL_BATCHSZ_SHORT = "batchsz_short"
-	ATTR_CHL_BATCHSZ_LONG  = "batchsz_long"
-	ATTR_CHL_XQTIME_SHORT  = "xmitq_time_short"
-	ATTR_CHL_XQTIME_LONG   = "xmitq_time_long"
-
-	ATTR_CHL_MAX_INSTC = "attribute_max_instc"
-	ATTR_CHL_MAX_INST  = "attribute_max_inst"
-	ATTR_CHL_CUR_INST  = "cur_inst"
-
-	SQUASH_CHL_STATUS_STOPPED    = 0
-	SQUASH_CHL_STATUS_TRANSITION = 1
-	SQUASH_CHL_STATUS_RUNNING    = 2
+	// Most of the ATTR_ fields can be inherited from the channel.go module
+	ATTR_CHL_AMQP_CLIENT_ID         = "clientid"
+	ATTR_CHL_AMQP_MESSAGES_RECEIVED = "messages_rcvd"
+	ATTR_CHL_AMQP_MESSAGES_SENT     = "messages_sent"
+	ATTR_CHL_AMQP_CONNECTIONS       = "connection_count"
 )
 
 /*
@@ -80,16 +52,16 @@ no discovery of descriptions for them. So this function hardcodes the
 attributes we are going to look for and gives the associated descriptive
 text.
 */
-func ChannelInitAttributes() {
+func ChannelAMQPInitAttributes() {
 
-	traceEntry("ChannelInitAttributes")
+	traceEntry("ChannelAMQPInitAttributes")
 
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL]
-	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
+	os := &ci.objectStatus[OT_CHANNEL_AMQP]
+	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL_AMQP)
 
 	if os.init {
-		traceExit("ChannelInitAttributes", 1)
+		traceExit("ChannelAMQPInitAttributes", 1)
 		return
 	}
 	st.Attributes = make(map[string]*StatusAttribute)
@@ -98,71 +70,27 @@ func ChannelInitAttributes() {
 	// as tags to uniquely identify a channel instance
 	attr := ATTR_CHL_NAME
 	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
-	attr = ATTR_CHL_RQMNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Remote Queue Manager Name")
-	attr = ATTR_CHL_JOBNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "MCA Job Name")
+	attr = ATTR_CHL_AMQP_CLIENT_ID
+	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Client ID")
+
+	// Some other fields
 	attr = ATTR_CHL_CONNNAME
 	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_CHL_MESSAGES
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
+	attr = ATTR_CHL_AMQP_MESSAGES_RECEIVED
+	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACH_MSGS_RCVD)
 	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BYTES_SENT
-	st.Attributes[attr] = newStatusAttribute(attr, "Bytes sent", ibmmq.MQIACH_BYTES_SENT)
+	attr = ATTR_CHL_AMQP_MESSAGES_SENT
+	st.Attributes[attr] = newStatusAttribute(attr, "Messages Sent", ibmmq.MQIACH_MSGS_SENT)
 	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BYTES_RCVD
-	st.Attributes[attr] = newStatusAttribute(attr, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BUFFERS_SENT
-	st.Attributes[attr] = newStatusAttribute(attr, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BUFFERS_RCVD
-	st.Attributes[attr] = newStatusAttribute(attr, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BATCHES
-	st.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+
+	attr = ATTR_CHL_AMQP_CONNECTIONS
+	st.Attributes[attr] = newStatusAttribute(attr, "Connections", ibmmq.MQIACF_CONNECTION_COUNT)
 
 	// This is decoded by MQCHS_* values
 	attr = ATTR_CHL_STATUS
 	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
-	// The next value can be decoded from the MQCHSSTATE_* values
-	attr = ATTR_CHL_SUBSTATE
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Substate", ibmmq.MQIACH_CHANNEL_SUBSTATE)
-	attr = ATTR_CHL_TYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Type", ibmmq.MQIACH_CHANNEL_TYPE)
-	attr = ATTR_CHL_INSTANCE_TYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Instance Type", ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE)
-
-	// This is the same attribute as earlier, except that we indicate the values are to be modified in
-	// a special way.
-	attr = ATTR_CHL_STATUS_SQUASH
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
-	st.Attributes[attr].squash = true
-	os.init = true
-
-	attr = ATTR_CHL_NETTIME_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	st.Attributes[attr].index = 0
-	attr = ATTR_CHL_NETTIME_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	st.Attributes[attr].index = 1
-
-	attr = ATTR_CHL_BATCHSZ_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	st.Attributes[attr].index = 0
-	attr = ATTR_CHL_BATCHSZ_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	st.Attributes[attr].index = 1
-
-	attr = ATTR_CHL_XQTIME_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	st.Attributes[attr].index = 0
-	attr = ATTR_CHL_XQTIME_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	st.Attributes[attr].index = 1
 
 	attr = ATTR_CHL_SINCE_MSG
 	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)
@@ -179,46 +107,48 @@ func ChannelInitAttributes() {
 	attr = ATTR_CHL_CUR_INST
 	st.Attributes[attr] = newStatusAttribute(attr, "Current Instances", -1)
 
-	traceExit("ChannelInitAttributes", 0)
+	os.init = true
+
+	traceExit("ChannelAMQPInitAttributes", 0)
 }
 
 // If we need to list the channels that match a pattern. Not needed for
 // the status queries as they (unlike the pub/sub resource stats) accept
 // patterns in the PCF command
-func InquireChannels(patterns string) ([]string, error) {
-	traceEntry("InquireChannels")
-	ChannelInitAttributes()
-	rc, err := inquireObjects(patterns, ibmmq.MQOT_CHANNEL)
+func InquireAMQPChannels(patterns string) ([]string, error) {
+	traceEntry("InquireAMQPChannels")
+	ChannelAMQPInitAttributes()
+	rc, err := inquireObjectsWithFilter(patterns, ibmmq.MQOT_CHANNEL, OT_CHANNEL_AMQP)
 
-	traceExitErr("InquireChannels", 0, err)
+	traceExitErr("InquireAMQPChannels", 0, err)
 	return rc, err
 }
 
-func CollectChannelStatus(patterns string) error {
+func CollectAMQPChannelStatus(patterns string) error {
 	var err error
 
-	traceEntry("CollectChannelStatus")
+	traceEntry("CollectAMQPChannelStatus")
 
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL]
-	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
+	os := &ci.objectStatus[OT_CHANNEL_AMQP]
+	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL_AMQP)
 
 	os.objectSeen = make(map[string]bool) // Record which channels have been seen in this period
 
-	ChannelInitAttributes()
+	ChannelAMQPInitAttributes()
 
 	// Empty any collected values
 	for k := range st.Attributes {
 		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
-	for k := range chlInfoMap {
-		chlInfoMap[k].AttrCurInst = 0
+	for k := range amqpInfoMap {
+		amqpInfoMap[k].AttrCurInst = 0
 	}
 
 	channelPatterns := strings.Split(patterns, ",")
 	if len(channelPatterns) == 0 {
-		traceExit("CollectChannelStatus", 1)
+		traceExit("CollectAMQPChannelStatus", 1)
 		return nil
 	}
 
@@ -229,15 +159,8 @@ func CollectChannelStatus(patterns string) error {
 		}
 
 		// This would allow us to extract SAVED information too
-		errCurrent := collectChannelStatus(pattern, ibmmq.MQOT_CURRENT_CHANNEL)
+		errCurrent := collectAMQPChannelStatus(pattern, ibmmq.MQOT_CURRENT_CHANNEL)
 		err = errCurrent
-		//errSaved := collectChannelStatus(pattern, ibmmq.MQOT_SAVED_CHANNEL)
-		//if errCurrent != nil {
-		//	err = errCurrent
-		//} else {
-		//	err = errSaved
-		//}
-
 	}
 
 	// Need to clean out the prevValues elements to stop short-lived channels
@@ -256,37 +179,6 @@ func CollectChannelStatus(patterns string) error {
 		}
 	}
 
-	// If someone has asked to see all the channel definitions, not just those that have a valid
-	// CHSTATUS response, then we can look through the list of all known channels that match
-	// our patterns (chlInfoMap) and add some dummy values to the status maps if the channel
-	// is not already there. Some of the fields do need to be faked up as we don't know anything about
-	// the "partner"
-	if err == nil && ci.showInactiveChannels {
-		for chlName, v := range chlInfoMap {
-			found := false
-			chlPrefix := chlName + "/"
-			for k, _ := range st.Attributes[ATTR_CHL_STATUS].Values {
-				if strings.HasPrefix(k, chlPrefix) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				// A channel key is normally made up of 4 elements but we only know 1
-				key := chlName + "/" + DUMMY_STRING + "/" + DUMMY_STRING + "/" + DUMMY_STRING
-
-				st.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
-				st.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(DUMMY_STRING)
-				st.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(DUMMY_STRING)
-				st.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(DUMMY_STRING)
-
-				st.Attributes[ATTR_CHL_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQCHS_INACTIVE))
-				st.Attributes[ATTR_CHL_STATUS_SQUASH].Values[key] = newStatusValueInt64(SQUASH_CHL_STATUS_STOPPED)
-				st.Attributes[ATTR_CHL_TYPE].Values[key] = newStatusValueInt64(v.AttrChlType)
-			}
-		}
-	}
-
 	// Set the metrics corresponding to attributes for all the monitored channels
 	// The current instance count is not, strictly speaking, an attribute but it's a way
 	// of providing a metric alongside each channel which shows how many there are of that name.
@@ -294,7 +186,7 @@ func CollectChannelStatus(patterns string) error {
 	// are given the same instance count so it could be extracted.
 	for key, _ := range st.Attributes[ATTR_CHL_NAME].Values {
 		chlName := st.Attributes[ATTR_CHL_NAME].Values[key].ValueString
-		if s, ok := chlInfoMap[chlName]; ok {
+		if s, ok := amqpInfoMap[chlName]; ok {
 			maxInstC := s.AttrMaxInstC
 			st.Attributes[ATTR_CHL_MAX_INSTC].Values[key] = newStatusValueInt64(maxInstC)
 			maxInst := s.AttrMaxInst
@@ -304,19 +196,20 @@ func CollectChannelStatus(patterns string) error {
 		}
 	}
 
-	traceExitErr("CollectChannelStatus", 0, err)
+	traceExitErr("CollectAMQPChannelStatus", 0, err)
 	return err
 
 }
 
 // Issue the INQUIRE_CHANNEL_STATUS command for a channel or wildcarded channel name
-// Collect the responses and build up the statistics
-func collectChannelStatus(pattern string, instanceType int32) error {
+// Collect the responses and build up the statistics. Add CLIENTID(*) to get the actual
+// instances instead of an aggregated response
+func collectAMQPChannelStatus(pattern string, instanceType int32) error {
 	var err error
 
-	traceEntryF("collectChannelStatus", "Pattern: %s", pattern)
+	traceEntryF("collectAMQPChannelStatus", "Pattern: %s", pattern)
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL]
+	os := &ci.objectStatus[OT_CHANNEL_AMQP]
 
 	statusClearReplyQ()
 
@@ -336,8 +229,15 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	// Add the parameters one at a time into a buffer
 	pcfparm = new(ibmmq.PCFParameter)
 	pcfparm.Type = ibmmq.MQCFT_INTEGER
-	pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE
-	pcfparm.Int64Value = []int64{int64(instanceType)}
+	pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
+	pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+	cfh.ParameterCount++
+	buf = append(buf, pcfparm.Bytes()...)
+
+	pcfparm = new(ibmmq.PCFParameter)
+	pcfparm.Type = ibmmq.MQCFT_STRING
+	pcfparm.Parameter = ibmmq.MQCACH_CLIENT_ID
+	pcfparm.String = []string{"*"}
 	cfh.ParameterCount++
 	buf = append(buf, pcfparm.Bytes()...)
 
@@ -348,7 +248,7 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	// And now put the command to the queue
 	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 	if err != nil {
-		traceExitErr("collectChannelStatus", 1, err)
+		traceExitErr("collectAMQPChannelStatus", 1, err)
 		return err
 	}
 
@@ -357,33 +257,30 @@ func collectChannelStatus(pattern string, instanceType int32) error {
 	for allReceived := false; !allReceived; {
 		cfh, buf, allReceived, err = statusGetReply()
 		if buf != nil {
-			key := parseChlData(instanceType, cfh, buf)
+			key := parseAMQPChlData(instanceType, cfh, buf)
 			if key != "" {
 				os.objectSeen[key] = true
 			}
 		}
 	}
 
-	traceExitErr("collectChannelStatus", 0, err)
+	traceExitErr("collectAMQPChannelStatus", 0, err)
 	return err
 }
 
 // Given a PCF response message, parse it to extract the desired statistics
-func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
+func parseAMQPChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	var elem *ibmmq.PCFParameter
 
-	traceEntry("parseChlData")
+	traceEntry("parseAMQPChlData")
 
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL]
-	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
-	chlType := ibmmq.MQCHT_ALL
+	//os := &ci.objectStatus[OT_CHANNEL_AMQP]
+	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL_AMQP)
+
 	chlName := ""
 	connName := ""
-	jobName := ""
-	rqmName := ""
-	startDate := ""
-	startTime := ""
+	clientId := ""
 	key := ""
 
 	lastMsgDate := ""
@@ -394,7 +291,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	offset := 0
 	datalen := len(buf)
 	if cfh == nil || cfh.ParameterCount == 0 {
-		traceExit("parseChlData", 1)
+		traceExit("parseAMQPChlData", 1)
 		return ""
 	}
 
@@ -412,63 +309,26 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			chlName = strings.TrimSpace(elem.String[0])
 		case ibmmq.MQCACH_CONNECTION_NAME:
 			connName = strings.TrimSpace(elem.String[0])
-		case ibmmq.MQCACH_MCA_JOB_NAME:
-			jobName = strings.TrimSpace(elem.String[0])
-		case ibmmq.MQCA_REMOTE_Q_MGR_NAME:
-			rqmName = strings.TrimSpace(elem.String[0])
-		case ibmmq.MQCACH_CHANNEL_START_TIME:
-			startTime = strings.TrimSpace(elem.String[0])
-		case ibmmq.MQCACH_CHANNEL_START_DATE:
-			startDate = strings.TrimSpace(elem.String[0])
-		case ibmmq.MQIACH_CHANNEL_TYPE:
-			chlType = int32(elem.Int64Value[0])
-		}
-	}
-
-	// Prometheus was ignoring a blank string which then got translated into "0.00" in Grafana
-	// So if there is no remote qmgr, force a non-empty string value in there. Similarly, the jobname for
-	// inactive channels often arrives looking like "00000" but not filling the entire length
-	// allowed. So reset that one too.
-	if rqmName == "" {
-		rqmName = DUMMY_STRING
-	}
-	if jobName == "" || allZero(jobName) {
-		jobName = DUMMY_STRING
-	}
-
-	if chlType == ibmmq.MQCHT_SVRCONN {
-		if ci.hideSvrConnJobname {
-			jobName = DUMMY_STRING
-		} else if ci.si.platform == ibmmq.MQPL_ZOS {
-			// The jobName does not exist on z/OS so it cannot be used to distinguish
-			// unique instances of the same channel name. Instead, we try to fake it with
-			// the channel start timestamp. That may still be wrong if lots of channel
-			// instances start at the same time, but it's a lot better than combining the
-			// instances badly.
-			jobName = startDate + ":" + startTime
+		case ibmmq.MQCACH_CLIENT_ID:
+			clientId = strings.TrimSpace(elem.String[0])
 		}
 	}
 
 	// Create a unique key for this channel instance
-	key = chlName + "/" + connName + "/" + rqmName + "/" + jobName
-
-	// Look to see if we've already seen a Current channel status that matches
-	// the Saved version. If so, then don't bother with the Saved status
-	if instanceType == ibmmq.MQOT_SAVED_CHANNEL {
-		subKey := chlName + "/" + connName + "/" + rqmName + "/.*"
-		for k, _ := range os.objectSeen {
-			re := regexp.MustCompile(subKey)
-			if re.MatchString(k) {
-				traceExit("parseChlData", 2)
-				return ""
-			}
-		}
+	if connName == "" {
+		connName = DUMMY_STRING
 	}
 
+	if ci.hideAMQPClientId {
+		clientId = DUMMY_STRING
+	}
+
+	key = chlName + "/" + connName + "/" + clientId
+
+	logDebug("AMQP status    - key: %s", key)
 	st.Attributes[ATTR_CHL_NAME].Values[key] = newStatusValueString(chlName)
 	st.Attributes[ATTR_CHL_CONNNAME].Values[key] = newStatusValueString(connName)
-	st.Attributes[ATTR_CHL_RQMNAME].Values[key] = newStatusValueString(rqmName)
-	st.Attributes[ATTR_CHL_JOBNAME].Values[key] = newStatusValueString(jobName)
+	st.Attributes[ATTR_CHL_AMQP_CLIENT_ID].Values[key] = newStatusValueString(clientId)
 
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
@@ -481,7 +341,7 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 			parmAvail = false
 		}
 
-		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_CHANNEL), elem, key) {
+		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_CHANNEL_AMQP), elem, key) {
 			switch elem.Parameter {
 			case ibmmq.MQCACH_LAST_MSG_TIME:
 				lastMsgTime = strings.TrimSpace(elem.String[0])
@@ -497,78 +357,26 @@ func parseChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	// Bump the number of active instances of the channel, treating it a bit like a
 	// regular config attribute.
-	if s, ok := chlInfoMap[chlName]; ok {
-		if instanceType != ibmmq.MQOT_SAVED_CHANNEL {
-			s.AttrCurInst++
-		}
+	if s, ok := amqpInfoMap[chlName]; ok {
+		s.AttrCurInst++
 	}
 
-	traceExitF("parseChlData", 0, "Key: %s", key)
+	traceExitF("parseAMQPChlData", 0, "Key: %s", key)
 	return key
-}
-
-// Return a standardised value. If the attribute indicates that something
-// special has to be done, then do that. Otherwise just make sure it's a non-negative
-// value of the correct datatype
-func ChannelNormalise(attr *StatusAttribute, v int64) float64 {
-	var f float64
-
-	traceEntry("ChannelNormalise")
-	if attr.squash {
-		switch attr.pcfAttr {
-
-		case ibmmq.MQIACH_CHANNEL_STATUS:
-			v32 := int32(v)
-			switch v32 {
-			case ibmmq.MQCHS_INACTIVE,
-				ibmmq.MQCHS_DISCONNECTED,
-				ibmmq.MQCHS_STOPPED,
-				ibmmq.MQCHS_PAUSED:
-				f = float64(SQUASH_CHL_STATUS_STOPPED)
-
-			case ibmmq.MQCHS_BINDING,
-				ibmmq.MQCHS_STARTING,
-				ibmmq.MQCHS_STOPPING,
-				ibmmq.MQCHS_RETRYING,
-				ibmmq.MQCHS_REQUESTING,
-				ibmmq.MQCHS_INITIALIZING,
-				ibmmq.MQCHS_SWITCHING:
-				f = float64(SQUASH_CHL_STATUS_TRANSITION)
-			case ibmmq.MQCHS_RUNNING:
-				f = float64(SQUASH_CHL_STATUS_RUNNING)
-			default:
-				f = float64(SQUASH_CHL_STATUS_STOPPED)
-			}
-		default:
-			f = float64(v)
-			if f < 0 {
-				f = 0
-			}
-		}
-	} else {
-		f = float64(v)
-		if f < 0 {
-			f = 0
-		}
-	}
-
-	traceExit("ChannelNormalise", 0)
-
-	return f
 }
 
 // Issue the INQUIRE_CHANNEL call for wildcarded channel names and
 // extract the required attributes
-func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*ObjInfo) error {
+func inquireAMQPChannelAttributes(objectPatternsList string, infoMap map[string]*ObjInfo) error {
 	var err error
 
-	traceEntry("inquireChannelAttributes")
+	traceEntry("inquireAMQPChannelAttributes")
 
 	ci := getConnection(GetConnectionKey())
 	statusClearReplyQ()
 
 	if objectPatternsList == "" {
-		traceExitErr("inquireChannelAttributes", 1, err)
+		traceExitErr("inquireAMQPChannelAttributes", 1, err)
 		return err
 	}
 
@@ -594,6 +402,13 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 		buf = append(buf, pcfparm.Bytes()...)
 
 		pcfparm = new(ibmmq.PCFParameter)
+		pcfparm.Type = ibmmq.MQCFT_INTEGER
+		pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+		cfh.ParameterCount++
+		buf = append(buf, pcfparm.Bytes()...)
+
+		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_CHANNEL_ATTRS
 		pcfparm.Int64Value = []int64{int64(ibmmq.MQIACH_MAX_INSTANCES), int64(ibmmq.MQIACH_MAX_INSTS_PER_CLIENT), int64(ibmmq.MQCACH_DESC), int64(ibmmq.MQIACH_CHANNEL_TYPE)}
@@ -607,28 +422,28 @@ func inquireChannelAttributes(objectPatternsList string, infoMap map[string]*Obj
 		// And now put the command to the queue
 		err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
 		if err != nil {
-			traceExitErr("inquireChannelAttributes", 2, err)
+			traceExitErr("inquireAMQPChannelAttributes", 2, err)
 			return err
 		}
 
 		for allReceived := false; !allReceived; {
 			cfh, buf, allReceived, err = statusGetReply()
 			if buf != nil {
-				parseChannelAttrData(cfh, buf, infoMap)
+				parseAMQPChannelAttrData(cfh, buf, infoMap)
 			}
 		}
 	}
 
-	traceExit("inquireChannelAttributes", 0)
+	traceExit("inquireAMQPChannelAttributes", 0)
 	return nil
 }
 
-func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjInfo) {
+func parseAMQPChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjInfo) {
 	var elem *ibmmq.PCFParameter
 	var ci *ObjInfo
 	var ok bool
 
-	traceEntry("parseChannelAttrData")
+	traceEntry("parseAMQPChannelAttrData")
 
 	chlName := ""
 
@@ -637,7 +452,7 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 	offset := 0
 	datalen := len(buf)
 	if cfh.ParameterCount == 0 {
-		traceExit("parseChannelAttrData", 1)
+		traceExit("parseAMQPChannelAttrData", 1)
 		return
 	}
 	// Parse it once to extract the fields that are needed for the map key
@@ -716,16 +531,6 @@ func parseChannelAttrData(cfh *ibmmq.MQCFH, buf []byte, infoMap map[string]*ObjI
 		}
 	}
 
-	traceExit("parseChannelAttrData", 0)
+	traceExit("parseAMQPChannelAttrData", 0)
 	return
-}
-
-func allZero(s string) bool {
-	rc := true
-	for i := 0; i < len(s); i++ {
-		if s[i] != '0' {
-			return false
-		}
-	}
-	return rc
 }

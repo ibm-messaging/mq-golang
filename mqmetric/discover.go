@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2021
+  Copyright (c) IBM Corporation 2016, 2022
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -89,11 +89,13 @@ type ObjInfo struct {
 	firstCollection bool // To indicate discard needed of first stat
 	Description     string
 	// These are used for queue information
-	AttrMaxDepth int64 // The queue attribute value. Not the max depth reported by RESET QSTATS
-	AttrUsage    int64 // Normal or XMITQ
+	AttrMaxDepth int64  // The queue attribute value. Not the max depth reported by RESET QSTATS
+	AttrUsage    int64  // Normal or XMITQ
+	Cluster      string // The name of a single cluster in which the queue is shared (CLUSTERNL not supported here)
 	// Some channel information
 	AttrMaxInst  int64
 	AttrMaxInstC int64
+	AttrCurInst  int64 // Currently active instances of this channel - would only work if "jobname" disabled
 	AttrChlType  int64
 }
 
@@ -107,8 +109,11 @@ const maxBufSize = 100 * 1024 * 1024 // 100 MB
 
 const defaultMaxQDepth = 5000
 
-var qInfoMap map[string]*ObjInfo
-var chlInfoMap map[string]*ObjInfo
+var qInfoMap map[string]*ObjInfo   // These maps probably need to be moved into the ci.si structures but at least they
+var chlInfoMap map[string]*ObjInfo // are not public interface elements
+var amqpInfoMap map[string]*ObjInfo
+
+//var nhaInfoMap map[string]*ObjInfo
 
 var locale string
 
@@ -214,6 +219,10 @@ func DiscoverAndSubscribe(dc DiscoverConfig) error {
 	redo := false
 
 	qInfoMap = make(map[string]*ObjInfo)
+	//nhaInfoMap = make(map[string]*ObjInfo)
+	//nhaInfoElem := new(ObjInfo)
+	//nhaInfoElem.exists = true
+	//nhaInfoMap["#"] = nhaInfoElem
 
 	err := discoverAndSubscribe(dc, redo)
 
@@ -259,6 +268,11 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 		chlInfoMap = make(map[string]*ObjInfo)
 		infoMap = chlInfoMap
 		fn = inquireChannelAttributes
+	case OT_CHANNEL_AMQP:
+		// Always start with a clean slate for these maps
+		amqpInfoMap = make(map[string]*ObjInfo)
+		infoMap = amqpInfoMap
+		fn = inquireAMQPChannelAttributes
 	default:
 		err = fmt.Errorf("Unsupported object type: ", objectType)
 	}
@@ -266,8 +280,8 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 	if err == nil {
 		err = fn(objectPatterns, infoMap)
 
-		for key, ci := range infoMap {
-			if !ci.exists {
+		for key, oi := range infoMap {
+			if !oi.exists {
 				delete(infoMap, key)
 			}
 		}
@@ -650,7 +664,12 @@ func discoverStats(dc DiscoverConfig) error {
 				for _, elem := range ty.Elements {
 					name := elem.MetricName
 					if strings.Contains(ty.ObjectTopic, "%s") {
-						name = "object_" + name
+						switch cl.Name {
+						//case "NHAREPLICA":
+						//	name = "nha_" + name
+						default:
+							name = "object_" + name
+						}
 					}
 					if _, ok := nameSet[name]; ok {
 						err = fmt.Errorf("Non-unique metric description '%s'", elem.MetricName)
@@ -769,6 +788,10 @@ func discoverQueues(monitoredQueuePatterns string) error {
 }
 
 func inquireObjects(objectPatternsList string, objectType int32) ([]string, error) {
+	return inquireObjectsWithFilter(objectPatternsList, objectType, 0)
+}
+func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filterType int32) ([]string, error) {
+
 	var err error
 	var elem *ibmmq.PCFParameter
 	var datalen int
@@ -865,6 +888,18 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 				buf = append(buf, pcfparm.Bytes()...)
 			}
 		}
+
+		if command == ibmmq.MQCMD_INQUIRE_CHANNEL_NAMES && filterType != 0 {
+			// Need to be prepared to get an error either of "no names" or "command not available"
+			// Add CHLTYPE(AMQP|MQTT)
+			pcfparm = new(ibmmq.PCFParameter)
+			pcfparm.Type = ibmmq.MQCFT_INTEGER
+			pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
+			pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+			cfh.ParameterCount++
+			buf = append(buf, pcfparm.Bytes()...)
+		}
+
 		// Once we know the total number of parameters, put the
 		// CFH header on the front of the buffer.
 		buf = append(cfh.Bytes(), buf...)
@@ -927,10 +962,8 @@ func inquireObjects(objectPatternsList string, objectType int32) ([]string, erro
 					}
 				}
 			} else {
-
 				traceExitErr("inquireObjects", 4, err)
 				return objectList, err
-
 			}
 		}
 
@@ -970,7 +1003,10 @@ func createSubscriptions() error {
 			// For now, we are only dealing with queues and so can assume use of qInfoMap
 			if strings.Contains(ty.ObjectTopic, "%s") {
 				im := qInfoMap
-
+				//switch cl.Name {
+				//case "NHAREPLICA":
+				//	im = nhaInfoMap
+				//}
 				for key, _ := range im {
 					if len(key) == 0 {
 						continue
@@ -1526,6 +1562,8 @@ func GetObjectDescription(key string, objectType int32) string {
 		o, ok = qInfoMap[key]
 	case ibmmq.MQOT_CHANNEL:
 		o, ok = chlInfoMap[key]
+	case OT_CHANNEL_AMQP:
+		o, ok = amqpInfoMap[key]
 	}
 
 	if !ok || strings.TrimSpace(o.Description) == "" {
