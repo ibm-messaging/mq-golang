@@ -206,10 +206,11 @@ or extended are welcomed.
 For feedback and issues relating specifically to this package, please use
 the [GitHub issue tracker](https://github.com/ibm-messaging/mq-golang/issues).
 
-Contributions to this package can be accepted under the terms of the IBM Contributor
-License Agreement, found in the [CLA file](CLA.md) of this repository. When
+Contributions to this package can be accepted under the terms of the Developer's Certificate
+of Origin, found in the [DCO file](DCO1.1.txt) of this repository. When
 submitting a pull request, you must include a statement stating you accept the terms
-in the CLA.
+in the DCO.
+
 
 ## Copyright
 
