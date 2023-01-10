@@ -88,6 +88,8 @@ type ObjInfo struct {
 	exists          bool // Used during rediscovery
 	firstCollection bool // To indicate discard needed of first stat
 	Description     string
+	// Qmgr attributes
+	QMgrName string
 	// These are used for queue information
 	AttrMaxDepth int64  // The queue attribute value. Not the max depth reported by RESET QSTATS
 	AttrUsage    int64  // Normal or XMITQ
@@ -112,6 +114,7 @@ const defaultMaxQDepth = 5000
 var qInfoMap map[string]*ObjInfo   // These maps probably need to be moved into the ci.si structures but at least they
 var chlInfoMap map[string]*ObjInfo // are not public interface elements
 var amqpInfoMap map[string]*ObjInfo
+var qMgrInfo = new(ObjInfo)
 
 //var nhaInfoMap map[string]*ObjInfo
 
@@ -1436,17 +1439,20 @@ func verifyObjectPatterns(patternList string, allowNegatives bool) error {
 /*
 Patterns are very simple, following normal MQ lines except that
 they can be prefixed with "!" to exclude them. For example,
-  "APP*,DEV*,!SYSTEM*"
+
+	"APP*,DEV*,!SYSTEM*"
+
 I decided not to use a full regexp pattern matcher because it's not really
 natural in the MQ world.
 
 Rules for the pattern matching are:
-   All positive implies NONE except listed names
-   All negative implies ALL except listed names
-   Mixed positive and negative entries is done in two phases:
-     Remove the negative patterns
-     Filter the remaining set with the positive patterns
-   Allows patterns like "S*,!SYSTEM*" to still return S.1 but not SYSTEM.DEF.Q
+
+	All positive implies NONE except listed names
+	All negative implies ALL except listed names
+	Mixed positive and negative entries is done in two phases:
+	  Remove the negative patterns
+	  Filter the remaining set with the positive patterns
+	Allows patterns like "S*,!SYSTEM*" to still return S.1 but not SYSTEM.DEF.Q
 
 A pattern like "!DEV*,DEV.QUEUE.1" has the negative element
 given priority over the positive. So DEV.QUEUE.1 does not match here.
@@ -1564,6 +1570,9 @@ func GetObjectDescription(key string, objectType int32) string {
 		o, ok = chlInfoMap[key]
 	case OT_CHANNEL_AMQP:
 		o, ok = amqpInfoMap[key]
+	case OT_Q_MGR:
+		o = qMgrInfo
+		ok = true
 	}
 
 	if !ok || strings.TrimSpace(o.Description) == "" {

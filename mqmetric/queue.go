@@ -313,8 +313,7 @@ func collectResetQStats(pattern string) error {
 }
 
 // Issue the INQUIRE_Q call for wildcarded queue names and
-// extract the required attributes - currently, just the
-// Maximum Queue Depth
+// extract the required attributes
 func inquireQueueAttributes(objectPatternsList string) error {
 	var err error
 

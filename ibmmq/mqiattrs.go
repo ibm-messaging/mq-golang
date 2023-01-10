@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018, 2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -19,11 +19,40 @@ package ibmmq
      Mark Taylor - Initial Contribution
 */
 
+/* We have to cope with character attributes that might not be
+   available in older versions of MQ. Maps cannot be passed to C
+   functions so we use some arrays with ifdefs to control it and then
+   add them to the length map.
+*/
+
 /*
 
 #include <stdlib.h>
 #include <string.h>
 #include <cmqc.h>
+
+int addNewCharAttrs(MQLONG a[],MQLONG l[]) {
+  int i = 0;
+#if defined(MQCA_SSL_KEY_REPO_PASSWORD)
+  a[i] = MQCA_SSL_KEY_REPO_PASSWORD;
+  l[i] = MQ_SSL_ENCRYP_KEY_REPO_PWD_LEN;
+  i++;
+#endif
+
+#if defined(MQCA_INITIAL_KEY)
+  a[i] = MQCA_INITIAL_KEY;
+  l[i] = MQ_INITIAL_KEY_LENGTH;
+  i++;
+#endif
+
+#if defined(MQCA_STREAM_QUEUE_NAME)
+  a[i] = MQCA_STREAM_QUEUE_NAME;
+  l[i] = MQ_Q_NAME_LENGTH;
+  i++;
+#endif
+
+  return i;
+}
 
 */
 import "C"
@@ -40,6 +69,8 @@ var mqInqLength = map[int32]int32{
 	C.MQCA_APPL_ID:               C.MQ_PROCESS_APPL_ID_LENGTH,
 	C.MQCA_BACKOUT_REQ_Q_NAME:    C.MQ_Q_NAME_LENGTH,
 	C.MQCA_BASE_Q_NAME:           C.MQ_Q_NAME_LENGTH,
+	C.MQCA_CERT_LABEL:            C.MQ_CERT_LABEL_LENGTH,
+	C.MQCA_QSG_CERT_LABEL:        C.MQ_CERT_LABEL_LENGTH,
 	C.MQCA_CF_STRUC_NAME:         C.MQ_CF_STRUC_NAME_LENGTH,
 	C.MQCA_CHANNEL_AUTO_DEF_EXIT: C.MQ_EXIT_NAME_LENGTH,
 	C.MQCA_CHINIT_SERVICE_PARM:   C.MQ_CHINIT_SERVICE_PARM_LENGTH,
@@ -47,9 +78,13 @@ var mqInqLength = map[int32]int32{
 	C.MQCA_CLUSTER_NAMELIST:      C.MQ_NAMELIST_NAME_LENGTH,
 	C.MQCA_CLUSTER_WORKLOAD_DATA: C.MQ_EXIT_DATA_LENGTH,
 	C.MQCA_CLUSTER_WORKLOAD_EXIT: C.MQ_EXIT_NAME_LENGTH,
+	C.MQCA_CLUS_CHL_NAME:         C.MQ_OBJECT_NAME_LENGTH,
 	C.MQCA_COMMAND_INPUT_Q_NAME:  C.MQ_Q_NAME_LENGTH,
+	C.MQCA_COMM_INFO_NAME:        C.MQ_OBJECT_NAME_LENGTH,
+	C.MQCA_CONN_AUTH:             C.MQ_AUTH_INFO_NAME_LENGTH,
 	C.MQCA_CREATION_DATE:         C.MQ_DATE_LENGTH,
 	C.MQCA_CREATION_TIME:         C.MQ_TIME_LENGTH,
+	C.MQCA_CUSTOM:                C.MQ_CUSTOM_LENGTH,
 	C.MQCA_DEAD_LETTER_Q_NAME:    C.MQ_Q_NAME_LENGTH,
 	C.MQCA_DEF_XMIT_Q_NAME:       C.MQ_Q_NAME_LENGTH,
 	C.MQCA_DNS_GROUP:             C.MQ_DNS_GROUP_NAME_LENGTH,
@@ -78,12 +113,18 @@ var mqInqLength = map[int32]int32{
 	C.MQCA_REMOTE_Q_NAME:         C.MQ_Q_NAME_LENGTH,
 	C.MQCA_REPOSITORY_NAME:       C.MQ_Q_MGR_NAME_LENGTH,
 	C.MQCA_REPOSITORY_NAMELIST:   C.MQ_NAMELIST_NAME_LENGTH,
+	C.MQCA_SSL_CRL_NAMELIST:      C.MQ_NAMELIST_NAME_LENGTH,
+	C.MQCA_SSL_CRYPTO_HARDWARE:   C.MQ_SSL_CRYPTO_HARDWARE_LENGTH,
+	C.MQCA_SSL_KEY_REPOSITORY:    C.MQ_SSL_KEY_REPOSITORY_LENGTH,
 	C.MQCA_STORAGE_CLASS:         C.MQ_STORAGE_CLASS_LENGTH,
 	C.MQCA_TCP_NAME:              C.MQ_TCP_NAME_LENGTH,
 	C.MQCA_TRIGGER_DATA:          C.MQ_TRIGGER_DATA_LENGTH,
 	C.MQCA_USER_DATA:             C.MQ_PROCESS_USER_DATA_LENGTH,
+	C.MQCA_VERSION:               C.MQ_VERSION_LENGTH,
 	C.MQCA_XMIT_Q_NAME:           C.MQ_Q_NAME_LENGTH,
 }
+
+var charAttrsAdded = false
 
 /*
  * Return how many char & int attributes are in the list of selectors, and the
@@ -93,6 +134,17 @@ func getAttrInfo(attrs []int32) (int, int, int) {
 	var charAttrLength = 0
 	var charAttrCount = 0
 	var intAttrCount = 0
+
+	if !charAttrsAdded {
+		maxNewAttrs := 32 // May need to change this if lots more attributes get added
+		attrVals := make([]C.MQLONG, maxNewAttrs)
+		attrLens := make([]C.MQLONG, maxNewAttrs)
+		addedAttrs := int(C.addNewCharAttrs(&attrVals[0], &attrLens[0]))
+		for i := 0; i < addedAttrs; i++ {
+			mqInqLength[int32(attrVals[i])] = int32(attrLens[i])
+		}
+		charAttrsAdded = true
+	}
 
 	for i := 0; i < len(attrs); i++ {
 		if v, ok := mqInqLength[attrs[i]]; ok {

@@ -101,7 +101,7 @@ func newStatusValueString(v string) *StatusValue {
 // Go uses an example-based method for formatting and parsing timestamps
 // This layout matches the MQ PutDate and PutTime strings. An additional TZ
 // may eventually have to be turned into a config parm. Note the "15" to indicate
-// a 24-hour timestamp. There also seems to be two formats for the time layout comnig
+// a 24-hour timestamp. There also seems to be two formats for the time layout coming
 // from MQ - TPSTATUS uses a colon format time, QSTATUS uses the dots.
 const timeStampLayoutDot = "2006-01-02 15.04.05"
 const timeStampLayoutColon = "2006-01-02 15:04:05"
@@ -116,7 +116,7 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 	ci := getConnection(GetConnectionKey())
 
 	// If there's any error in parsing the timestamp - perhaps
-	// the value has not been set yet, then just return 0
+	// the value has not been set yet - then just return 0
 	rc = 0
 
 	timeStampLayout := timeStampLayoutDot

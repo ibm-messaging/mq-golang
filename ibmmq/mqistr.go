@@ -45,8 +45,8 @@ import (
 )
 
 /*
-   Convert MQCC/MQRC values into readable text using
-   the functions introduced in cmqstrc.h in MQ V8004
+Convert MQCC/MQRC values into readable text using
+the functions introduced in cmqstrc.h in MQ V8004
 */
 func mqstrerror(verb string, mqcc C.MQLONG, mqrc C.MQLONG) string {
 	return fmt.Sprintf("%s: MQCC = %s [%d] MQRC = %s [%d]", verb,

@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2020
+  Copyright (c) IBM Corporation 2018,2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -30,9 +30,10 @@ about the MQ queue manager
 */
 
 import (
-	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strings"
 	"time"
+
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 const (
@@ -45,6 +46,7 @@ const (
 	ATTR_QMGR_MAX_CHANNELS        = "max_channels"
 	ATTR_QMGR_MAX_ACTIVE_CHANNELS = "max_active_channels"
 	ATTR_QMGR_MAX_TCP_CHANNELS    = "max_tcp_channels"
+	ATTR_QMGR_ACTIVE_LISTENERS    = "active_listeners"
 )
 
 /*
@@ -81,7 +83,8 @@ func QueueManagerInitAttributes() {
 		st.Attributes[attr] = newStatusAttribute(attr, "Channel Initiator Status", ibmmq.MQIACF_CHINIT_STATUS)
 		attr = ATTR_QMGR_CMD_SERVER_STATUS
 		st.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
-
+		attr = ATTR_QMGR_ACTIVE_LISTENERS
+		st.Attributes[attr] = newStatusAttribute(attr, "Active Listener Count", -1)
 	} else {
 		attr = ATTR_QMGR_MAX_CHANNELS
 		st.Attributes[attr] = newStatusAttribute(attr, "Max Channels", -1)
@@ -110,16 +113,22 @@ func CollectQueueManagerStatus() error {
 	//os := &ci.objectStatus[OT_Q_MGR]
 	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 
+	// Empty any collected values
 	QueueManagerInitAttributes()
 	for k := range st.Attributes {
 		st.Attributes[k].Values = make(map[string]*StatusValue)
 	}
 
-	// Empty any collected values
 	if GetPlatform() == ibmmq.MQPL_ZOS {
-		err = collectQueueManagerAttrs()
+		err = collectQueueManagerAttrsZOS()
 	} else {
-		err = collectQueueManagerStatus(ibmmq.MQOT_Q_MGR)
+		err = collectQueueManagerAttrsDist()
+		if err == nil {
+			err = collectQueueManagerListeners()
+		}
+		if err == nil {
+			err = collectQueueManagerStatus(ibmmq.MQOT_Q_MGR)
+		}
 	}
 
 	traceExitErr("CollectQueueManagerStatus", 0, err)
@@ -131,13 +140,14 @@ func CollectQueueManagerStatus() error {
 // On z/OS there are a couple of static-ish values that might be helpful.
 // They can be obtained via MQINQ and do not need a PCF flow.
 // We can't get these on Distributed because equivalents are in qm.ini
-func collectQueueManagerAttrs() error {
+func collectQueueManagerAttrsZOS() error {
 
-	traceEntry("collectQueueManagerAttrs")
+	traceEntry("collectQueueManagerAttrsZOS")
 	ci := getConnection(GetConnectionKey())
 	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 
 	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
+		ibmmq.MQCA_Q_MGR_DESC,
 		ibmmq.MQIA_ACTIVE_CHANNELS,
 		ibmmq.MQIA_TCP_CHANNELS,
 		ibmmq.MQIA_MAX_CHANNELS}
@@ -147,6 +157,8 @@ func collectQueueManagerAttrs() error {
 		maxchls := v[ibmmq.MQIA_MAX_CHANNELS].(int32)
 		maxact := v[ibmmq.MQIA_ACTIVE_CHANNELS].(int32)
 		maxtcp := v[ibmmq.MQIA_TCP_CHANNELS].(int32)
+		desc := v[ibmmq.MQCA_Q_MGR_DESC].(string)
+
 		key := v[ibmmq.MQCA_Q_MGR_NAME].(string)
 		st.Attributes[ATTR_QMGR_MAX_ACTIVE_CHANNELS].Values[key] = newStatusValueInt64(int64(maxact))
 		st.Attributes[ATTR_QMGR_MAX_CHANNELS].Values[key] = newStatusValueInt64(int64(maxchls))
@@ -155,8 +167,89 @@ func collectQueueManagerAttrs() error {
 		// This pseudo-value will always get filled in for a z/OS qmgr - we know it's running because
 		// we've been able to connect!
 		st.Attributes[ATTR_QMGR_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQQMSTA_RUNNING))
+		qMgrInfo.Description = desc
+		qMgrInfo.QMgrName = key
 	}
-	traceExitErr("collectQueueManagerAttrs", 0, err)
+	traceExitErr("collectQueueManagerAttrsZOS", 0, err)
+
+	return err
+}
+
+func collectQueueManagerAttrsDist() error {
+
+	traceEntry("collectQueueManagerAttrsDist")
+	ci := getConnection(GetConnectionKey())
+	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
+
+	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
+		ibmmq.MQCA_Q_MGR_DESC}
+
+	v, err := ci.si.qMgrObject.Inq(selectors)
+	desc := DUMMY_STRING
+	if err == nil {
+		key := v[ibmmq.MQCA_Q_MGR_NAME].(string)
+		desc = v[ibmmq.MQCA_Q_MGR_DESC].(string)
+		st.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
+		qMgrInfo.Description = desc
+		qMgrInfo.QMgrName = key
+	}
+
+	traceExitErr("collectQueueManagerAttrsDist", 0, err)
+
+	return err
+}
+
+func collectQueueManagerListeners() error {
+	var err error
+
+	traceEntry("collectQueueManagerListeners")
+
+	listenerCount := 0
+
+	ci := getConnection(GetConnectionKey())
+	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
+	statusClearReplyQ()
+	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+	// Can allow all the other fields to default
+	cfh.Command = ibmmq.MQCMD_INQUIRE_LISTENER_STATUS
+
+	// Add the parameters one at a time into a buffer
+	pcfparm := new(ibmmq.PCFParameter)
+	pcfparm.Type = ibmmq.MQCFT_STRING
+	pcfparm.Parameter = ibmmq.MQCACH_LISTENER_NAME
+	pcfparm.String = []string{"*"}
+	cfh.ParameterCount++
+	buf = append(buf, pcfparm.Bytes()...)
+
+	// Once we know the total number of parameters, put the
+	// CFH header on the front of the buffer.
+	buf = append(cfh.Bytes(), buf...)
+
+	// And now put the command to the queue
+	err = ci.si.cmdQObj.Put(putmqmd, pmo, buf)
+	if err != nil {
+		traceExitErr("collectQueueManagerListeners", 1, err)
+		return err
+	}
+
+	// Now get the responses - loop until all have been received (one
+	// per queue) or we run out of time
+	for allReceived := false; !allReceived; {
+		cfh, buf, allReceived, err = statusGetReply()
+		if buf != nil {
+			if parseQMgrListeners(cfh, buf) {
+				listenerCount++
+			}
+		}
+	}
+
+	logDebug("Getting listener count for %s as %d", qMgrInfo.QMgrName, listenerCount)
+
+	if qMgrInfo.QMgrName != "" {
+		st.Attributes[ATTR_QMGR_ACTIVE_LISTENERS].Values[qMgrInfo.QMgrName] = newStatusValueInt64(int64(listenerCount))
+	}
+
+	traceExitErr("collectQueueManagerListeners", 0, err)
 
 	return err
 }
@@ -268,6 +361,37 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceExitF("parseQMgrData", 0, "Key: %s", key)
 	return key
+}
+
+// Given a PCF response message, parse it to extract the desired statistics
+func parseQMgrListeners(cfh *ibmmq.MQCFH, buf []byte) bool {
+	//var elem *ibmmq.PCFParameter
+
+	traceEntry("parseQMgrListeners")
+	listener := false
+
+	parmAvail := true
+	bytesRead := 0
+	offset := 0
+	datalen := len(buf)
+	if cfh == nil || cfh.ParameterCount == 0 {
+		traceExit("parseQMgrListeners", 1)
+		return false
+	}
+
+	// Parse it to look for successful queries
+	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
+		_, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
+		offset += bytesRead
+		// Have we now reached the end of the message
+		if offset >= datalen {
+			parmAvail = false
+		}
+		listener = true
+	}
+
+	traceExitF("parseQMgrListeners", 0, "active: %v", listener)
+	return listener
 }
 
 // Return a standardised value. If the attribute indicates that something

@@ -1,6 +1,13 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Jan 10 2023 - v5.3.3
+- ibmmq - Add more attributes that can be MQINQ'd
+- mqmetric - New metric qmgr_active_listeners (ibm-messaging/mq-metric-samples#183)
+- mqmetric - Add qmgr description as tag (ibm-messaging/mq-metric-samples#184)
+- mqmetric - Add metrics.txt to list the available metrics that do not come from 
+             the amqsrua-style publication          
+
 ## Oct 17 2022 - v5.3.2
 - Update for MQ 9.3.1
 - mqmetric - New metric channel_cur_inst. All instances of a given channel name have this aggregated value.
