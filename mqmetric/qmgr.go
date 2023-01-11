@@ -338,6 +338,7 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	// And then re-parse the message so we can store the metrics now knowing the map key
 	parmAvail = true
 	offset = 0
+	hostname := DUMMY_STRING
 	for parmAvail && cfh.CompCode != ibmmq.MQCC_FAILED {
 		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
 		offset += bytesRead
@@ -352,12 +353,15 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 				startTime = strings.TrimSpace(elem.String[0])
 			case ibmmq.MQCACF_Q_MGR_START_DATE:
 				startDate = strings.TrimSpace(elem.String[0])
+			case ibmmq.MQCACF_HOST_NAME: // This started to be available from 9.3.2
+				hostname = strings.TrimSpace(elem.String[0])
 			}
 		}
 	}
 
 	now := time.Now()
 	st.Attributes[ATTR_QMGR_UPTIME].Values[key] = newStatusValueInt64(statusTimeDiff(now, startDate, startTime))
+	qMgrInfo.HostName = hostname
 
 	traceExitF("parseQMgrData", 0, "Key: %s", key)
 	return key
@@ -399,4 +403,25 @@ func parseQMgrListeners(cfh *ibmmq.MQCFH, buf []byte) bool {
 // value of the correct datatype
 func QueueManagerNormalise(attr *StatusAttribute, v int64) float64 {
 	return statusNormalise(attr, v)
+}
+
+// Return the nominated MQCA* attribute from the object's attributes
+// stored in the map. The "key" is unused for now, but might be useful
+// if we do a version that supports connections to multiple qmgrs. And it keeps
+// the function looking like the equivalent for the Queue query.
+func GetQueueManagerAttribute(key string, attribute int32) string {
+	v := DUMMY_STRING
+
+	switch attribute {
+	case ibmmq.MQCACF_HOST_NAME:
+		v = qMgrInfo.HostName
+	default:
+		v = DUMMY_STRING
+	}
+	v = strings.TrimSpace(v)
+
+	if v == "" {
+		v = DUMMY_STRING
+	}
+	return v
 }
