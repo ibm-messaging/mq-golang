@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2022
+* Copyright (c) IBM Corporation 1993, 2023
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -459,6 +459,16 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "AUTOCLUS":
+		switch v {
+		case 0:
+			s = "MQAUTOCLUS_TYPE_NONE"
+		case 1:
+			s = "MQAUTOCLUS_TYPE_UNIFORM"
+		default:
+			s = ""
+		}
+
 	case "AUTO":
 		switch v {
 		case 0:
@@ -809,6 +819,16 @@ func MQItoString(class string, value int) string {
 			s = "MQCFCONLOS_TOLERATE"
 		case 2:
 			s = "MQCFCONLOS_ASQMGR"
+		default:
+			s = ""
+		}
+
+	case "CFC":
+		switch v {
+		case 0:
+			s = "MQCFC_NOT_LAST"
+		case 1:
+			s = "MQCFC_LAST"
 		default:
 			s = ""
 		}
@@ -1435,6 +1455,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_930"
 		case 931:
 			s = "MQCMDL_LEVEL_931"
+		case 932:
+			s = "MQCMDL_LEVEL_932"
 		default:
 			s = ""
 		}
@@ -2147,42 +2169,22 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
-	case "FIELD":
+	case "FSENC":
 		switch v {
-		case 8000:
-			s = "MQFIELD_WQR_StrucId"
-		case 8001:
-			s = "MQFIELD_WQR_Version"
-		case 8002:
-			s = "MQFIELD_WQR_StrucLength"
-		case 8003:
-			s = "MQFIELD_WQR_QFlags"
-		case 8004:
-			s = "MQFIELD_WQR_QName"
-		case 8005:
-			s = "MQFIELD_WQR_QMgrIdentifier"
-		case 8006:
-			s = "MQFIELD_WQR_ClusterRecOffset"
-		case 8007:
-			s = "MQFIELD_WQR_QType"
-		case 8008:
-			s = "MQFIELD_WQR_QDesc"
-		case 8009:
-			s = "MQFIELD_WQR_DefBind"
-		case 8010:
-			s = "MQFIELD_WQR_DefPersistence"
-		case 8011:
-			s = "MQFIELD_WQR_DefPriority"
-		case 8012:
-			s = "MQFIELD_WQR_InhibitPut"
-		case 8013:
-			s = "MQFIELD_WQR_CLWLQueuePriority"
-		case 8014:
-			s = "MQFIELD_WQR_CLWLQueueRank"
-		case 8015:
-			s = "MQFIELD_WQR_DefPutResponse"
-		case 8016:
-			s = "MQFIELD_WQR_CapExpiry"
+		case 0:
+			s = "MQFSENC_NO"
+		case 1:
+			s = "MQFSENC_YES"
+		case 2:
+			s = "MQFSENC_UNKNOWN"
+		default:
+			s = ""
+		}
+
+	case "FS":
+		switch v {
+		case -1:
+			s = "MQFS_SHARED"
 		default:
 			s = ""
 		}
@@ -2265,6 +2267,8 @@ func MQItoString(class string, value int) string {
 			s = "MQGMO_NO_SYNCPOINT"
 		case 8:
 			s = "MQGMO_SET_SIGNAL"
+		case 16:
+			s = "MQGMO_BROWSE_FIRST"
 		case 32:
 			s = "MQGMO_BROWSE_NEXT"
 		case 64:
@@ -2385,6 +2389,38 @@ func MQItoString(class string, value int) string {
 			s = "MQHSTATE_INACTIVE"
 		case 1:
 			s = "MQHSTATE_ACTIVE"
+		default:
+			s = ""
+		}
+
+	case "IAMO_MONITOR_DATATYPE":
+		switch v {
+		case 1:
+			s = "MQIAMO_MONITOR_UNIT"
+		case 2:
+			s = "MQIAMO_MONITOR_DELTA"
+		case 100:
+			s = "MQIAMO_MONITOR_HUNDREDTHS"
+		case 1024:
+			s = "MQIAMO_MONITOR_KB"
+		case 10000:
+			s = "MQIAMO_MONITOR_PERCENT"
+		case 1000000:
+			s = "MQIAMO_MONITOR_MICROSEC"
+		case 1048576:
+			s = "MQIAMO_MONITOR_MB"
+		case 100000000:
+			s = "MQIAMO_MONITOR_GB"
+		default:
+			s = ""
+		}
+
+	case "IAMO_MONITOR_FLAGS":
+		switch v {
+		case 0:
+			s = "MQIAMO_MONITOR_FLAGS_NONE"
+		case 1:
+			s = "MQIAMO_MONITOR_FLAGS_OBJNAME"
 		default:
 			s = ""
 		}
@@ -2643,6 +2679,18 @@ func MQItoString(class string, value int) string {
 			s = "MQLDAP_NESTGRP_NO"
 		case 1:
 			s = "MQLDAP_NESTGRP_YES"
+		default:
+			s = ""
+		}
+
+	case "LOGTYPE":
+		switch v {
+		case 0:
+			s = "MQLOGTYPE_CIRCULAR"
+		case 1:
+			s = "MQLOGTYPE_LINEAR"
+		case 2:
+			s = "MQLOGTYPE_REPLICATED"
 		default:
 			s = ""
 		}
@@ -2961,6 +3009,16 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "MON_OVERRIDE":
+		switch v {
+		case 0:
+			s = "MQMON_DISABLED"
+		case 1:
+			s = "MQMON_ENABLED"
+		default:
+			s = ""
+		}
+
 	case "MON":
 		switch v {
 		case -3:
@@ -2977,6 +3035,14 @@ func MQItoString(class string, value int) string {
 			s = "MQMON_MEDIUM"
 		case 65:
 			s = "MQMON_HIGH"
+		default:
+			s = ""
+		}
+
+	case "MON_AVAILABILITY":
+		switch v {
+		case -1:
+			s = "MQMON_NOT_AVAILABLE"
 		default:
 			s = ""
 		}
@@ -3033,6 +3099,46 @@ func MQItoString(class string, value int) string {
 		switch v {
 		case 256:
 			s = "MQNC_MAX_NAMELIST_NAME_COUNT"
+		default:
+			s = ""
+		}
+
+	case "NHABACKLOG":
+		switch v {
+		case -1:
+			s = "MQNHABACKLOG_UNKNOWN"
+		default:
+			s = ""
+		}
+
+	case "NHACONNACTV":
+		switch v {
+		case 0:
+			s = "MQNHACONNACTV_NO"
+		case 1:
+			s = "MQNHACONNACTV_YES"
+		default:
+			s = ""
+		}
+
+	case "NHAINSYNC":
+		switch v {
+		case 0:
+			s = "MQNHAINSYNC_NO"
+		case 1:
+			s = "MQNHAINSYNC_YES"
+		default:
+			s = ""
+		}
+
+	case "NHAROLE":
+		switch v {
+		case 0:
+			s = "MQNHAROLE_UNKNOWN"
+		case 1:
+			s = "MQNHAROLE_ACTIVE"
+		case 2:
+			s = "MQNHAROLE_REPLICA"
 		default:
 			s = ""
 		}
@@ -3537,6 +3643,16 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "QA_SHAREABLE":
+		switch v {
+		case 0:
+			s = "MQQA_NOT_SHAREABLE"
+		case 1:
+			s = "MQQA_SHAREABLE"
+		default:
+			s = ""
+		}
+
 	case "QDT":
 		switch v {
 		case 1:
@@ -3927,6 +4043,16 @@ func MQItoString(class string, value int) string {
 		switch v {
 		case -1:
 			s = "MQRL_UNDEFINED"
+		default:
+			s = ""
+		}
+
+	case "RMHF":
+		switch v {
+		case 0:
+			s = "MQRMHF_NOT_LAST"
+		case 1:
+			s = "MQRMHF_LAST"
 		default:
 			s = ""
 		}
@@ -4487,10 +4613,20 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
-	case "SUB":
+	case "SUB_DURABILITY":
 		switch v {
 		case -1:
 			s = "MQSUB_DURABLE_ALL"
+		case 1:
+			s = "MQSUB_DURABLE_YES"
+		case 2:
+			s = "MQSUB_DURABLE_NO"
+		default:
+			s = ""
+		}
+
+	case "SUB":
+		switch v {
 		case 0:
 			s = "MQSUB_DURABLE_AS_PARENT"
 		case 1:
@@ -5465,6 +5601,78 @@ func MQItoString(class string, value int) string {
 			s = "MQZCI_CONTINUE"
 		case 1:
 			s = "MQZCI_STOP"
+		default:
+			s = ""
+		}
+
+	case "ZID_AUTHORITY":
+		switch v {
+		case 0:
+			s = "MQZID_INIT_AUTHORITY"
+		case 1:
+			s = "MQZID_TERM_AUTHORITY"
+		case 2:
+			s = "MQZID_CHECK_AUTHORITY"
+		case 3:
+			s = "MQZID_COPY_ALL_AUTHORITY"
+		case 4:
+			s = "MQZID_DELETE_AUTHORITY"
+		case 5:
+			s = "MQZID_SET_AUTHORITY"
+		case 6:
+			s = "MQZID_GET_AUTHORITY"
+		case 7:
+			s = "MQZID_GET_EXPLICIT_AUTHORITY"
+		case 8:
+			s = "MQZID_REFRESH_CACHE"
+		case 9:
+			s = "MQZID_ENUMERATE_AUTHORITY_DATA"
+		case 10:
+			s = "MQZID_AUTHENTICATE_USER"
+		case 11:
+			s = "MQZID_FREE_USER"
+		case 12:
+			s = "MQZID_INQUIRE"
+		case 13:
+			s = "MQZID_CHECK_PRIVILEGED"
+		default:
+			s = ""
+		}
+
+	case "ZID_NAME":
+		switch v {
+		case 0:
+			s = "MQZID_INIT_NAME"
+		case 1:
+			s = "MQZID_TERM_NAME"
+		case 2:
+			s = "MQZID_LOOKUP_NAME"
+		case 3:
+			s = "MQZID_INSERT_NAME"
+		case 4:
+			s = "MQZID_DELETE_NAME"
+		default:
+			s = ""
+		}
+
+	case "ZID_USERID":
+		switch v {
+		case 0:
+			s = "MQZID_INIT_USERID"
+		case 1:
+			s = "MQZID_TERM_USERID"
+		case 2:
+			s = "MQZID_FIND_USERID"
+		default:
+			s = ""
+		}
+
+	case "ZID":
+		switch v {
+		case 0:
+			s = "MQZID_INIT"
+		case 1:
+			s = "MQZID_TERM"
 		default:
 			s = ""
 		}

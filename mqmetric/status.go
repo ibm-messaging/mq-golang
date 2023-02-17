@@ -26,9 +26,10 @@ package mqmetric
 
 import (
 	"fmt"
-	ibmmq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strings"
 	"time"
+
+	ibmmq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 var statusDummy = fmt.Sprintf("dummy")
@@ -282,7 +283,7 @@ func statusGetIntAttributes(s *StatusSet, elem *ibmmq.PCFParameter, key string) 
 	}
 
 	// Look at the Parameter and loop through all the possible status
-	// attributes to find it.We don't break from the loop after finding a match
+	// attributes to find it. We don't break from the loop after finding a match
 	// because there might be more than one attribute associated with the
 	// attribute (in particular status/status_squash)
 	for attr, _ := range s.Attributes {

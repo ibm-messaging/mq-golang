@@ -1,6 +1,12 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Feb 17 2023 - v5.4.0
+- Update for MQ 9.3.2
+- mqmetric - Add hostname tag for 9.3.2 qmgrs (added to DIS QMSTATUS response) (ibm-messaging/mq-metric-samples#184)
+- mqmetric - Add subscriptions to NativeHA published metrics
+- mqmetric - Add metrics for status of log extents 
+
 ## Jan 10 2023 - v5.3.3
 - ibmmq - Add more attributes that can be MQINQ'd
 - mqmetric - New metric qmgr_active_listeners (ibm-messaging/mq-metric-samples#183)

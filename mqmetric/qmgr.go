@@ -30,6 +30,7 @@ about the MQ queue manager
 */
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +48,20 @@ const (
 	ATTR_QMGR_MAX_ACTIVE_CHANNELS = "max_active_channels"
 	ATTR_QMGR_MAX_TCP_CHANNELS    = "max_tcp_channels"
 	ATTR_QMGR_ACTIVE_LISTENERS    = "active_listeners"
+
+	// Some of the log-related metrics are effectively duplicated between QMSTATUS and
+	// published resources eg LOGUTIL. We prefer the publication versions so do not
+	// explicitly call them out here. We also do not collect "static" logger configuration
+	// values such as LOGEXTSZ, LOGPRIM or LOGTYPE.
+	ATTR_QMGR_LOG_CURRENT_EXTENT = "log_extent_current"
+	ATTR_QMGR_LOG_MEDIA_EXTENT   = "log_extent_media"
+	ATTR_QMGR_LOG_ARCHIVE_EXTENT = "log_extent_archive"
+	ATTR_QMGR_LOG_RESTART_EXTENT = "log_extent_restart"
+
+	ATTR_QMGR_LOG_MEDIA_SIZE    = "log_size_media"
+	ATTR_QMGR_LOG_ARCHIVE_SIZE  = "log_size_archive"
+	ATTR_QMGR_LOG_RESTART_SIZE  = "log_size_restart"
+	ATTR_QMGR_LOG_REUSABLE_SIZE = "log_size_reusable"
 )
 
 /*
@@ -85,6 +100,26 @@ func QueueManagerInitAttributes() {
 		st.Attributes[attr] = newStatusAttribute(attr, "Command Server Status", ibmmq.MQIACF_CMD_SERVER_STATUS)
 		attr = ATTR_QMGR_ACTIVE_LISTENERS
 		st.Attributes[attr] = newStatusAttribute(attr, "Active Listener Count", -1)
+
+		// Log-related metrics
+		attr = ATTR_QMGR_LOG_CURRENT_EXTENT
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Current Extent", -1)
+		attr = ATTR_QMGR_LOG_MEDIA_EXTENT
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Media Extent", -1)
+		attr = ATTR_QMGR_LOG_ARCHIVE_EXTENT
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Archive Extent", -1)
+		attr = ATTR_QMGR_LOG_RESTART_EXTENT
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Restart Recovery Extent", -1)
+
+		attr = ATTR_QMGR_LOG_MEDIA_SIZE
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Media Size", ibmmq.MQIACF_MEDIA_LOG_SIZE)
+		attr = ATTR_QMGR_LOG_ARCHIVE_SIZE
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Archive Size", ibmmq.MQIACF_ARCHIVE_LOG_SIZE)
+		attr = ATTR_QMGR_LOG_RESTART_SIZE
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Restart Recovery Size", ibmmq.MQIACF_RESTART_LOG_SIZE)
+		attr = ATTR_QMGR_LOG_REUSABLE_SIZE
+		st.Attributes[attr] = newStatusAttribute(attr, "Log Reusable Size", ibmmq.MQIACF_REUSABLE_LOG_SIZE)
+
 	} else {
 		attr = ATTR_QMGR_MAX_CHANNELS
 		st.Attributes[attr] = newStatusAttribute(attr, "Max Channels", -1)
@@ -199,6 +234,12 @@ func collectQueueManagerAttrsDist() error {
 	return err
 }
 
+// We collect the number of active listeners, rather than
+// enumerating the status of all of the configured objects. In most
+// systems, the listener count will be "1". And getting all of the information
+// about all objects is probably overkill. This does assume that
+// listeners are managed through the listener objects, rather than
+// being started independently eg by direct use of the runmqlsr command.
 func collectQueueManagerListeners() error {
 	var err error
 
@@ -211,6 +252,7 @@ func collectQueueManagerListeners() error {
 	statusClearReplyQ()
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 	// Can allow all the other fields to default
+	// Only active or transitioning listeners return a response.
 	cfh.Command = ibmmq.MQCMD_INQUIRE_LISTENER_STATUS
 
 	// Add the parameters one at a time into a buffer
@@ -355,6 +397,16 @@ func parseQMgrData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 				startDate = strings.TrimSpace(elem.String[0])
 			case ibmmq.MQCACF_HOST_NAME: // This started to be available from 9.3.2
 				hostname = strings.TrimSpace(elem.String[0])
+
+			// Log-related attributes naming an extent will need conversion from a string to an integer
+			case ibmmq.MQCACF_CURRENT_LOG_EXTENT_NAME:
+				st.Attributes[ATTR_QMGR_LOG_CURRENT_EXTENT].Values[key] = newStatusValueInt64(logExtent(elem.String[0]))
+			case ibmmq.MQCACF_MEDIA_LOG_EXTENT_NAME:
+				st.Attributes[ATTR_QMGR_LOG_MEDIA_EXTENT].Values[key] = newStatusValueInt64(logExtent(elem.String[0]))
+			case ibmmq.MQCACF_ARCHIVE_LOG_EXTENT_NAME:
+				st.Attributes[ATTR_QMGR_LOG_ARCHIVE_EXTENT].Values[key] = newStatusValueInt64(logExtent(elem.String[0]))
+			case ibmmq.MQCACF_RESTART_LOG_EXTENT_NAME:
+				st.Attributes[ATTR_QMGR_LOG_RESTART_EXTENT].Values[key] = newStatusValueInt64(logExtent(elem.String[0]))
 			}
 		}
 	}
@@ -398,11 +450,40 @@ func parseQMgrListeners(cfh *ibmmq.MQCFH, buf []byte) bool {
 	return listener
 }
 
+// A log extent is reported by the qmgr with a name like "S001234.LOG". We
+// extract the numeric part here so it can be returned like a regular metric.
+// If the extent doesn't match that format (likely an empty string for CIRCULAR logging
+// systems) then just return 0.
+func logExtent(l string) int64 {
+	l = strings.ToUpper(l)
+	if strings.HasPrefix(l, "S") && strings.HasSuffix(l, ".LOG") {
+		l = strings.Replace(strings.Replace(l, "S", "", -1), ".LOG", "", -1)
+		v, err := strconv.Atoi(l)
+		if err == nil {
+			return int64(v)
+		}
+	}
+	return 0
+}
+
 // Return a standardised value. If the attribute indicates that something
 // special has to be done, then do that. Otherwise just make sure it's a non-negative
 // value of the correct datatype
 func QueueManagerNormalise(attr *StatusAttribute, v int64) float64 {
-	return statusNormalise(attr, v)
+	switch attr.pcfAttr {
+	// The logger size values are reported in MB by the qmgr to keep them in MQCFIN range. We normalise them to bytes here
+	case ibmmq.MQIACF_MEDIA_LOG_SIZE,
+		ibmmq.MQIACF_RESTART_LOG_SIZE,
+		ibmmq.MQIACF_ARCHIVE_LOG_SIZE,
+		ibmmq.MQIACF_REUSABLE_LOG_SIZE:
+		f := float64(v) * 1024 * 1024
+		if f < 0 {
+			f = 0
+		}
+		return f
+	default:
+		return statusNormalise(attr, v)
+	}
 }
 
 // Return the nominated MQCA* attribute from the object's attributes

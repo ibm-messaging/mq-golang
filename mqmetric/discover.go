@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2022
+  Copyright (c) IBM Corporation 2016, 2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ type ObjInfo struct {
 // QMgrMapKey can never be a real object name and is therefore useful in
 // maps that may contain only this single entry
 const QMgrMapKey = "@self"
-
+const NativeHAKeyPrefix = "@NATIVEHA@"
 const ClassNameQ = "STATQ"
 
 const maxBufSize = 100 * 1024 * 1024 // 100 MB
@@ -116,8 +116,7 @@ var qInfoMap map[string]*ObjInfo   // These maps probably need to be moved into 
 var chlInfoMap map[string]*ObjInfo // are not public interface elements
 var amqpInfoMap map[string]*ObjInfo
 var qMgrInfo = new(ObjInfo)
-
-//var nhaInfoMap map[string]*ObjInfo
+var nhaInfoMap map[string]*ObjInfo
 
 var locale string
 
@@ -223,10 +222,10 @@ func DiscoverAndSubscribe(dc DiscoverConfig) error {
 	redo := false
 
 	qInfoMap = make(map[string]*ObjInfo)
-	//nhaInfoMap = make(map[string]*ObjInfo)
-	//nhaInfoElem := new(ObjInfo)
-	//nhaInfoElem.exists = true
-	//nhaInfoMap["#"] = nhaInfoElem
+	nhaInfoMap = make(map[string]*ObjInfo)
+	nhaInfoElem := new(ObjInfo)
+	nhaInfoElem.exists = true
+	nhaInfoMap["#"] = nhaInfoElem
 
 	err := discoverAndSubscribe(dc, redo)
 
@@ -411,8 +410,8 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 			switch cl.Name {
 			case "STATAPP":
 				logDebug("Not subscribing to Class STATAPP resources")
-			case "NHAREPLICA":
-				logDebug("Not subscribing to Class NHAREPLICA resources")
+			//case "NHAREPLICA":
+			//	logDebug("Not subscribing to Class NHAREPLICA resources")
 			default:
 				cl.Parent.Classes[classIndex] = cl
 			}
@@ -669,8 +668,8 @@ func discoverStats(dc DiscoverConfig) error {
 					name := elem.MetricName
 					if strings.Contains(ty.ObjectTopic, "%s") {
 						switch cl.Name {
-						//case "NHAREPLICA":
-						//	name = "nha_" + name
+						case "NHAREPLICA":
+							name = "nha_" + name
 						default:
 							name = "object_" + name
 						}
@@ -1001,16 +1000,15 @@ func createSubscriptions() error {
 
 	for _, cl := range metrics.Classes {
 		for _, ty := range cl.Types {
-			// To support additional class/type metrics that have object names, such as
-			// STATAPP and NHAREPLICA
-			// then we'd need to associate a list of those names with the metric type.
-			// For now, we are only dealing with queues and so can assume use of qInfoMap
+			// For queues, we use the list of discovered objects to
+			// create the subscriptions. For other object types, the list
+			// is allowed to be a wildcard. In particular, the NativeHA instances
 			if strings.Contains(ty.ObjectTopic, "%s") {
 				im := qInfoMap
-				//switch cl.Name {
-				//case "NHAREPLICA":
-				//	im = nhaInfoMap
-				//}
+				switch cl.Name {
+				case "NHAREPLICA":
+					im = nhaInfoMap
+				}
 				for key, _ := range im {
 					if len(key) == 0 {
 						continue
@@ -1130,6 +1128,9 @@ func ProcessPublications() error {
 					// May need to use this as part of the object key and
 					// labelling But for now we can ignore it.
 					_ = ibmmq.MQItoString("OT", int(elemList[i].Int64Value[0]))
+				case ibmmq.MQCACF_NHA_INSTANCE_NAME:
+					objName = strings.TrimSpace(elemList[i].String[0])
+					objType = OT_NHA
 				case ibmmq.MQIAMO_MONITOR_CLASS:
 					classidx = int(elemList[i].Int64Value[0])
 				case ibmmq.MQIAMO_MONITOR_TYPE:
@@ -1168,9 +1169,9 @@ func ProcessPublications() error {
 				if typesIdx, ok1 := typesArray[typeidx]; ok1 {
 					if elem, ok2 := typesIdx.Elements[key]; ok2 {
 						objectName := objName
-
+						elemKey := ""
 						if objectName == "" {
-							objectName = QMgrMapKey
+							elemKey = QMgrMapKey
 						} else {
 							// If we've unsubscribed and resubscribed to the same queue (unusual
 							// but a dynamic resub nature may permit that) then discard the first metric
@@ -1178,22 +1179,30 @@ func ProcessPublications() error {
 							objectInfoMap := qInfoMap
 							if objType == ibmmq.MQOT_Q {
 								objectInfoMap = qInfoMap
+								elemKey = objectName
+							} else if objType == OT_NHA {
+								objectInfoMap = nhaInfoMap
+								elemKey = NativeHAKeyPrefix + objectName
 							}
 							if qi, ok := objectInfoMap[objName]; ok {
 								if qi.firstCollection {
 									continue
 								}
-								if !qi.exists {
+								if !qi.exists && objType != OT_NHA {
 									//logDebug("Data for untracked object %s being ignored", objName)
 									continue
 								}
 							} else {
-								//logDebug("Data for unknown object %s being ignored", objName)
-								continue
+								// There is no discovery/validation of instance names needed for NHA - we
+								// always add it to the map
+								if objType != OT_NHA {
+									//logDebug("Data for unknown object %s being ignored", objName)
+									continue
+								}
 							}
 						}
 
-						if oldValue, ok := elem.Values[objectName]; ok {
+						if oldValue, ok := elem.Values[elemKey]; ok {
 							if elem.Datatype == ibmmq.MQIAMO_MONITOR_DELTA {
 								value = oldValue + newValue
 							} else {
@@ -1202,7 +1211,7 @@ func ProcessPublications() error {
 						} else {
 							value = newValue
 						}
-						elem.Values[objectName] = value
+						elem.Values[elemKey] = value
 					}
 				}
 			}

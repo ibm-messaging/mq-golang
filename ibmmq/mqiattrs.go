@@ -22,7 +22,7 @@ package ibmmq
 /* We have to cope with character attributes that might not be
    available in older versions of MQ. Maps cannot be passed to C
    functions so we use some arrays with ifdefs to control it and then
-   add them to the length map.
+   add them to the Go length map.
 */
 
 /*
@@ -31,24 +31,26 @@ package ibmmq
 #include <string.h>
 #include <cmqc.h>
 
+#define MAX_NEW_MQCA_ATTRS 32 // Running amqsinq.go will check this is large enough
+
 int addNewCharAttrs(MQLONG a[],MQLONG l[]) {
   int i = 0;
 #if defined(MQCA_SSL_KEY_REPO_PASSWORD)
   a[i] = MQCA_SSL_KEY_REPO_PASSWORD;
   l[i] = MQ_SSL_ENCRYP_KEY_REPO_PWD_LEN;
-  i++;
+  if (++i > MAX_NEW_MQCA_ATTRS) return -1;
 #endif
 
 #if defined(MQCA_INITIAL_KEY)
   a[i] = MQCA_INITIAL_KEY;
   l[i] = MQ_INITIAL_KEY_LENGTH;
-  i++;
+  if (++i > MAX_NEW_MQCA_ATTRS) return -1;
 #endif
 
 #if defined(MQCA_STREAM_QUEUE_NAME)
   a[i] = MQCA_STREAM_QUEUE_NAME;
   l[i] = MQ_Q_NAME_LENGTH;
-  i++;
+  if (++i > MAX_NEW_MQCA_ATTRS) return -1;
 #endif
 
   return i;
@@ -56,6 +58,10 @@ int addNewCharAttrs(MQLONG a[],MQLONG l[]) {
 
 */
 import "C"
+import (
+	"fmt"
+	"os"
+)
 
 /*
  * This file deals with the lengths of attributes that may be processed
@@ -136,10 +142,16 @@ func getAttrInfo(attrs []int32) (int, int, int) {
 	var intAttrCount = 0
 
 	if !charAttrsAdded {
-		maxNewAttrs := 32 // May need to change this if lots more attributes get added
+		maxNewAttrs := C.MAX_NEW_MQCA_ATTRS
 		attrVals := make([]C.MQLONG, maxNewAttrs)
 		attrLens := make([]C.MQLONG, maxNewAttrs)
 		addedAttrs := int(C.addNewCharAttrs(&attrVals[0], &attrLens[0]))
+
+		if addedAttrs < 0 {
+			// Force an immediate exit if the arrays are not large enough.
+			fmt.Printf("Error: mqiattrs.go: MAX_NEW_MQCA_ATTRS is too small. Increase from %d\n", C.MAX_NEW_MQCA_ATTRS)
+			os.Exit(1)
+		}
 		for i := 0; i < addedAttrs; i++ {
 			mqInqLength[int32(attrVals[i])] = int32(attrLens[i])
 		}

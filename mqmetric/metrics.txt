@@ -14,7 +14,7 @@ https://www.ibm.com/docs/en/ibm-mq/latest?topic=trace-metrics-published-system-t
 
 These are other metrics extracted or calculated by this package, or used as tags. Most of
 these metrics come from "DISPLAY xxSTATUS" or "DISPLAY xx" commands for the relevant object type and name. 
-Each line here shows the source code variable and the public metric name.
+Each line here shows the source code variable and the basic public metric name.
 
 Class: amqp
   ATTR_CHL_AMQP_CLIENT_ID         : clientid
@@ -57,6 +57,14 @@ Class: qmgr
   ATTR_QMGR_CHINIT_STATUS         : channel_initiator_status
   ATTR_QMGR_CMD_SERVER_STATUS     : command_server_status
   ATTR_QMGR_CONNECTION_COUNT      : connection_count
+  ATTR_QMGR_LOG_ARCHIVE_EXTENT    : log_extent_archive
+  ATTR_QMGR_LOG_ARCHIVE_SIZE      : log_size_archive
+  ATTR_QMGR_LOG_CURRENT_EXTENT    : log_extent_current
+  ATTR_QMGR_LOG_MEDIA_EXTENT      : log_extent_media
+  ATTR_QMGR_LOG_MEDIA_SIZE        : log_size_media
+  ATTR_QMGR_LOG_RESTART_EXTENT    : log_extent_restart
+  ATTR_QMGR_LOG_RESTART_SIZE      : log_size_restart
+  ATTR_QMGR_LOG_REUSABLE_SIZE     : log_size_reusable
   ATTR_QMGR_MAX_ACTIVE_CHANNELS   : max_active_channels
   ATTR_QMGR_MAX_CHANNELS          : max_channels
   ATTR_QMGR_MAX_TCP_CHANNELS      : max_tcp_channels
@@ -111,4 +119,4 @@ Class: bufferpool/pageset
   ATTR_PS_TOTAL                   : pages_total
   ATTR_PS_UNUSED                  : pages_unused
 
-This page was automatically generated from the source tree on 2023-01-04 07:41:27
+This page was automatically generated from the source tree on 2023-02-15 07:35:57

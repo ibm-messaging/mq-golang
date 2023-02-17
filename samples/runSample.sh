@@ -49,8 +49,9 @@ else
   nocache=""
 fi
 docker build $nocache -t $TAG:$VER -f  $dfile .
+rc=$?
 
-if [ $? -eq 0 ]
+if [ $rc -eq 0 ]
 then
   # This line grabs a currently active IPv4 address for this machine. It's probably
   # not what you want to use for a real system but it's useful for testing. "localhost"
@@ -72,3 +73,5 @@ then
     exit 1
   fi
 fi
+
+exit $rc

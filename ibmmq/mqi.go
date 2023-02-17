@@ -54,6 +54,13 @@ package ibmmq
 #include <cmqc.h>
 #include <cmqxc.h>
 
+// Compatibility with older versions - -1 will never be a match
+#if defined(MQCA_INITIAL_KEY)
+#define GOCA_INITIAL_KEY MQCA_INITIAL_KEY
+#else
+#define GOCA_INITIAL_KEY (-1)
+#endif
+
 */
 import "C"
 
@@ -893,7 +900,12 @@ func (object MQObject) Inq(goSelectors []int32) (map[int32]interface{}, error) {
 					name = name[0:idx]
 				}
 
-				returnedMap[s] = strings.TrimSpace(name)
+				if s == C.GOCA_INITIAL_KEY && strings.TrimSpace(name) != "" {
+					// The actual return is something unprintable so set it to the same thing as a PCF command response
+					returnedMap[s] = "********"
+				} else {
+					returnedMap[s] = strings.TrimSpace(name)
+				}
 				charOffset += charLength
 			}
 		}
