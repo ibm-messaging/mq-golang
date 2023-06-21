@@ -211,7 +211,9 @@ func statusSetCommandHeaders() (*ibmmq.MQMD, *ibmmq.MQPMO, *ibmmq.MQCFH, []byte)
 // Get a reply from the command server, returning the buffer
 // to be parsed. This function is called in a loop until
 // it has returned allDone=true (with or without an error)
-func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
+// The command request is assigned a MsgId when MQPUT; that is
+// used as the CorrelId for all related responses.
+func statusGetReply(correlId []byte) (*ibmmq.MQCFH, []byte, bool, error) {
 	var offset int
 	var cfh *ibmmq.MQCFH
 
@@ -226,7 +228,10 @@ func statusGetReply() (*ibmmq.MQCFH, []byte, bool, error) {
 	gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING
 	gmo.Options |= ibmmq.MQGMO_WAIT
 	gmo.Options |= ibmmq.MQGMO_CONVERT
-	gmo.WaitInterval = 3 * 1000 // 3 seconds
+	gmo.WaitInterval = int32(ci.waitInterval) * 1000 // 3 seconds by default
+
+	getmqmd.CorrelId = correlId
+	gmo.MatchOptions = ibmmq.MQMO_MATCH_CORREL_ID
 
 	allDone := false
 	datalen, err := ci.si.statusReplyQObj.Get(getmqmd, gmo, replyBuf)

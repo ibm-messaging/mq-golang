@@ -27,7 +27,7 @@ echo Building container with tag $TAG:$VER
 # Build the container which includes compilation of the program.
 # The UBI variant is built on the Red Hat Universal Base Image set of containers.
 dfile="runSample.ubi.Dockerfile"
-buildah bud -t $TAG:$VER -f $dfile .
+buildah bud --build-arg GOPATH_ARG="/go" -t $TAG:$VER -f $dfile .
 
 if [ $? -eq 0 ]
 then

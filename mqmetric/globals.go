@@ -63,6 +63,8 @@ type connectionInfo struct {
 	discoveryDone    bool
 	publicationCount int
 
+	waitInterval int
+
 	objectStatus     [OT_LAST_USED + 1]objectStatus
 	publishedMetrics AllMetrics
 }

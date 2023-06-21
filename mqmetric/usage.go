@@ -31,8 +31,9 @@ about MQ on z/OS pageset and bufferpool use.
 
 import (
 	//	"fmt"
-	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strconv"
+
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 const (
@@ -155,7 +156,7 @@ func collectUsageStatus() error {
 	}
 
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			//	fmt.Printf("UsageBP Data received. cfh %v err %v\n",cfh,err)
 			parseUsageData(cfh, buf)

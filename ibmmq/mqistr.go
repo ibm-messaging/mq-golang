@@ -1457,6 +1457,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_931"
 		case 932:
 			s = "MQCMDL_LEVEL_932"
+		case 933:
+			s = "MQCMDL_LEVEL_933"
 		default:
 			s = ""
 		}

@@ -260,7 +260,7 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 	// Now get the responses - loop until all have been received (one
 	// per queue) or we run out of time
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			parseQData(instanceType, cfh, buf)
 		}
@@ -303,7 +303,7 @@ func collectResetQStats(pattern string) error {
 	// Now get the responses - loop until all have been received (one
 	// per queue) or we run out of time
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			parseResetQStatsData(cfh, buf)
 		}
@@ -368,7 +368,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		}
 
 		for allReceived := false; !allReceived; {
-			cfh, buf, allReceived, err = statusGetReply()
+			cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 			if buf != nil {
 				parseQAttrData(cfh, buf)
 			}

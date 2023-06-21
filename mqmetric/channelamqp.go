@@ -255,7 +255,7 @@ func collectAMQPChannelStatus(pattern string, instanceType int32) error {
 	// Now get the responses - loop until all have been received (one
 	// per channel) or we run out of time
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			key := parseAMQPChlData(instanceType, cfh, buf)
 			if key != "" {
@@ -427,7 +427,7 @@ func inquireAMQPChannelAttributes(objectPatternsList string, infoMap map[string]
 		}
 
 		for allReceived := false; !allReceived; {
-			cfh, buf, allReceived, err = statusGetReply()
+			cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 			if buf != nil {
 				parseAMQPChannelAttrData(cfh, buf, infoMap)
 			}

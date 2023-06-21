@@ -8,7 +8,7 @@ vary by queue manager platform and version.
 As an example, one of the metrics available in Prometheus might be "ibmmq_channel_bytes_sent" with
 the full name created by combining the product name, the class, and the individual metric.
 
-The metrics published by the queue manager are listed in the product documentation are
+The metrics published by the queue manager are listed in the product documentation and
 are not repeated in this file:
 https://www.ibm.com/docs/en/ibm-mq/latest?topic=trace-metrics-published-system-topics
 
@@ -119,4 +119,4 @@ Class: bufferpool/pageset
   ATTR_PS_TOTAL                   : pages_total
   ATTR_PS_UNUSED                  : pages_unused
 
-This page was automatically generated from the source tree on 2023-02-15 07:35:57
+This page was automatically generated from the source tree on 2023-06-20 09:33:10

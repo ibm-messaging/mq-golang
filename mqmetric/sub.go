@@ -30,9 +30,10 @@ about MQ subscriptions
 */
 
 import (
-	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strings"
 	"time"
+
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 const (
@@ -158,7 +159,7 @@ func collectSubStatus(pattern string) error {
 	// Now get the responses - loop until all have been received (one
 	// per queue) or we run out of time
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			parseSubData(cfh, buf)
 		}

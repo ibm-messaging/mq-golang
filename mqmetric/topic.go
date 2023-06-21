@@ -30,9 +30,10 @@ about MQ topics
 */
 
 import (
-	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 	"strings"
 	"time"
+
+	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 const (
@@ -215,7 +216,7 @@ func collectTopicStatus(pattern string, instanceType int32) error {
 	}
 
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			key := parseTopicData(instanceType, cfh, buf)
 			if key != "" {

@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Jun 21 2023 - v5.5.0
+- Update for MQ 9.3.3
+- mqmetric - Configurable timeout for status queries (ibm-messaging/mq-metric-samples#227)
+
 ## Feb 17 2023 - v5.4.0
 - Update for MQ 9.3.2
 - mqmetric - Add hostname tag for 9.3.2 qmgrs (added to DIS QMSTATUS response) (ibm-messaging/mq-metric-samples#184)

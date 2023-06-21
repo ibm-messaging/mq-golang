@@ -47,6 +47,7 @@ type ConnectionConfig struct {
 	ShowInactiveChannels bool
 	HideSvrConnJobname   bool
 	HideAMQPClientId     bool
+	WaitInterval         int
 
 	CcdtUrl  string
 	ConnName string
@@ -182,6 +183,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 		var v map[int32]interface{}
 
 		ci.useStatus = cc.UseStatus
+		ci.waitInterval = cc.WaitInterval
 
 		mqod := ibmmq.NewMQOD()
 		openOptions := ibmmq.MQOO_INQUIRE + ibmmq.MQOO_FAIL_IF_QUIESCING
@@ -407,9 +409,10 @@ func subscribeDurable(topic string, pubQObj *ibmmq.MQObject) (*MQTopicDescriptor
 }
 
 /*
-subscribe to the 	} else {
-								s.removeSubscription()
-							}nominated topic, but ask the queue manager to
+	subscribe to the 	} else {
+									s.removeSubscription()
+								}nominated topic, but ask the queue manager to
+
 allocate the replyQ for us
 */
 func subscribeManaged(topic string, pubQObj *ibmmq.MQObject) (*MQTopicDescriptor, error) {
@@ -563,7 +566,7 @@ func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj 
 	// Now get the responses - loop until all have been received (one
 	// per queue) or we run out of time
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			subName, subId := parseInqSubData(cfh, buf)
 			if subName != "" {
@@ -603,7 +606,7 @@ func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj 
 		// Don't really care about the responses, just loop until
 		// the operation is complete one way or the other
 		for allReceived := false; !allReceived; {
-			_, _, allReceived, _ = statusGetReply()
+			_, _, allReceived, _ = statusGetReply(putmqmd.MsgId)
 		}
 	}
 

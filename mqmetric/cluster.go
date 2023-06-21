@@ -130,7 +130,7 @@ func collectClusterStatus() error {
 	// Now get the responses - loop until all have been received (one
 	// per queue) or we run out of time
 	for allReceived := false; !allReceived; {
-		cfh, buf, allReceived, err = statusGetReply()
+		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
 			parseClusterData(cfh, buf)
 		}

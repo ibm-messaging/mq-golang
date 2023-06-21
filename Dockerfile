@@ -17,10 +17,12 @@ FROM $BASE_IMAGE
 
 ARG GOPATH_ARG="/go"
 ARG GOVERSION=1.17      
+ARG GOARCH=amd64
+ARG MQARCH=X64
 
 ENV GOVERSION=${GOVERSION}   \
     GOPATH=$GOPATH_ARG \
-    GOTAR=go${GOVERSION}.linux-amd64.tar.gz \
+    GOTAR=go${GOVERSION}.linux-${GOARCH}.tar.gz \
     ORG="github.com/ibm-messaging"
 
 
@@ -57,8 +59,8 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
-    RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
-    VRMF=9.3.2.0
+    RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz" \
+    VRMF=9.3.3.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package
@@ -80,8 +82,8 @@ RUN chmod 777 $GOPATH/buildInDocker.sh
 # Copy the rest of the source tree from this directory into the container
 # And make sure it's readable by the id that will run the compiles (not just root)
 ENV  REPO="mq-golang"
-COPY . $GOPATH/src/$ORG/$REPO
-RUN chmod -R a+rx $GOPATH/src
+COPY --chmod=0777 . $GOPATH/src/$ORG/$REPO
+# RUN chmod -R a+rx $GOPATH/src
 
 # Set the entrypoint to the script that will do the compilation
 ENTRYPOINT $GOPATH/buildInDocker.sh
