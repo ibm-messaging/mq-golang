@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  5/31/23 12:58 PM
-*   Build Level:   p933-L230531
+*   Generated on:  9/27/23 11:53 AM
+*   Build Level:   p934-L230927
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1032,7 +1032,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 933
+	MQCMDL_CURRENT_LEVEL           int32  = 934
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1083,6 +1083,7 @@ const (
 	MQCMDL_LEVEL_931               int32  = 931
 	MQCMDL_LEVEL_932               int32  = 932
 	MQCMDL_LEVEL_933               int32  = 933
+	MQCMDL_LEVEL_934               int32  = 934
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1370,14 +1371,17 @@ const (
 	MQCRC_PROGRAM_NOT_AVAILABLE    int32  = 7
 	MQCRC_SECURITY_ERROR           int32  = 6
 	MQCRC_TRANSID_NOT_AVAILABLE    int32  = 9
+	MQCSP_AUTH_ID_TOKEN            int32  = 2
 	MQCSP_AUTH_NONE                int32  = 0
 	MQCSP_AUTH_USER_ID_AND_PWD     int32  = 1
-	MQCSP_CURRENT_LENGTH           int32  = 80
-	MQCSP_CURRENT_VERSION          int32  = 2
+	MQCSP_CURRENT_LENGTH           int32  = 104
+	MQCSP_CURRENT_VERSION          int32  = 3
 	MQCSP_LENGTH_1                 int32  = 56
 	MQCSP_LENGTH_2                 int32  = 80
+	MQCSP_LENGTH_3                 int32  = 104
 	MQCSP_VERSION_1                int32  = 1
 	MQCSP_VERSION_2                int32  = 2
+	MQCSP_VERSION_3                int32  = 3
 	MQCSRV_CONVERT_NO              int32  = 0
 	MQCSRV_CONVERT_YES             int32  = 1
 	MQCSRV_DLQ_NO                  int32  = 0
@@ -4135,6 +4139,7 @@ const (
 	MQRC_TERMINATION_FAILED        int32  = 2287
 	MQRC_TMC_ERROR                 int32  = 2191
 	MQRC_TM_ERROR                  int32  = 2265
+	MQRC_TOKEN_TIMESTAMP_NOT_VALID int32  = 2064
 	MQRC_TOPIC_NOT_ALTERABLE       int32  = 2510
 	MQRC_TOPIC_STRING_ERROR        int32  = 2425
 	MQRC_TRIGGER_CONTROL_ERROR     int32  = 2075
@@ -4991,6 +4996,7 @@ const (
 	MQ_CREATION_DATE_LENGTH        int32  = 12
 	MQ_CREATION_TIME_LENGTH        int32  = 8
 	MQ_CSP_PASSWORD_LENGTH         int32  = 256
+	MQ_CSP_TOKEN_LENGTH            int32  = 8192
 	MQ_CUSTOM_LENGTH               int32  = 128
 	MQ_DATA_SET_NAME_LENGTH        int32  = 44
 	MQ_DATE_LENGTH                 int32  = 12

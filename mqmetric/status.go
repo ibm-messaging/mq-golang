@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2022
+  Copyright (c) IBM Corporation 2016, 2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -232,6 +232,7 @@ func statusGetReply(correlId []byte) (*ibmmq.MQCFH, []byte, bool, error) {
 
 	getmqmd.CorrelId = correlId
 	gmo.MatchOptions = ibmmq.MQMO_MATCH_CORREL_ID
+	gmo.Version = ibmmq.MQGMO_VERSION_2
 
 	allDone := false
 	datalen, err := ci.si.statusReplyQObj.Get(getmqmd, gmo, replyBuf)

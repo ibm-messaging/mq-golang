@@ -1,9 +1,17 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Oct 19 2023 - v5.5.1
+- Update for MQ 9.3.4
+- ibmmq - Support for new CSP JWT Token field
+- mqmetric - metrics.txt now includes the published resource metrics, automatically generated 
+             from product documentation 
+- Refresh links to IBM documentation
+
 ## Jun 21 2023 - v5.5.0
 - Update for MQ 9.3.3
 - mqmetric - Configurable timeout for status queries (ibm-messaging/mq-metric-samples#227)
+- Add linux_arm64 definitions
 
 ## Feb 17 2023 - v5.4.0
 - Update for MQ 9.3.2

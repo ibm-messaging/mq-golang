@@ -55,9 +55,10 @@ func addDLH(md *ibmmq.MQMD, buf []byte) []byte {
 	dlh.DestQMgrName = "DEST.QMGR"
 	// Set the current date/time in the header. The way Go does date formatting
 	// is very odd.Force the hundredths as there doesn't seem to be a simple way
-	// to extract it without a '.' in the format.
-	dlh.PutTime = time.Now().Format("030405")
-	dlh.PutDate = time.Now().Format("20060102")
+	// to extract it without a '.' in the format. MQ uses always UTC in the headers,
+	// so force that here.
+	dlh.PutTime = time.Now().UTC().Format("150405")
+	dlh.PutDate = time.Now().UTC().Format("20060102")
 
 	// Then return a modified buffer with the original message data
 	// following the DLH

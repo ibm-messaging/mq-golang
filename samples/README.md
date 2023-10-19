@@ -86,13 +86,13 @@ connect to a queue manager running on the host machine.
 
 The process is split into two pieces - the first is used to compile the program, and
 the second creates a (hopefully) smaller container with just the components needed
-to run the  program.
+to run the program.
 
 ## More information
-Comments in the programs explain what they are doing. For more detailed information about the
-MQ API, the functions, structures, and constants, see the
-[MQ Knowledge Center](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_latest/com.ibm.mq.ref.dev.doc/q089590_.html).
+Comments in the programs explain what they are doing. For more detailed information about the MQ API, the functions,
+structures, and constants, see the [MQ Documentation](https://www.ibm.com/docs/en/ibm-mq/latest).
 
-You can also find general MQ application development advice [here](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_latest/com.ibm.mq.dev.doc/q022830_.html).
-Information about development for procedural programming languages such as C in that
-documentation is most relevant for the interface exported by this Go package.
+You can also find general MQ application development advice
+[here](https://www.ibm.com/docs/en/ibm-mq/latest?topic=mq-developing-applications). Information about development for
+procedural programming languages such as C in that documentation is most relevant for the interface exported by this
+package.

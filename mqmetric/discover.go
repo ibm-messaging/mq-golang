@@ -341,6 +341,14 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 		err = createSubscriptions()
 	}
 
+	// If you are using publications for some resource metrics, but have chosen not to collect the topics that might contain queue depth,
+	// then there's still a possibility to find that particular value from QSTATUS responses as an alternative. The SubscriptionSelector has had
+	// two topics, depending on the MQ version, which give the depth.
+	if !strings.Contains(dc.MonitoredQueues.SubscriptionSelector, "GENERAL") && !strings.Contains(dc.MonitoredQueues.SubscriptionSelector, "GET") {
+		logDebug("Setting connection to grab qdepth via QSTATUS")
+		ci.useDepthFromStatus = true
+	}
+
 	traceExitErr("discoverAndSubscribe", 0, err)
 
 	return err
@@ -1097,7 +1105,7 @@ func ProcessPublications() error {
 	// Keep reading all available messages until queue is empty. Don't
 	// do a GET-WAIT; just immediate removals.
 	for err == nil {
-		data, err = getMessage(false)
+		data, err = getMessage(ci, false)
 
 		// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
 		// which will end the loop.
@@ -1108,8 +1116,7 @@ func ProcessPublications() error {
 			// A typical publication contains some fixed
 			// headers (qmgrName, objectName, class, type etc)
 			// followed by a list of index/values.
-
-			// This map contains those element indexes and values from each message
+			// Start with an empty map for each message
 			values := make(map[int]int64)
 
 			objName = ""
@@ -1165,6 +1172,7 @@ func ProcessPublications() error {
 			// explicitly labelled "DELTA" are ones we should just
 			// use the latest value.
 			for key, newValue := range values {
+
 				typesArray := metrics.Classes[classidx].Types
 				if typesIdx, ok1 := typesArray[typeidx]; ok1 {
 					if elem, ok2 := typesIdx.Elements[key]; ok2 {
@@ -1204,8 +1212,10 @@ func ProcessPublications() error {
 
 						if oldValue, ok := elem.Values[elemKey]; ok {
 							if elem.Datatype == ibmmq.MQIAMO_MONITOR_DELTA {
+								//logDebug("Metric with delta flag on  - %s", elem.MetricName)
 								value = oldValue + newValue
 							} else {
+								//logDebug("Metric with delta flag off - %s", elem.MetricName)
 								value = newValue
 							}
 						} else {
@@ -1267,23 +1277,14 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 	// If the command succeeded, loop through the remainder of the
 	// message to decode each parameter.
 	for i := 0; i < int(cfh.ParameterCount); i++ {
-		// We don't know how long the parameter is, so we just
+		// We don't know how long the next parameter is, so we just
 		// pass in "from here to the end" and let the parser
 		// tell us how far it got.
+		// We understand PCF Groups in ReadPCFParameter so don't need to extract them explicitly
 		elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
 		offset += bytesRead
-		// Have we now reached the end of the message
-		// We now understand PCF Groups so don't need to extract them explicitly
-		elemList = append(elemList, elem)
-		if elem.Type == ibmmq.MQCFT_GROUP {
-			groupElem := elem
-			for j := 0; j < int(groupElem.ParameterCount); j++ {
-				//elem, bytesRead = ibmmq.ReadPCFParameter(buf[offset:])
-				//offset += bytesRead
-				//groupElem.GroupList = append(groupElem.GroupList, elem)
-			}
-		}
 
+		elemList = append(elemList, elem)
 	}
 
 	if cfh.Control == ibmmq.MQCFC_LAST {

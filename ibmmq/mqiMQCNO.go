@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2022
+  Copyright (c) IBM Corporation 2016,2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -32,14 +32,6 @@ to select what can be done.
 #include <cmqc.h>
 #include <cmqxc.h>
 
-void freeCnoCCDTUrl(MQCNO *mqcno) {
-#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
-  if (mqcno->CCDTUrlPtr != NULL) {
-    free(mqcno->CCDTUrlPtr);
-  }
-#endif
-}
-
 void setCnoCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
 #if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
   if (mqcno->Version < MQCNO_VERSION_6) {
@@ -53,13 +45,20 @@ void setCnoCCDTUrl(MQCNO *mqcno, PMQCHAR url, MQLONG length) {
   }
 #else
 // We fail silently here, but perhaps ought to give an error in some way as you've tried to use
-// parameter that is not permitted at the currently-installed version of MQ
+// a parameter that is not permitted at the version of MQ that you are building against
   if (url != NULL) {
     free(url);
   }
 #endif
 }
 
+void freeCnoCCDTUrl(MQCNO *mqcno) {
+#if defined(MQCNO_VERSION_6) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_6
+  if (mqcno->CCDTUrlPtr != NULL) {
+    free(mqcno->CCDTUrlPtr);
+  }
+#endif
+}
 
 void setCnoApplName(MQCNO *mqcno, PMQCHAR applName, MQLONG length) {
 #if defined(MQCNO_VERSION_7) && MQCNO_CURRENT_VERSION >= MQCNO_VERSION_7
@@ -80,7 +79,7 @@ void setCnoApplName(MQCNO *mqcno, PMQCHAR applName, MQLONG length) {
   return;
 }
 
-// A new structure in MQ 9.2.4. In order to handle builds against older versions of MQ
+// A structure introduced in MQ 9.2.4. In order to handle builds against older versions of MQ
 // we have to extract the individual fields from the Go version of the structure first. And
 // we then use those as separate parameters to this function.
 void setCnoBalanceParms(MQCNO *mqcno, MQLONG ApplType, MQLONG Timeout, MQLONG Options) {
@@ -109,6 +108,66 @@ void freeCnoBalanceParms(MQCNO *mqcno) {
   return;
 }
 
+void setCspInitialKey(MQCSP *mqcsp, PMQCHAR initialKey, MQLONG length) {
+#if defined(MQCSP_VERSION_2) && MQCSP_CURRENT_VERSION >= MQCSP_VERSION_2
+  if (mqcsp->Version < MQCSP_VERSION_2) {
+	  mqcsp->Version = MQCSP_VERSION_2;
+  }
+  mqcsp->InitialKeyOffset = 0;
+  mqcsp->InitialKeyLength = length;
+  if (initialKey != NULL && length > 0) {
+    mqcsp->InitialKeyPtr = initialKey;
+  } else {
+    mqcsp->InitialKeyPtr = NULL;
+  }
+#else
+// We fail silently here, but perhaps ought to give an error in some way as you've tried to use
+// a parameter that is not permitted at the version of MQ that you are building against
+  if (initialKey != NULL) {
+    free(initialKey);
+  }
+#endif
+}
+
+void freeCspInitialKey(MQCSP *mqcsp) {
+#if defined(MQCSP_VERSION_2) && MQCSP_CURRENT_VERSION >= MQCSP_VERSION_2
+  if (mqcsp->Version >= MQCSP_VERSION_2 && mqcsp->InitialKeyPtr != NULL) {
+    free(mqcsp->InitialKeyPtr);
+  }
+#endif
+}
+
+// If the application sets a token, then that is what we will use for
+// authentication, overriding the userid/password.
+void setCspToken(MQCSP *mqcsp, PMQCHAR token, MQLONG length) {
+#if defined(MQCSP_VERSION_3) && MQCSP_CURRENT_VERSION >= MQCSP_VERSION_3
+  if (mqcsp->Version < MQCSP_VERSION_3) {
+	  mqcsp->Version = MQCSP_VERSION_3;
+  }
+  mqcsp->AuthenticationType = MQCSP_AUTH_ID_TOKEN;
+
+  mqcsp->TokenOffset = 0;
+  mqcsp->TokenLength = length;
+  if (token != NULL && length > 0) {
+    mqcsp->TokenPtr = token;
+  } else {
+    mqcsp->TokenPtr = NULL;
+  }
+#else
+  if (token != NULL) {
+    free(token);
+  }
+#endif
+}
+
+void freeCspToken(MQCSP *mqcsp) {
+#if defined(MQCSP_VERSION_3) && MQCSP_CURRENT_VERSION >= MQCSP_VERSION_3
+  if (mqcsp->Version >= MQCSP_VERSION_3 && mqcsp->TokenPtr != NULL) {
+    free(mqcsp->TokenPtr);
+  }
+#endif
+}
+
 size_t getMaxCDLength() {
   size_t l;
 #if defined(MQCD_VERSION_12)
@@ -131,41 +190,14 @@ size_t getMaxSCOLength() {
 
 size_t getMaxCSPLength() {
   size_t l;
-#if defined(MQCSP_VERSION_2)
+#if defined(MQCSP_VERSION_3)
+  l = MQCSP_LENGTH_3;
+#elif defined(MQCSP_VERSION_2)
   l = MQCSP_LENGTH_2;
 #else
-  l = MQCSP_LENGTH_1; // The minimum supported here
+  l = MQCSP_LENGTH_1;
 #endif
   return l;
-}
-
-void setCspInitialKey(MQCSP *mqcsp, PMQCHAR initialKey, MQLONG length) {
-#if defined(MQCSP_VERSION_2) && MQCSP_CURRENT_VERSION >= MQCSP_VERSION_2
-  if (mqcsp->Version < MQCSP_VERSION_2) {
-	  mqcsp->Version = MQCSP_VERSION_2;
-  }
-  mqcsp->InitialKeyOffset = 0;
-  mqcsp->InitialKeyLength = length;
-  if (initialKey != NULL && length > 0) {
-    mqcsp->InitialKeyPtr = initialKey;
-  } else {
-    mqcsp->InitialKeyPtr = NULL;
-  }
-#else
-// We fail silently here, but perhaps ought to give an error in some way as you've tried to use
-// parameter that is not permitted at the currently-installed version of MQ
-  if (initialKey != NULL) {
-    free(initialKey);
-  }
-#endif
-}
-
-void freeCspInitialKey(MQCSP *mqcsp) {
-#if defined(MQCSP_VERSION_2) && MQCSP_CURRENT_VERSION >= MQCSP_VERSION_2
-  if (mqcsp->InitialKeyPtr != NULL) {
-    free(mqcsp->InitialKeyPtr);
-  }
-#endif
 }
 
 */
@@ -196,6 +228,7 @@ type MQCSP struct {
 	UserId             string
 	Password           string
 	InitialKey         string
+	Token              string
 }
 
 /*
@@ -233,13 +266,14 @@ func NewMQCSP() *MQCSP {
 	csp.UserId = ""
 	csp.Password = ""
 	csp.InitialKey = ""
+	csp.Token = ""
 
 	return csp
 }
 
 /*
 NewMQBNO fills in default values for the MQBNO structure. We
-use the constants directly as the #define macros may not be
+use the constant values directly as the #define macros may not be
 available when building against older levels of the MQ client code.
 */
 func NewMQBNO() *MQBNO {
@@ -312,7 +346,6 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		mqcsp.CSPPasswordOffset = 0
 
 		if gocsp.UserId != "" {
-			// This next line is a convenience as there is only one AUTH method for now
 			// If you've set a non-blank userid, then you MUST be asking for userid/pwd checking.
 			if mqcsp.AuthenticationType == C.MQCSP_AUTH_NONE {
 				mqcsp.AuthenticationType = C.MQLONG(C.MQCSP_AUTH_USER_ID_AND_PWD)
@@ -323,6 +356,7 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 			mqcsp.CSPUserIdPtr = nil
 			mqcsp.CSPUserIdLength = 0
 		}
+
 		if gocsp.Password != "" {
 			mqcsp.CSPPasswordPtr = C.MQPTR(unsafe.Pointer(C.CString(gocsp.Password)))
 			mqcsp.CSPPasswordLength = C.MQLONG(len(gocsp.Password))
@@ -332,8 +366,14 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 		}
 
 		if gocsp.InitialKey != "" {
-			// This C function will bump the CSP version if necessary
+			// This C function will bump the CSP version to V2 if necessary
 			C.setCspInitialKey(mqcsp, C.PMQCHAR(C.CString(gocsp.InitialKey)), C.MQLONG(len(gocsp.InitialKey)))
+		}
+
+		if gocsp.Token != "" {
+			// This C function will bump the CSP version to V3 if necessary
+			// It also overrides the AuthenticationType
+			C.setCspToken(mqcsp, C.PMQCHAR(C.CString(gocsp.Token)), C.MQLONG(len(gocsp.Token)))
 		}
 
 		mqcno.SecurityParmsPtr = C.PMQCSP(mqcsp)
@@ -353,14 +393,14 @@ func copyCNOtoC(mqcno *C.MQCNO, gocno *MQCNO) {
 	}
 
 	// The ApplName option to the CNO was introduced in MQ V9.1.2. To compile against
-	// older versions of MQ, setting of it has been moved to a C function. The function
+	// older versions of MQ, setting of it is in a C function. The function
 	// will free() the CString-allocated buffer regardless of MQ version.
 	if gocno.ApplName != "" {
 		C.setCnoApplName(mqcno, C.PMQCHAR(C.CString(gocno.ApplName)), C.MQ_APPL_NAME_LENGTH)
 	}
 
 	// The BalanceParms structure was added to the CNO in MQ 9.2.4. To compile against
-	// older versions of MQ, setting has been moved to a C function.
+	// older versions of MQ, setting is in a C function.
 	if gocno.BalanceParms != nil {
 		bno := gocno.BalanceParms
 		C.setCnoBalanceParms(mqcno, C.MQLONG(bno.ApplType), C.MQLONG(bno.Timeout), C.MQLONG(bno.Options))
@@ -382,6 +422,7 @@ func copyCNOfromC(mqcno *C.MQCNO, gocno *MQCNO) {
 		}
 
 		C.freeCspInitialKey(mqcno.SecurityParmsPtr) // The code in this function checks validity
+		C.freeCspToken(mqcno.SecurityParmsPtr)      // The code in this function checks validity
 
 		C.free(unsafe.Pointer(mqcno.SecurityParmsPtr))
 	}

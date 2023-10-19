@@ -60,7 +60,7 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz" \
-    VRMF=9.3.3.0
+    VRMF=9.3.4.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package
@@ -76,8 +76,8 @@ RUN cd /opt/mqm \
  && bin/genmqpkg.sh -b /opt/mqm
 
 # Insert the script that will do the build
-COPY buildInDocker.sh $GOPATH
-RUN chmod 777 $GOPATH/buildInDocker.sh
+COPY --chmod=777 buildInDocker.sh $GOPATH
+# RUN chmod 777 $GOPATH/buildInDocker.sh
 
 # Copy the rest of the source tree from this directory into the container
 # And make sure it's readable by the id that will run the compiles (not just root)

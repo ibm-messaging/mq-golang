@@ -1459,6 +1459,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_932"
 		case 933:
 			s = "MQCMDL_LEVEL_933"
+		case 934:
+			s = "MQCMDL_LEVEL_934"
 		default:
 			s = ""
 		}
@@ -1647,6 +1649,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCSP_AUTH_NONE"
 		case 1:
 			s = "MQCSP_AUTH_USER_ID_AND_PWD"
+		case 2:
+			s = "MQCSP_AUTH_ID_TOKEN"
 		default:
 			s = ""
 		}

@@ -73,14 +73,10 @@ func main() {
 	// The CipherSpec must match what is configured on the corresponding SVRCONN
 	cd.SSLCipherSpec = "TLS_RSA_WITH_AES_128_CBC_SHA256"
 
-	// The ClientAuth field says whether or not the client needs to present its own certificate
-	// This too must match the SVRCONN definition.
-	cd.SSLClientAuth = ibmmq.MQSCA_OPTIONAL
-
 	// The keystore contains at least the certificate to verify the qmgr's cert (usually from
 	// a Certificate Authority) and optionally the client's own certificate.
 	// We could also optionally specify which certificate represents the client, based on its label
-	// but don't need to do this when using the MQSCA_OPTIONAL flag.
+	// but don't need to do this when using the MQSCA_OPTIONAL flag on the SVRCONN definition.
 	sco.KeyRepository = "./mykey"
 
 	// Reference the CD structure from the CNO and indicate that we definitely want to

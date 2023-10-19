@@ -5,8 +5,8 @@ The verbs are given mixed case names without MQ - Open instead
 of MQOPEN etc.
 
 For more information on the MQI, including detailed descriptions of the functions,
-constants and structures, see the MQ Knowledge Center
-at https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_latest/com.ibm.mq.dev.doc/q023720_.htm#q023720_
+constants and structures, see the MQ Documentation
+at https://www.ibm.com/docs/en/ibm-mq/latest?topic=reference-developing-applications
 
 If an MQI call returns MQCC_FAILED or MQCC_WARNING, a custom error
 type is returned containing the MQCC/MQRC values as well as
@@ -22,7 +22,7 @@ directories.
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016, 2021
+  Copyright (c) IBM Corporation 2016, 2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.

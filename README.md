@@ -178,7 +178,7 @@ let me know, via an issue, if you have another project that might be suitable fo
 |[ibm-messaging/mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples)| Extracts metrics for use in Prometheus, Influx<br>JSON consumers etc.|
 |[ibm-messaging/mq-golang-jms20](https://github.com/ibm-messaging/mq-golang-jms20)   | JMS-style messaging interface for Go applications|
 |[ibm-messaging/mq-container](https://github.com/ibm-messaging/mq-container)         | Building MQ into containers. Uses features from this package<br>for configuration and monitoring  |
-|[felix-lessoer/qbeat](https://github.com/felix-lessoer/qbeat)                       | Extract monitoring and statstics from MQ for use in Elasticsearch|
+|[felix-lessoer/qbeat](https://github.com/felix-lessoer/qbeat)                       | Extract monitoring and statistics from MQ for use in Elasticsearch|
 |[ibm-messaging/mq-mqi-nodejs](https://github.com/ibm-messaging/mq-mqi-nodejs)       | A similar MQI interface for Node.js applications|
 
 ## Limitations

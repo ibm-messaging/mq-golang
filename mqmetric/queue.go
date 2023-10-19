@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2018,2022
+  Copyright (c) IBM Corporation 2018,2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ package mqmetric
 */
 
 /*
-Functions in this file use the DISPLAY QueueStatus command to extract metrics
+Functions in this file use the DISPLAY QStatus command to extract metrics
 about MQ queues
 */
 
@@ -44,7 +44,6 @@ const (
 	ATTR_Q_OPPROCS     = "output_handles"
 	ATTR_Q_QTIME_SHORT = "qtime_short"
 	ATTR_Q_QTIME_LONG  = "qtime_long"
-	ATTR_Q_DEPTH       = "depth"
 	ATTR_Q_CURFSIZE    = "qfile_current_size"
 	ATTR_Q_SINCE_PUT   = "time_since_put"
 	ATTR_Q_SINCE_GET   = "time_since_get"
@@ -55,10 +54,11 @@ const (
 	// but on z/OS it only indicates 0/1 (MQQSUM_NO/YES)
 	ATTR_Q_UNCOM = "uncommitted_messages"
 
-	// The next two attributes are given the same name
+	// The next attributes are given the same name
 	// as the published statistics from the amqsrua-style
-	// vaues. That allows a dashboard for Distributed and z/OS
+	// values. That allows a dashboard for Distributed and z/OS
 	// to merge the same query.
+	ATTR_Q_DEPTH        = "depth"
 	ATTR_Q_INTERVAL_PUT = "mqput_mqput1_count"
 	ATTR_Q_INTERVAL_GET = "mqget_count"
 	// This is the Highest Depth returned over an interval via the
@@ -72,8 +72,7 @@ Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
 no discovery of descriptions for them. So this function hardcodes the
 attributes we are going to look for and gives the associated descriptive
-text. The elements can be expanded later; just trying to give a starting point
-for now.
+text.
 */
 func QueueInitAttributes() {
 	traceEntry("QueueInitAttributes")
@@ -117,10 +116,13 @@ func QueueInitAttributes() {
 	attr = ATTR_Q_CURMAXFSIZE
 	st.Attributes[attr] = newStatusAttribute(attr, "Queue File Maximum Size", ibmmq.MQIACF_CUR_MAX_FILE_SIZE)
 
-	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response
-	if !ci.usePublications {
+	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response. We
+	// also have an option where we are ignoring most of the queue publications even if we use subscriptions for other
+	// object (qmgr/NHA) resources
+	if !ci.usePublications || ci.useDepthFromStatus {
 		attr = ATTR_Q_DEPTH
-		st.Attributes[attr] = newStatusAttribute(attr, "Queue Depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
+		// The description should match the published metric, including case
+		st.Attributes[attr] = newStatusAttribute(attr, "Queue depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
 	}
 
 	if ci.si.platform == ibmmq.MQPL_ZOS && ci.useResetQStats {
@@ -259,13 +261,15 @@ func collectQueueStatus(pattern string, instanceType int32) error {
 
 	// Now get the responses - loop until all have been received (one
 	// per queue) or we run out of time
+	statusMsgCount := 0
 	for allReceived := false; !allReceived; {
 		cfh, buf, allReceived, err = statusGetReply(putmqmd.MsgId)
 		if buf != nil {
+			statusMsgCount++
 			parseQData(instanceType, cfh, buf)
 		}
 	}
-
+	logDebug("collectQueueStatus response count: %d", statusMsgCount)
 	traceExitErr("collectQueueStatus", 0, err)
 	return err
 }

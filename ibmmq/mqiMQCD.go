@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016,2023
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ type MQCD struct {
 	HeartbeatInterval    int32
 	SSLCipherSpec        string
 	SSLPeerName          string
-	SSLClientAuth        int32
+	SSLClientAuth        int32 // Not used by client, but leave field for compatibility
 	KeepAliveInterval    int32
 	SharingConversations int32
 	PropertyControl      int32
@@ -179,7 +179,10 @@ func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 		mqcd.SSLPeerNamePtr = C.MQPTR(unsafe.Pointer(C.CString(gocd.SSLPeerName)))
 		mqcd.SSLPeerNameLength = C.MQLONG(len(gocd.SSLPeerName))
 	}
-	mqcd.SSLClientAuth = C.MQLONG(gocd.SSLClientAuth)
+
+	// SSLClientAuth is not actually used by the client, so we will ignore
+	// any settings for it.
+	// mqcd.SSLClientAuth = C.MQLONG(gocd.SSLClientAuth)
 	mqcd.KeepAliveInterval = C.MQLONG(gocd.KeepAliveInterval)
 	setMQIString((*C.char)(&mqcd.LocalAddress[0]), "", C.MQ_LOCAL_ADDRESS_LENGTH)
 	mqcd.BatchHeartbeat = 0
