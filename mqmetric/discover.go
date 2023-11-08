@@ -344,9 +344,13 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 	// If you are using publications for some resource metrics, but have chosen not to collect the topics that might contain queue depth,
 	// then there's still a possibility to find that particular value from QSTATUS responses as an alternative. The SubscriptionSelector has had
 	// two topics, depending on the MQ version, which give the depth.
-	if !strings.Contains(dc.MonitoredQueues.SubscriptionSelector, "GENERAL") && !strings.Contains(dc.MonitoredQueues.SubscriptionSelector, "GET") {
+	subSel := dc.MonitoredQueues.SubscriptionSelector
+	if subSel != "" && !strings.Contains(subSel, "GENERAL") && !strings.Contains(subSel, "GET") {
 		logDebug("Setting connection to grab qdepth via QSTATUS")
 		ci.useDepthFromStatus = true
+	} else {
+		logDebug("Setting connection to grab qdepth via Publication")
+		ci.useDepthFromStatus = false
 	}
 
 	traceExitErr("discoverAndSubscribe", 0, err)
@@ -409,12 +413,12 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 					return e2
 				}
 			}
-			// - The Native HA metrics introduced in MQ 9.2.3 are not currently tested for metric name maps
-			//   and might need additional configuration to fill in an object name
-			// - The STATAPP metrics are not very useful yet as they only work for apps known at subscription
-			//   time. As well as needing additional configuration.
+
+			// The STATAPP metrics are not very useful as they only work for apps known at subscription
+			// time. As well as needing additional configuration.
 			// So we ignore these for now, but might enable them in future. Adding them to the subscription
-			// list by default would increase the handles in use without benefit.
+			// list by default would increase the handles in use without benefit. We do now support use of the
+			// NativeHA resources
 			switch cl.Name {
 			case "STATAPP":
 				logDebug("Not subscribing to Class STATAPP resources")

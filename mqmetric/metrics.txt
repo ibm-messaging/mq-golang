@@ -19,7 +19,7 @@ Metrics published on system topics
 ----------------------------------
 
 The metrics published by the queue manager under the $SYS topic tree are listed here as extracted from
-the product documentation at https://www.ibm.com/docs/en/ibm-mq/latest?topic=trace-metrics-published-system-topics. 
+the product documentation at https://www.ibm.com/docs/en/ibm-mq/latest?topic=trace-metrics-published-system-topics.
 
 Access to these metrics requires the "usePublications" configuration attribute to be set for the collector.
 

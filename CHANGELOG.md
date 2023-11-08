@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Nov 08 2023 - v5.5.2
+- ibmmq - #204 data race fix
+- mqmetric - deal with empty QueueSubFilter option
+
 ## Oct 19 2023 - v5.5.1
 - Update for MQ 9.3.4
 - ibmmq - Support for new CSP JWT Token field
