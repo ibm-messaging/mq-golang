@@ -319,3 +319,22 @@ func TestNewMQDLHWithMQMD(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestGetAttrInfoConcurrentCalls(t *testing.T) {
+	// NOTE: This test should be run with `go test -race`.
+	attrs := []int32{
+		MQCA_BACKOUT_REQ_Q_NAME,
+		MQIA_BACKOUT_THRESHOLD,
+	}
+	count := 1_000
+	doneCh := make(chan struct{}, count)
+	for i := 0; i < count; i++ {
+		go func() {
+			getAttrInfo(attrs)
+			doneCh <- struct{}{}
+		}()
+	}
+	for i := 0; i < count; i++ {
+		<-doneCh
+	}
+}

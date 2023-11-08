@@ -61,6 +61,7 @@ import "C"
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 /*
@@ -130,7 +131,7 @@ var mqInqLength = map[int32]int32{
 	C.MQCA_XMIT_Q_NAME:           C.MQ_Q_NAME_LENGTH,
 }
 
-var charAttrsAdded = false
+var charAttrsAddedOnce sync.Once
 
 /*
  * Return how many char & int attributes are in the list of selectors, and the
@@ -141,7 +142,7 @@ func getAttrInfo(attrs []int32) (int, int, int) {
 	var charAttrCount = 0
 	var intAttrCount = 0
 
-	if !charAttrsAdded {
+	charAttrsAddedOnce.Do(func() {
 		maxNewAttrs := C.MAX_NEW_MQCA_ATTRS
 		attrVals := make([]C.MQLONG, maxNewAttrs)
 		attrLens := make([]C.MQLONG, maxNewAttrs)
@@ -155,8 +156,7 @@ func getAttrInfo(attrs []int32) (int, int, int) {
 		for i := 0; i < addedAttrs; i++ {
 			mqInqLength[int32(attrVals[i])] = int32(attrLens[i])
 		}
-		charAttrsAdded = true
-	}
+	})
 
 	for i := 0; i < len(attrs); i++ {
 		if v, ok := mqInqLength[attrs[i]]; ok {
