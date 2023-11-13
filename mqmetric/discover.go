@@ -751,15 +751,15 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			var ok bool
 			qName := strings.TrimSpace(qList[i])
 
-			// If the qName contains a '/' - eg "DEV/QUEUE/1" then the queue manager will
-			// not (right now) process resource publications correctly. Hopefully that will get
-			// fixed at some point, but we will issue a warning here. The same problem happens with
-			// amqsrua; there's no workround possible outside of the qmgr code.
+			// If the qName contains a '/' - eg "DEV/QUEUE/1" then the queue manager cannot
+			// process resource publications by simply inserting the qName because it disrupts
+			// the topic string pattern. This was fixed in the queue manager by 9.3.0 by allowing
+			// the subscriptions to use '&' in place of the '/' character.
 			//
-			// Because of the possible complexities of pattern matching, we don't
+			// For older levels of MQ, because of the possible complexities of pattern matching, we don't
 			// actually fail the discovery process, but instead issue a warning and continue with
 			// other queues.
-			if strings.Contains(qName, "/") && ci.globalSlashWarning == false {
+			if strings.Contains(qName, "/") && ci.globalSlashWarning == false && GetCommandLevel() < ibmmq.MQCMDL_LEVEL_930 {
 				ci.localSlashWarning = true // First time through, issue the warning for all queues
 				logError("Warning: Cannot subscribe to queue containing '/': %s", qName)
 				continue
@@ -1038,7 +1038,15 @@ func createSubscriptions() error {
 							delete(ty.subHobj, key)
 						}
 					} else {
-						topic := fmt.Sprintf(ty.ObjectTopic, key)
+						// Convert embedded "/" to "&" in the topic subscriptions, provided
+						// we are at MQ 9.3. The maps referring to the topic still keep the "/" in
+						// the key for maps referring to the object; we don't need the modified topic name
+						// outside of the initial subscription.
+						keyDeslashed := key
+						if GetCommandLevel() >= ibmmq.MQCMDL_LEVEL_930 {
+							keyDeslashed = strings.Replace(key, "/", "&", -1)
+						}
+						topic := fmt.Sprintf(ty.ObjectTopic, keyDeslashed)
 						if usingDurableSubs {
 							mqtd, err = subscribeDurable(topic, &ci.si.replyQObj)
 						} else {

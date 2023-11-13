@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Nov 13 2023 - v5.5.3 
+- mqmetric - MQ 9.3 permits resource subscriptions for queues with '/' in name
+
 ## Nov 08 2023 - v5.5.2
 - ibmmq - #204 data race fix
 - mqmetric - deal with empty QueueSubFilter option
