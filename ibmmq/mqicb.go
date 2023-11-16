@@ -76,6 +76,8 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	gomd := NewMQMD()
 	gocbc := NewMQCBC()
 
+	traceEntry("Callback")
+
 	// For EVENT callbacks, the GMO and MD may be NULL
 	if mqgmo != (C.PMQGMO)(C.NULL) {
 		copyGMOfromC(mqgmo, gogmo)
@@ -138,7 +140,14 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 		// Get the data
 		b := C.GoBytes(unsafe.Pointer(mqBuffer), C.int(mqcbc.DataLength))
 		// And finally call the user function
+		logTrace("Calling user function with %d bytes", len(b))
 		info.callbackFunction(cbHObj.qMgr, cbHObj, gomd, gogmo, b, gocbc, mqreturn)
+	}
+
+	if mqreturn.MQCC != C.MQCC_OK {
+		traceExitErr("Callback",1,mqreturn)
+	} else {
+	  traceExit("Callback")
 	}
 }
 
@@ -156,12 +165,16 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	var mqmd C.MQMD
 	var mqgmo C.MQGMO
 
+	traceEntry("CB(Q)")
+
 	err := checkMD(gomd, "MQCB")
 	if err != nil {
+		traceExitErr("CB(Q)",1,err)
 		return err
 	}
 	err = checkGMO(gogmo, "MQCB")
 	if err != nil {
+		traceExitErr("CB(Q)",2,err)
 		return err
 	}
 
@@ -187,6 +200,7 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("CB",3,&mqreturn)
 		return &mqreturn
 	}
 
@@ -208,6 +222,7 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	default: // Other values leave the map alone
 	}
 
+	traceExit("CB(Q)")
 	return nil
 }
 
@@ -216,6 +231,8 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 	var mqcc C.MQLONG
 	var mqOperation C.MQLONG
 	var mqcbd C.MQCBD
+
+	traceEntry("CB(QM)")
 
 	mqOperation = C.MQLONG(goOperation)
 	copyCBDtoC(&mqcbd, gocbd)
@@ -236,6 +253,7 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("CB(QM)",1,&mqreturn)
 		return &mqreturn
 	}
 
@@ -257,6 +275,7 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 	default: // Other values leave the map alone
 	}
 
+	traceExit("CB(QM)")
 	return nil
 }
 
@@ -268,6 +287,8 @@ func (x *MQQueueManager) Ctl(goOperation int32, goctlo *MQCTLO) error {
 	var mqcc C.MQLONG
 	var mqOperation C.MQLONG
 	var mqctlo C.MQCTLO
+
+	traceEntry("Ctl")
 
 	mqOperation = C.MQLONG(goOperation)
 	copyCTLOtoC(&mqctlo, goctlo)
@@ -291,9 +312,11 @@ func (x *MQQueueManager) Ctl(goOperation int32, goctlo *MQCTLO) error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Ctl",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Ctl")
 	return nil
 }
 

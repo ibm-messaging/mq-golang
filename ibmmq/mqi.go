@@ -156,6 +156,10 @@ func init() {
 	} else {
 		endian = binary.BigEndian
 	}
+
+	if os.Getenv("MQIGO_TRACE") != "" {
+		SetTrace(true)
+	}
 }
 
 /*
@@ -195,7 +199,10 @@ func trimStringN(c *C.char, l C.int) string {
 Conn is the function to connect to a queue manager
 */
 func Conn(goQMgrName string) (MQQueueManager, error) {
-	return Connx(goQMgrName, nil)
+	traceEntry("Conn")
+	qm, err := Connx(goQMgrName, nil)
+	traceExitErr("Conn",0,err)
+	return qm, err
 }
 
 /*
@@ -205,6 +212,8 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqcno C.MQCNO
+
+	traceEntry("Connx")
 
 	// MQ normally sets signal handlers that turn out to
 	// get in the way of Go programs. In particular SEGV.
@@ -218,6 +227,8 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	qMgr.Name = goQMgrName
 	mqQMgrName := unsafe.Pointer(C.CString(goQMgrName))
 	defer C.free(mqQMgrName)
+
+	logTrace("QMgrName: %s",goQMgrName)
 
 	// Set up a default CNO if not provided.
 	if gocno == nil {
@@ -246,9 +257,11 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Connx",1,mqreturn)
 		return qMgr, mqreturn
 	}
 
+	traceExit("Connx")
 	return qMgr, nil
 }
 
@@ -258,6 +271,8 @@ Disc is the function to disconnect from the queue manager
 func (x *MQQueueManager) Disc() error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
+
+	traceEntry("Disc")
 
 	savedConn := x.hConn
 	C.MQDISC(&x.hConn, &mqcc, &mqrc)
@@ -271,9 +286,11 @@ func (x *MQQueueManager) Disc() error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Disc",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Disc")
 	return nil
 }
 
@@ -286,10 +303,14 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 	var mqod C.MQOD
 	var mqOpenOptions C.MQLONG
 
+	traceEntry("Open")
+
 	object := MQObject{
 		Name: good.ObjectName,
 		qMgr: x,
 	}
+
+	logTrace("Object: %s %s",good.ObjectName, good.ObjectQMgrName)
 
 	copyODtoC(&mqod, good)
 	mqOpenOptions = C.MQLONG(goOpenOptions) | C.MQOO_FAIL_IF_QUIESCING
@@ -309,6 +330,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Open",1,&mqreturn)
 		return object, &mqreturn
 	}
 
@@ -318,6 +340,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 		object.Name = good.ObjectString
 	}
 
+	traceExit("Open")
 	return object, nil
 
 }
@@ -329,6 +352,8 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqCloseOptions C.MQLONG
+
+	traceEntry("Close")
 
 	mqCloseOptions = C.MQLONG(goCloseOptions)
 
@@ -343,10 +368,12 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Close",1,&mqreturn)
 		return &mqreturn
 	}
 
 	cbRemoveHandle(savedHConn, savedHObj)
+	traceExit("Close")
 	return nil
 
 }
@@ -359,10 +386,14 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 	var mqcc C.MQLONG
 	var mqsd C.MQSD
 
+	traceEntry("Sub")
+
 	subObject := MQObject{
 		Name: gosd.ObjectName + "[" + gosd.ObjectString + "]",
 		qMgr: x,
 	}
+
+	logTrace("Object: %s",subObject.Name)
 
 	err := checkSD(gosd, "MQSUB")
 	if err != nil {
@@ -386,11 +417,13 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Sub",1,&mqreturn)
 		return subObject, &mqreturn
 	}
 
 	qObject.qMgr = x // Force the correct hConn for managed objects
 
+	traceExit("Sub")
 	return subObject, nil
 
 }
@@ -402,6 +435,8 @@ func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqsro C.MQSRO
+
+	traceEntry("Subrq")
 
 	copySROtoC(&mqsro, gosro)
 
@@ -420,9 +455,11 @@ func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Subrq",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Subrq")
 	return nil
 }
 
@@ -433,6 +470,8 @@ func (x *MQQueueManager) Begin(gobo *MQBO) error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqbo C.MQBO
+
+	traceEntry("Begin")
 
 	copyBOtoC(&mqbo, gobo)
 
@@ -446,9 +485,11 @@ func (x *MQQueueManager) Begin(gobo *MQBO) error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Beqin",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Begin")
 	return nil
 
 }
@@ -460,6 +501,8 @@ func (x *MQQueueManager) Cmit() error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 
+	traceEntry("Cmit")
+
 	C.MQCMIT(x.hConn, &mqcc, &mqrc)
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -468,9 +511,11 @@ func (x *MQQueueManager) Cmit() error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Cmit",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Cmit")
 	return nil
 
 }
@@ -482,6 +527,8 @@ func (x *MQQueueManager) Back() error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 
+	traceEntry("Back")
+
 	C.MQBACK(x.hConn, &mqcc, &mqrc)
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -490,9 +537,11 @@ func (x *MQQueueManager) Back() error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Back",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Back")
 	return nil
 
 }
@@ -507,6 +556,8 @@ func (x *MQQueueManager) Stat(statusType int32, gosts *MQSTS) error {
 
 	var mqsts C.MQSTS
 
+	traceEntry("Stat")
+
 	copySTStoC(&mqsts, gosts)
 
 	C.MQSTAT(x.hConn, C.MQLONG(statusType), (C.PMQVOID)(unsafe.Pointer(&mqsts)), &mqcc, &mqrc)
@@ -519,9 +570,11 @@ func (x *MQQueueManager) Stat(statusType int32, gosts *MQSTS) error {
 	copySTSfromC(&mqsts, gosts)
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Stat",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Stat")
 	return nil
 
 }
@@ -537,12 +590,16 @@ func (object MQObject) Put(gomd *MQMD,
 	var mqpmo C.MQPMO
 	var ptr C.PMQVOID
 
+	traceEntry("Put")
+
 	err := checkMD(gomd, "MQPUT")
 	if err != nil {
+		traceExitErr("Put",1,err)
 		return err
 	}
 
 	bufflen := len(buffer)
+	logTrace("BufferLength: %d",bufflen)
 
 	copyMDtoC(&mqmd, gomd)
 	copyPMOtoC(&mqpmo, gopmo)
@@ -568,9 +625,11 @@ func (object MQObject) Put(gomd *MQMD,
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Put",2,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Put")
 	return nil
 }
 
@@ -588,8 +647,11 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	var mqod C.MQOD
 	var ptr C.PMQVOID
 
+	traceEntry("Put1")
+
 	err := checkMD(gomd, "MQPUT1")
 	if err != nil {
+		traceExitErr("Put1",1,err)
 		return err
 	}
 
@@ -598,6 +660,7 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	copyPMOtoC(&mqpmo, gopmo)
 
 	bufflen := len(buffer)
+	logTrace("BufferLength: %d",bufflen)
 
 	if bufflen > 0 {
 		ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
@@ -622,9 +685,11 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Put1",2,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Put1")
 	return nil
 
 }
@@ -635,7 +700,10 @@ The length of the retrieved message is returned.
 */
 func (object MQObject) Get(gomd *MQMD,
 	gogmo *MQGMO, buffer []byte) (int, error) {
-	return object.getInternal(gomd, gogmo, buffer, false)
+	traceEntry("Get")	
+	rc, err := object.getInternal(gomd, gogmo, buffer, false)
+	traceExitErr("Get",0,err)
+	return rc, err
 }
 
 /*
@@ -645,6 +713,8 @@ length. The real length is also still returned in case of truncation.
 */
 func (object MQObject) GetSlice(gomd *MQMD,
 	gogmo *MQGMO, buffer []byte) ([]byte, int, error) {
+
+	traceEntry("GetSlice")	
 	realDatalen, err := object.getInternal(gomd, gogmo, buffer, true)
 
 	// The datalen will be set even if the buffer is too small - there
@@ -657,6 +727,8 @@ func (object MQObject) GetSlice(gomd *MQMD,
 	if datalen > cap(buffer) {
 		datalen = cap(buffer)
 	}
+
+	traceExitErr("GetSlice",0,err)
 	return buffer[0:datalen], realDatalen, err
 }
 
@@ -673,21 +745,28 @@ func (object MQObject) getInternal(gomd *MQMD,
 	var datalen C.MQLONG
 	var ptr C.PMQVOID
 
+	traceEntry("getInternal")
+
 	err := checkMD(gomd, "MQGET")
 	if err != nil {
+		traceExitErr("getInternal",1,err)
 		return 0, err
 	}
 	err = checkGMO(gogmo, "MQGET")
 	if err != nil {
+		traceExitErr("getInternal",2,err)
 		return 0, err
 	}
 
 	bufflen := 0
 	if useCap {
 		bufflen = cap(buffer)
+		logTrace("BufferCapacity: %d",bufflen)
 	} else {
 		bufflen = len(buffer)
+		logTrace("BufferLength: %d",bufflen)
 	}
+
 
 	copyMDtoC(&mqmd, gomd)
 	copyGMOtoC(&mqgmo, gogmo)
@@ -712,6 +791,8 @@ func (object MQObject) getInternal(gomd *MQMD,
 		&mqcc, &mqrc)
 
 	godatalen := int(datalen)
+	logTrace("Returned datalen: %d",godatalen)
+
 	copyMDfromC(&mqmd, gomd)
 	copyGMOfromC(&mqgmo, gogmo)
 
@@ -721,76 +802,14 @@ func (object MQObject) getInternal(gomd *MQMD,
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("getInternal",3,&mqreturn)
 		return godatalen, &mqreturn
 	}
 
+	traceExit("getInternal")
 	return godatalen, nil
 
 }
-
-/*
-Inq is the function to inquire on an attribute of an object
-
-Slices are returned containing the integer attributes, and all the
-strings concatenated into a single buffer - the caller needs to know
-how long each field in that buffer will be.
-
-The caller passes in how many integer selectors are expected to be
-returned, as well as the maximum length of the char buffer to be returned
-
-This function is a direct mapping of the MQI C function. It has
-now been removed (just commented-out to start with). It was originally
-marked as deprecated but a new major version of the package has been created
-to allow it to be completely replaced.
-
-func (object MQObject) Inq(goSelectors []int32, intAttrCount int, charAttrLen int) ([]int32,
-	[]byte, error) {
-	var mqrc C.MQLONG
-	var mqcc C.MQLONG
-	var mqCharAttrs C.PMQCHAR
-	var goCharAttrs []byte
-	var goIntAttrs []int32
-	var ptr C.PMQLONG
-
-	if intAttrCount > 0 {
-		goIntAttrs = make([]int32, intAttrCount)
-		ptr = (C.PMQLONG)(unsafe.Pointer(&goIntAttrs[0]))
-	} else {
-		ptr = nil
-	}
-	if charAttrLen > 0 {
-		mqCharAttrs = (C.PMQCHAR)(C.malloc(C.size_t(charAttrLen)))
-		defer C.free(unsafe.Pointer(mqCharAttrs))
-	} else {
-		mqCharAttrs = nil
-	}
-
-	// Pass in the selectors directly
-	C.MQINQ(object.qMgr.hConn, object.hObj,
-		C.MQLONG(len(goSelectors)),
-		C.PMQLONG(unsafe.Pointer(&goSelectors[0])),
-		C.MQLONG(intAttrCount),
-		ptr,
-		C.MQLONG(charAttrLen),
-		mqCharAttrs,
-		&mqcc, &mqrc)
-
-	mqreturn := MQReturn{MQCC: int32(mqcc),
-		MQRC: int32(mqrc),
-		verb: "MQINQ",
-	}
-
-	if mqcc != C.MQCC_OK {
-		return nil, nil, &mqreturn
-	}
-
-	if charAttrLen > 0 {
-		goCharAttrs = C.GoBytes(unsafe.Pointer(mqCharAttrs), C.int(charAttrLen))
-	}
-
-	return goIntAttrs, goCharAttrs, nil
-}
-*/
 
 /*
 Inq is the function to inquire on an attribute of an object
@@ -810,6 +829,8 @@ func (object MQObject) Inq(goSelectors []int32) (map[int32]interface{}, error) {
 	var ptr C.PMQLONG
 	var charOffset int
 	var charLength int
+
+	traceEntry("Inq")
 
 	intAttrCount, _, charAttrLen := getAttrInfo(goSelectors)
 
@@ -842,6 +863,7 @@ func (object MQObject) Inq(goSelectors []int32) (map[int32]interface{}, error) {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Inq",1,&mqreturn)
 		return nil, &mqreturn
 	}
 
@@ -911,6 +933,7 @@ func (object MQObject) Inq(goSelectors []int32) (map[int32]interface{}, error) {
 		}
 	}
 
+	traceExit("Inq")
 	return returnedMap, nil
 }
 
@@ -937,6 +960,8 @@ func (object MQObject) Set(goSelectors map[int32]interface{}) error {
 	var intAttrsPtr C.PMQLONG
 	var charOffset int
 	var charLength int
+
+	traceEntry("Set")
 
 	// Pass through the map twice. First time lets us
 	// create an array of selector names from map keys which is then
@@ -1018,9 +1043,11 @@ func (object MQObject) Set(goSelectors map[int32]interface{}) error {
 	}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("Set",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("Set")
 	return nil
 }
 
@@ -1035,6 +1062,8 @@ func (x *MQQueueManager) CrtMH(gocmho *MQCMHO) (MQMessageHandle, error) {
 
 	var mqcmho C.MQCMHO
 	var mqhmsg C.MQHMSG
+
+	traceEntry("CrtMH")
 
 	copyCMHOtoC(&mqcmho, gocmho)
 
@@ -1053,9 +1082,11 @@ func (x *MQQueueManager) CrtMH(gocmho *MQCMHO) (MQMessageHandle, error) {
 	msgHandle := MQMessageHandle{hMsg: mqhmsg, qMgr: x}
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("CrtMH",1,&mqreturn)
 		return msgHandle, &mqreturn
 	}
 
+	traceExit("CrtMH")
 	return msgHandle, nil
 
 }
@@ -1068,6 +1099,8 @@ func (handle *MQMessageHandle) DltMH(godmho *MQDMHO) error {
 	var mqcc C.MQLONG
 
 	var mqdmho C.MQDMHO
+
+	traceEntry("DltMH")
 
 	copyDMHOtoC(&mqdmho, godmho)
 
@@ -1085,10 +1118,12 @@ func (handle *MQMessageHandle) DltMH(godmho *MQDMHO) error {
 	copyDMHOfromC(&mqdmho, godmho)
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("DltMH",1,&mqreturn)
 		return &mqreturn
 	}
 
 	handle.hMsg = C.MQHM_NONE
+	traceExit("DltMH")
 	return nil
 }
 
@@ -1116,6 +1151,8 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 	var propertyInt16 C.MQINT16
 	var propertyFloat32 C.MQFLOAT32
 	var propertyFloat64 C.MQFLOAT64
+
+	traceEntry("SetMP")
 
 	mqName.VSLength = (C.MQLONG)(len(name))
 	mqName.VSCCSID = C.MQCCSI_APPL
@@ -1193,6 +1230,7 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 			MQRC: C.MQRC_PROPERTY_TYPE_ERROR,
 			verb: "MQSETMP",
 		}
+		traceExitErr("SetMP",1,&mqreturn)
 		return &mqreturn
 	}
 
@@ -1227,9 +1265,11 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 	copyPDfromC(&mqpd, gopd)
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("SetMP",2,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("SetMP")
 	return nil
 }
 
@@ -1242,6 +1282,8 @@ func (handle *MQMessageHandle) DltMP(godmpo *MQDMPO, name string) error {
 
 	var mqdmpo C.MQDMPO
 	var mqName C.MQCHARV
+
+	traceEntry("DltMP")
 
 	mqName.VSLength = (C.MQLONG)(len(name))
 	mqName.VSCCSID = C.MQCCSI_APPL
@@ -1271,9 +1313,11 @@ func (handle *MQMessageHandle) DltMP(godmpo *MQDMPO, name string) error {
 	copyDMPOfromC(&mqdmpo, godmpo)
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("DltMP",1,&mqreturn)
 		return &mqreturn
 	}
 
+	traceExit("DltMP")
 	return nil
 }
 
@@ -1295,6 +1339,8 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 
 	const namebufsize = 1024
 	const propbufsize = 10240
+
+	traceEntry("InqMP")
 
 	mqName.VSLength = (C.MQLONG)(len(name))
 	mqName.VSCCSID = C.MQCCSI_APPL
@@ -1340,6 +1386,7 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 	copyPDfromC(&mqpd, gopd)
 
 	if mqcc != C.MQCC_OK {
+		traceExitErr("DltMP",1,&mqreturn)
 		return "", nil, &mqreturn
 	}
 
@@ -1381,6 +1428,7 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		propertyValue = nil
 	}
 
+	traceExit("DltMP")
 	return goimpo.ReturnedName, propertyValue, nil
 }
 
