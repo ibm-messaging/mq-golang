@@ -145,9 +145,9 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	}
 
 	if mqreturn.MQCC != C.MQCC_OK {
-		traceExitErr("Callback",1,mqreturn)
+		traceExitErr("Callback", 1, mqreturn)
 	} else {
-	  traceExit("Callback")
+		traceExit("Callback")
 	}
 }
 
@@ -169,12 +169,12 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 
 	err := checkMD(gomd, "MQCB")
 	if err != nil {
-		traceExitErr("CB(Q)",1,err)
+		traceExitErr("CB(Q)", 1, err)
 		return err
 	}
 	err = checkGMO(gogmo, "MQCB")
 	if err != nil {
-		traceExitErr("CB(Q)",2,err)
+		traceExitErr("CB(Q)", 2, err)
 		return err
 	}
 
@@ -200,7 +200,7 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("CB",3,&mqreturn)
+		traceExitErr("CB", 3, &mqreturn)
 		return &mqreturn
 	}
 
@@ -253,7 +253,7 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("CB(QM)",1,&mqreturn)
+		traceExitErr("CB(QM)", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -312,7 +312,7 @@ func (x *MQQueueManager) Ctl(goOperation int32, goctlo *MQCTLO) error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Ctl",1,&mqreturn)
+		traceExitErr("Ctl", 1, &mqreturn)
 		return &mqreturn
 	}
 

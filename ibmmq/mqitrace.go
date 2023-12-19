@@ -32,7 +32,7 @@ import (
 
 var tracing = false
 
-// This is a public function so it could be called dynamically by 
+// This is a public function so it could be called dynamically by
 // an application at runtime
 func SetTrace(b bool) {
 	tracing = b
@@ -40,11 +40,11 @@ func SetTrace(b bool) {
 
 func logTrace(format string, v ...interface{}) {
 	if tracing {
-		d:= time.Now().Format("2006-01-02T15:04:05.000")
-		fmt.Fprintf(os.Stderr,"[ibmmq] %s : ",d)
-		fmt.Fprintf(os.Stderr,format, v...)
-		if !strings.HasSuffix(format,"\n") {
-		  fmt.Fprintf(os.Stderr,"\n")
+		d := time.Now().Format("2006-01-02T15:04:05.000")
+		fmt.Fprintf(os.Stderr, "[ibmmq] %s : ", d)
+		fmt.Fprintf(os.Stderr, format, v...)
+		if !strings.HasSuffix(format, "\n") {
+			fmt.Fprintf(os.Stderr, "\n")
 		}
 	}
 }

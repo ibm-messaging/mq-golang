@@ -201,7 +201,7 @@ Conn is the function to connect to a queue manager
 func Conn(goQMgrName string) (MQQueueManager, error) {
 	traceEntry("Conn")
 	qm, err := Connx(goQMgrName, nil)
-	traceExitErr("Conn",0,err)
+	traceExitErr("Conn", 0, err)
 	return qm, err
 }
 
@@ -228,7 +228,7 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	mqQMgrName := unsafe.Pointer(C.CString(goQMgrName))
 	defer C.free(mqQMgrName)
 
-	logTrace("QMgrName: %s",goQMgrName)
+	logTrace("QMgrName: %s", goQMgrName)
 
 	// Set up a default CNO if not provided.
 	if gocno == nil {
@@ -257,7 +257,7 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Connx",1,mqreturn)
+		traceExitErr("Connx", 1, mqreturn)
 		return qMgr, mqreturn
 	}
 
@@ -286,7 +286,7 @@ func (x *MQQueueManager) Disc() error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Disc",1,&mqreturn)
+		traceExitErr("Disc", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -310,7 +310,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 		qMgr: x,
 	}
 
-	logTrace("Object: %s %s",good.ObjectName, good.ObjectQMgrName)
+	logTrace("Object: %s %s", good.ObjectName, good.ObjectQMgrName)
 
 	copyODtoC(&mqod, good)
 	mqOpenOptions = C.MQLONG(goOpenOptions) | C.MQOO_FAIL_IF_QUIESCING
@@ -330,7 +330,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Open",1,&mqreturn)
+		traceExitErr("Open", 1, &mqreturn)
 		return object, &mqreturn
 	}
 
@@ -368,7 +368,7 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Close",1,&mqreturn)
+		traceExitErr("Close", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -393,7 +393,7 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 		qMgr: x,
 	}
 
-	logTrace("Object: %s",subObject.Name)
+	logTrace("Object: %s", subObject.Name)
 
 	err := checkSD(gosd, "MQSUB")
 	if err != nil {
@@ -417,7 +417,7 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Sub",1,&mqreturn)
+		traceExitErr("Sub", 1, &mqreturn)
 		return subObject, &mqreturn
 	}
 
@@ -455,7 +455,7 @@ func (subObject *MQObject) Subrq(gosro *MQSRO, action int32) error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Subrq",1,&mqreturn)
+		traceExitErr("Subrq", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -485,7 +485,7 @@ func (x *MQQueueManager) Begin(gobo *MQBO) error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Beqin",1,&mqreturn)
+		traceExitErr("Beqin", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -511,7 +511,7 @@ func (x *MQQueueManager) Cmit() error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Cmit",1,&mqreturn)
+		traceExitErr("Cmit", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -537,7 +537,7 @@ func (x *MQQueueManager) Back() error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Back",1,&mqreturn)
+		traceExitErr("Back", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -570,7 +570,7 @@ func (x *MQQueueManager) Stat(statusType int32, gosts *MQSTS) error {
 	copySTSfromC(&mqsts, gosts)
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Stat",1,&mqreturn)
+		traceExitErr("Stat", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -594,12 +594,12 @@ func (object MQObject) Put(gomd *MQMD,
 
 	err := checkMD(gomd, "MQPUT")
 	if err != nil {
-		traceExitErr("Put",1,err)
+		traceExitErr("Put", 1, err)
 		return err
 	}
 
 	bufflen := len(buffer)
-	logTrace("BufferLength: %d",bufflen)
+	logTrace("BufferLength: %d", bufflen)
 
 	copyMDtoC(&mqmd, gomd)
 	copyPMOtoC(&mqpmo, gopmo)
@@ -625,7 +625,7 @@ func (object MQObject) Put(gomd *MQMD,
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Put",2,&mqreturn)
+		traceExitErr("Put", 2, &mqreturn)
 		return &mqreturn
 	}
 
@@ -651,7 +651,7 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 
 	err := checkMD(gomd, "MQPUT1")
 	if err != nil {
-		traceExitErr("Put1",1,err)
+		traceExitErr("Put1", 1, err)
 		return err
 	}
 
@@ -660,7 +660,7 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	copyPMOtoC(&mqpmo, gopmo)
 
 	bufflen := len(buffer)
-	logTrace("BufferLength: %d",bufflen)
+	logTrace("BufferLength: %d", bufflen)
 
 	if bufflen > 0 {
 		ptr = (C.PMQVOID)(unsafe.Pointer(&buffer[0]))
@@ -685,7 +685,7 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Put1",2,&mqreturn)
+		traceExitErr("Put1", 2, &mqreturn)
 		return &mqreturn
 	}
 
@@ -700,9 +700,9 @@ The length of the retrieved message is returned.
 */
 func (object MQObject) Get(gomd *MQMD,
 	gogmo *MQGMO, buffer []byte) (int, error) {
-	traceEntry("Get")	
+	traceEntry("Get")
 	rc, err := object.getInternal(gomd, gogmo, buffer, false)
-	traceExitErr("Get",0,err)
+	traceExitErr("Get", 0, err)
 	return rc, err
 }
 
@@ -714,7 +714,7 @@ length. The real length is also still returned in case of truncation.
 func (object MQObject) GetSlice(gomd *MQMD,
 	gogmo *MQGMO, buffer []byte) ([]byte, int, error) {
 
-	traceEntry("GetSlice")	
+	traceEntry("GetSlice")
 	realDatalen, err := object.getInternal(gomd, gogmo, buffer, true)
 
 	// The datalen will be set even if the buffer is too small - there
@@ -728,7 +728,7 @@ func (object MQObject) GetSlice(gomd *MQMD,
 		datalen = cap(buffer)
 	}
 
-	traceExitErr("GetSlice",0,err)
+	traceExitErr("GetSlice", 0, err)
 	return buffer[0:datalen], realDatalen, err
 }
 
@@ -749,24 +749,23 @@ func (object MQObject) getInternal(gomd *MQMD,
 
 	err := checkMD(gomd, "MQGET")
 	if err != nil {
-		traceExitErr("getInternal",1,err)
+		traceExitErr("getInternal", 1, err)
 		return 0, err
 	}
 	err = checkGMO(gogmo, "MQGET")
 	if err != nil {
-		traceExitErr("getInternal",2,err)
+		traceExitErr("getInternal", 2, err)
 		return 0, err
 	}
 
 	bufflen := 0
 	if useCap {
 		bufflen = cap(buffer)
-		logTrace("BufferCapacity: %d",bufflen)
+		logTrace("BufferCapacity: %d", bufflen)
 	} else {
 		bufflen = len(buffer)
-		logTrace("BufferLength: %d",bufflen)
+		logTrace("BufferLength: %d", bufflen)
 	}
-
 
 	copyMDtoC(&mqmd, gomd)
 	copyGMOtoC(&mqgmo, gogmo)
@@ -791,7 +790,7 @@ func (object MQObject) getInternal(gomd *MQMD,
 		&mqcc, &mqrc)
 
 	godatalen := int(datalen)
-	logTrace("Returned datalen: %d",godatalen)
+	logTrace("Returned datalen: %d", godatalen)
 
 	copyMDfromC(&mqmd, gomd)
 	copyGMOfromC(&mqgmo, gogmo)
@@ -802,7 +801,7 @@ func (object MQObject) getInternal(gomd *MQMD,
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("getInternal",3,&mqreturn)
+		traceExitErr("getInternal", 3, &mqreturn)
 		return godatalen, &mqreturn
 	}
 
@@ -863,7 +862,7 @@ func (object MQObject) Inq(goSelectors []int32) (map[int32]interface{}, error) {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Inq",1,&mqreturn)
+		traceExitErr("Inq", 1, &mqreturn)
 		return nil, &mqreturn
 	}
 
@@ -1043,7 +1042,7 @@ func (object MQObject) Set(goSelectors map[int32]interface{}) error {
 	}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("Set",1,&mqreturn)
+		traceExitErr("Set", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -1082,7 +1081,7 @@ func (x *MQQueueManager) CrtMH(gocmho *MQCMHO) (MQMessageHandle, error) {
 	msgHandle := MQMessageHandle{hMsg: mqhmsg, qMgr: x}
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("CrtMH",1,&mqreturn)
+		traceExitErr("CrtMH", 1, &mqreturn)
 		return msgHandle, &mqreturn
 	}
 
@@ -1118,7 +1117,7 @@ func (handle *MQMessageHandle) DltMH(godmho *MQDMHO) error {
 	copyDMHOfromC(&mqdmho, godmho)
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("DltMH",1,&mqreturn)
+		traceExitErr("DltMH", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -1230,7 +1229,7 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 			MQRC: C.MQRC_PROPERTY_TYPE_ERROR,
 			verb: "MQSETMP",
 		}
-		traceExitErr("SetMP",1,&mqreturn)
+		traceExitErr("SetMP", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -1265,7 +1264,7 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 	copyPDfromC(&mqpd, gopd)
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("SetMP",2,&mqreturn)
+		traceExitErr("SetMP", 2, &mqreturn)
 		return &mqreturn
 	}
 
@@ -1313,7 +1312,7 @@ func (handle *MQMessageHandle) DltMP(godmpo *MQDMPO, name string) error {
 	copyDMPOfromC(&mqdmpo, godmpo)
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("DltMP",1,&mqreturn)
+		traceExitErr("DltMP", 1, &mqreturn)
 		return &mqreturn
 	}
 
@@ -1386,7 +1385,7 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 	copyPDfromC(&mqpd, gopd)
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("DltMP",1,&mqreturn)
+		traceExitErr("DltMP", 1, &mqreturn)
 		return "", nil, &mqreturn
 	}
 

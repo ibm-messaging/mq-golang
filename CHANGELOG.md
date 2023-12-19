@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## xxx xx 2023 - v5.5.x 
+- ibmmq - Add simple tracing for MQI calls (MQIGO_TRACE env var)
+- samples - Add sample obtaining and using a JWT token
+
 ## Nov 13 2023 - v5.5.3 
 - mqmetric - MQ 9.3 permits resource subscriptions for queues with '/' in name
 
