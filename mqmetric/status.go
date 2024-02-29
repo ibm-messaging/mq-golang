@@ -44,9 +44,9 @@ type StatusAttribute struct {
 	Description string
 	MetricName  string
 	Pseudo      bool
+	Delta       bool
 	pcfAttr     int32
 	squash      bool
-	delta       bool
 	index       int
 	Values      map[string]*StatusValue
 	prevValues  map[string]int64
@@ -69,9 +69,9 @@ func newStatusAttribute(n string, d string, p int32) *StatusAttribute {
 	s := new(StatusAttribute)
 	s.MetricName = n
 	s.Description = d
+	s.Delta = false
 	s.pcfAttr = p
 	s.squash = false
-	s.delta = false
 	s.index = -1
 	s.Values = make(map[string]*StatusValue)
 	s.prevValues = make(map[string]int64)
@@ -301,7 +301,7 @@ func statusGetIntAttributes(s *StatusSet, elem *ibmmq.PCFParameter, key string) 
 			// metric attribute.
 			if index == -1 {
 				v := elem.Int64Value[0]
-				if s.Attributes[attr].delta {
+				if s.Attributes[attr].Delta {
 					// If we have already got a value for this attribute and queue
 					// then use it to create the delta. Otherwise make the initial
 					// value 0.
@@ -323,7 +323,7 @@ func statusGetIntAttributes(s *StatusSet, elem *ibmmq.PCFParameter, key string) 
 				}
 			} else {
 				v := elem.Int64Value
-				if s.Attributes[attr].delta {
+				if s.Attributes[attr].Delta {
 					// If we have already got a value for this attribute and queue
 					// then use it to create the delta. Otherwise make the initial
 					// value 0.

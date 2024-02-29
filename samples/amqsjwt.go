@@ -3,7 +3,8 @@ This is a short sample to show how to connect to a remote
 queue manager in a Go program by using a JWT token.
 
 The sample makes an API call to the Token Server to authenticate a user,
-and uses the returned token to connect to the queue manager.
+and uses the returned token to connect to the queue manager which must have been
+configured to recognise tokens.
 
 There is no attempt in this sample to configure advanced security features
 such as TLS for the queue manager connection. It does, however, use a minimal
@@ -57,7 +58,8 @@ const (
 	defaultConnectionName = "localhost(1414)"
 
 	/* Get these values from the Token issuer. */
-	defaultTokenAddress  = "localhost:8443"
+	defaultTokenHost     = "localhost"
+	defaultTokenPort     = 8443
 	defaultTokenUserName = "jwtuser"
 	defaultTokenPassword = "passw0rd"
 	defaultTokenClientId = "jwtcid"
@@ -65,10 +67,11 @@ const (
 )
 
 type Config struct {
-	qMgrName       string 
-	connectionName string 
-	channel        string 
-	tokenAddress   string
+	qMgrName       string
+	connectionName string
+	channel        string
+	tokenHost      string
+	tokenPort      int
 	tokenUserName  string
 	tokenPassword  string
 	tokenClientId  string
@@ -77,17 +80,20 @@ type Config struct {
 
 // We only care about one field in the JSON data returned from
 // the call to the JWT server
-type Token struct {
+type JWTResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
 var cf Config
-var tokenStruct Token
+var jwtResponseStruct JWTResponse
 
 func main() {
 	var err error
 	var qMgr ibmmq.MQQueueManager
 	var rc int
+	token := ""
+
+	fmt.Println("Sample AMQSJWT.GO start")
 
 	initParms()
 	err = parseParms()
@@ -108,12 +114,12 @@ func main() {
 	cno.ClientConn = cd
 	cno.Options = ibmmq.MQCNO_CLIENT_BINDING
 
-	err = obtainToken()
+	token, err = obtainToken()
 	if err == nil {
-		if tokenStruct.AccessToken != "" {
+		if token != "" {
 			csp := ibmmq.NewMQCSP()
-			csp.Token = tokenStruct.AccessToken
-			fmt.Printf("Using token: %s\n", tokenStruct.AccessToken)
+			csp.Token = token
+			fmt.Printf("Using token: %s\n", token)
 
 			// Make the CNO refer to the CSP structure so it gets used during the connection
 			cno.SecurityParms = csp
@@ -129,52 +135,54 @@ func main() {
 	// And now we can try to connect. Wait a short time before disconnecting.
 	qMgr, err = ibmmq.Connx(cf.qMgrName, cno)
 	if err == nil {
-		fmt.Printf("Connection to %s succeeded.\n", cf.qMgrName)
+		fmt.Printf("MQCONN to QM %s succeeded.\n", cf.qMgrName)
 		d, _ := time.ParseDuration("3s")
 		time.Sleep(d)
 		qMgr.Disc() // Ignore errors from disconnect as we can't do much about it anyway
 		rc = 0
 	} else {
-		fmt.Printf("Connection to %s failed.\n", cf.qMgrName)
+		fmt.Printf("MQCONN to %s failed.\n", cf.qMgrName)
 		fmt.Println(err)
 		rc = int(err.(*ibmmq.MQReturn).MQCC)
 	}
 
 	fmt.Println("Done.")
 	os.Exit(rc)
-
 }
 
 /*
  * Function to query a token from the token endpoint. Build the
  * command that is used to retrieve a JSON response from the token
- * server. Parse the response via RetrieveTokenFromResponse to
- * retrieve the token to be added into the MQCSP.
+ * server. Parse the response to find the token to be added into the MQCSP.
  */
-func obtainToken() error {
+func obtainToken() (string, error) {
 	var resp *http.Response
 
 	/*
 	   This curl command is the basis of the call to get a token. It uses form data to
 	   set the various parameters
 
-	   curl -k -X POST "https://$host/realms/$realm/protocol/openid-connect/token" \
+	   curl -k -X POST "https://$host:$port/realms/$realm/protocol/openid-connect/token" \
 	        -H "Content-Type: application/x-www-form-urlencoded" \
 	        -d "username=$user" -d "password=$password" \
 	        -d "grant_type=password" -d "client_id=$cid" \
 	        -o $output -Ss
 	*/
 
-	/* 
-	 * NOTE: This is not a good idea for production, but it means we don't need to set up a truststore
-	 * for the server's certificate. We will simply trust it - useful if it's a development-level server
-	 * with a self-signed cert.
-	 */
+	/*
+	   NOTE 1: The SkipVerify is is not a good idea for production, but it means we don't need to
+	   set up a truststore for the token server's certificate. We will simply trust it - useful if it's a
+	   development-level server with a self-signed cert.
+
+	   NOTE 2: If you do choose to set up a truststore/keystore for the connection to the token server,
+	   then they must be in a suitable format for OpenSSL (such as pem, p12), not the kdb format usually
+	   used for an MQ connection.
+	*/
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	client := &http.Client{Transport: tr}
 
-	// Build the URL. We will assume HTTPS
-	endpoint := fmt.Sprintf("https://%s/realms/%s/protocol/openid-connect/token", cf.tokenAddress, cf.tokenRealm)
+	// Build the URL. We will assume HTTPS. The path may need to change for different token servers.
+	endpoint := fmt.Sprintf("https://%s:%d/realms/%s/protocol/openid-connect/token", cf.tokenHost, cf.tokenPort, cf.tokenRealm)
 
 	// Fill in the pieces of data that the server expects
 	formData := url.Values{
@@ -195,34 +203,36 @@ func obtainToken() error {
 	if err != nil {
 		// we will get an error at this stage if the request fails, such as if the
 		// requested URL is not found, or if the server is not reachable.
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
-		return err
+		return "", err
 	}
 
 	// If it all worked, we can parse the response. We don't need all of the returned
 	// fields, only the token.
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	} else {
 		// fmt.Printf("Got back a response: %s\n", data)
-		err = json.Unmarshal(data, &tokenStruct)
+		err = json.Unmarshal(data, &jwtResponseStruct)
 	}
 
-	return err
+	return jwtResponseStruct.AccessToken, err
 }
 
 // Command line parameters - set flags and defaults
 func initParms() {
-	flag.StringVar(&cf.qMgrName, "m", defaultQMgrName, "Queue Manager for connection")
-	flag.StringVar(&cf.connectionName, "connection", defaultConnectionName, "Connection Name")
-	flag.StringVar(&cf.channel, "channel", defaultChannel, "Channel Name")
-	flag.StringVar(&cf.tokenAddress, "address", defaultTokenAddress, "Address for the token server in URL-style")
+	flag.StringVar(&cf.qMgrName, "m", defaultQMgrName, "Queue Manager")
+	flag.StringVar(&cf.connectionName, "connection", defaultConnectionName, "MQ Connection Name")
+	flag.StringVar(&cf.channel, "channel", defaultChannel, "MQ Channel Name")
+	flag.StringVar(&cf.tokenHost, "host", defaultTokenHost, "Hostname for the token server")
+	flag.IntVar(&cf.tokenPort, "port", defaultTokenPort, "Portnumber for the token server")
+
 	flag.StringVar(&cf.tokenUserName, "user", defaultTokenUserName, "UserName")
 	flag.StringVar(&cf.tokenPassword, "password", defaultTokenPassword, "Password")
 	flag.StringVar(&cf.tokenClientId, "clientId", defaultTokenClientId, "ClientId")

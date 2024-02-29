@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2023
+* Copyright (c) IBM Corporation 1993, 2024
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1461,6 +1461,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_933"
 		case 934:
 			s = "MQCMDL_LEVEL_934"
+		case 935:
+			s = "MQCMDL_LEVEL_935"
 		default:
 			s = ""
 		}

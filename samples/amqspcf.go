@@ -236,7 +236,7 @@ func getReplies() error {
 		getmqmd := ibmmq.NewMQMD()
 		gmo := ibmmq.NewMQGMO()
 
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
+		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT | ibmmq.MQGMO_CONVERT
 
 		// Set options to wait for a maximum of 3 seconds for any new message to arrive
 		gmo.Options |= ibmmq.MQGMO_WAIT

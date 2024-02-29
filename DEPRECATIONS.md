@@ -7,8 +7,7 @@ Removal of function will only happen on a major version change.
 **Note:** There is no date currently planned for a new major release.
 
 ## In next minor version
-The compiler will be set to use Go 1.17 at minimum from 
-the +build lines in the directives 
+Go compiler version moved forward if necessary
 
 ## In next major version
 The following interfaces are planned to be removed:

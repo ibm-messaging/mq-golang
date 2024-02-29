@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2019
+  Copyright (c) IBM Corporation 2016,2024
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ type MQEPH struct {
 	Format         string
 	Control        int32
 	Flags          int32
+	Cfh            MQCFH
 }
 
 /*
@@ -105,11 +106,21 @@ NewMQEPH returns a PCF Embedded Header structure with correct initialisation
 func NewMQEPH() *MQEPH {
 	eph := new(MQEPH)
 	eph.StrucLength = C.MQEPH_STRUC_LENGTH_FIXED
-	eph.Version = C.MQCFH_VERSION_1
+	eph.Version = C.MQEPH_VERSION_1
 	eph.Encoding = 0
 	eph.CodedCharSetId = C.MQCCSI_UNDEFINED
 	eph.Format = C.MQFMT_NONE
 	eph.Flags = C.MQEPH_NONE
+
+	eph.Cfh.Type = C.MQCFT_NONE
+	eph.Cfh.StrucLength = C.MQCFH_STRUC_LENGTH
+	eph.Cfh.Version = C.MQCFH_VERSION_3
+	eph.Cfh.Command = C.MQCMD_NONE
+	eph.Cfh.MsgSeqNumber = 1
+	eph.Cfh.Control = C.MQCFC_LAST
+	eph.Cfh.CompCode = C.MQCC_OK
+	eph.Cfh.Reason = C.MQRC_NONE
+	eph.Cfh.ParameterCount = 0
 
 	return eph
 }
@@ -140,6 +151,34 @@ func (cfh *MQCFH) Bytes() []byte {
 	offset += 4
 	endian.PutUint32(buf[offset:], uint32(cfh.ParameterCount))
 	offset += 4
+
+	return buf
+}
+
+func (eph *MQEPH) Bytes() []byte {
+
+	// There's no constant defining the length of just the "EPH" wrapper.
+	// The STRUC_LENGTH_FIXED includes the CFH length. So we have to start
+	// by calculating it
+	buf := make([]byte, C.MQEPH_STRUC_LENGTH_FIXED-C.MQCFH_STRUC_LENGTH)
+	offset := 0
+
+	copy(buf[offset:], "EPH ")
+	offset += 4
+	endian.PutUint32(buf[offset:], uint32(eph.Version))
+	offset += 4
+	endian.PutUint32(buf[offset:], uint32(eph.StrucLength))
+	offset += 4
+	endian.PutUint32(buf[offset:], uint32(eph.Encoding))
+	offset += 4
+	endian.PutUint32(buf[offset:], uint32(eph.CodedCharSetId))
+	offset += 4
+	copy(buf[offset:], (eph.Format + space8)[0:8])
+	offset += 8
+	endian.PutUint32(buf[offset:], uint32(eph.Flags))
+	offset += 4
+
+	buf = append(buf, eph.Cfh.Bytes()...)
 
 	return buf
 }

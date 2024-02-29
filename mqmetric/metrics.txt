@@ -56,13 +56,13 @@ Class: DISK
     Log - bytes max 
     Log file system - bytes in use 
     Log file system - bytes max 
-    Log - physical bytes written 
-    Log - logical bytes written 
+    Log - physical bytes written for the current interval X
+    Log - logical bytes written for the current interval
     Log - write latency uSec
-    Log - write size 
-    Log - bytes occupied by extents waiting to be archived 
-    Log - bytes required for media recovery 
-    Log - bytes occupied by reusable extents 
+    Log - write size X, also rolling average
+    Log - occupied by extents waiting to be archived X
+    Log - space in MB required for media recovery X
+    Log - space in MB occupied by reusable extents 
     Log - current primary space in use 
     Log - workload primary space utilization 
 
@@ -309,4 +309,4 @@ Class: bufferpool/pageset
   ATTR_PS_TOTAL                   : pages_total
   ATTR_PS_UNUSED                  : pages_unused
 
-This page was automatically generated from the source tree on 2023-10-10 07:32:28
+This page was automatically generated from the source tree on 2024-02-22 11:01:40

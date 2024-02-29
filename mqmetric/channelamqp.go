@@ -80,10 +80,10 @@ func ChannelAMQPInitAttributes() {
 	// These are the integer status fields that are of interest
 	attr = ATTR_CHL_AMQP_MESSAGES_RECEIVED
 	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACH_MSGS_RCVD)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_AMQP_MESSAGES_SENT
 	st.Attributes[attr] = newStatusAttribute(attr, "Messages Sent", ibmmq.MQIACH_MSGS_SENT)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 
 	attr = ATTR_CHL_AMQP_CONNECTIONS
 	st.Attributes[attr] = newStatusAttribute(attr, "Connections", ibmmq.MQIACF_CONNECTION_COUNT)
@@ -166,7 +166,7 @@ func CollectAMQPChannelStatus(patterns string) error {
 	// Need to clean out the prevValues elements to stop short-lived channels
 	// building up in the map
 	for a, _ := range st.Attributes {
-		if st.Attributes[a].delta {
+		if st.Attributes[a].Delta {
 			m := st.Attributes[a].prevValues
 			for key, _ := range m {
 				if _, ok := os.objectSeen[key]; ok {

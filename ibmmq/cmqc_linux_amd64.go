@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2023
+* Copyright (c) IBM Corporation 1993, 2024
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  9/27/23 11:53 AM
-*   Build Level:   p934-L230927
+*   Generated on:  2/1/24 12:04 PM
+*   Build Level:   p935-L240201
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1032,7 +1032,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 934
+	MQCMDL_CURRENT_LEVEL           int32  = 935
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1084,6 +1084,7 @@ const (
 	MQCMDL_LEVEL_932               int32  = 932
 	MQCMDL_LEVEL_933               int32  = 933
 	MQCMDL_LEVEL_934               int32  = 934
+	MQCMDL_LEVEL_935               int32  = 935
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69

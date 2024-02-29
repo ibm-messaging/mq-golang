@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2023
+  Copyright (c) IBM Corporation 2016, 2024
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -1305,71 +1304,6 @@ func parsePCFResponse(buf []byte) ([]*ibmmq.PCFParameter, bool) {
 	traceExit("parsePCFResponse", 0)
 
 	return elemList, rc
-}
-
-/*
-Need to turn the "friendly" name of each element into something
-that is suitable for metric names.
-
-Should also have consistency of units (always use seconds,
-bytes etc), and organisation of the elements of the name (units last)
-
-While we can't change the MQ-generated descriptions for its statistics,
-we can reformat most of them heuristically here.
-*/
-func formatDescription(elem *MonElement) string {
-	s := elem.Description
-	s = strings.Replace(s, " ", "_", -1)
-	s = strings.Replace(s, "/", "_", -1)
-	s = strings.Replace(s, "-", "_", -1)
-
-	/* Make sure we don't have multiple underscores */
-	multiunder := regexp.MustCompile("__*")
-	s = multiunder.ReplaceAllLiteralString(s, "_")
-
-	/* make it all lowercase. Not essential, but looks better */
-	s = strings.ToLower(s)
-
-	/* Remove all cases of bytes, seconds, count or percentage (we add them back in later) */
-	s = strings.Replace(s, "_count", "", -1)
-	s = strings.Replace(s, "_bytes", "", -1)
-	s = strings.Replace(s, "_byte", "", -1)
-	s = strings.Replace(s, "_seconds", "", -1)
-	s = strings.Replace(s, "_second", "", -1)
-	s = strings.Replace(s, "_percentage", "", -1)
-
-	// Switch round a couple of specific names
-	s = strings.Replace(s, "messages_expired", "expired_messages", -1)
-
-	// Add the unit at end
-	switch elem.Datatype {
-	case ibmmq.MQIAMO_MONITOR_PERCENT, ibmmq.MQIAMO_MONITOR_HUNDREDTHS:
-		s = s + "_percentage"
-	case ibmmq.MQIAMO_MONITOR_MB, ibmmq.MQIAMO_MONITOR_GB:
-		s = s + "_bytes"
-	case ibmmq.MQIAMO_MONITOR_MICROSEC:
-		s = s + "_seconds"
-	default:
-		if strings.Contains(s, "_total") {
-			/* If we specify it is a total in description put that at the end */
-			s = strings.Replace(s, "_total", "", -1)
-			s = s + "_total"
-		} else if strings.Contains(s, "log_") {
-			/* Weird case where the log datatype is not MB or GB but should be bytes */
-			s = s + "_bytes"
-		}
-
-		// There are some metrics that have both "count" and "byte count" in
-		// the descriptions. They were getting mapped to the same string, so
-		// we have to ensure uniqueness.
-		if strings.Contains(elem.Description, "byte count") {
-			s = s + "_bytes"
-		} else if strings.HasSuffix(elem.Description, " count") && !strings.Contains(s, "_count") {
-			s = s + "_count"
-		}
-	}
-	logTrace("  [%s] in:%s out:%s", "formatDescription", elem.Description, s)
-	return s
 }
 
 /*

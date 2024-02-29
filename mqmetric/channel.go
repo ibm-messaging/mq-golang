@@ -108,22 +108,22 @@ func ChannelInitAttributes() {
 	// These are the integer status fields that are of interest
 	attr = ATTR_CHL_MESSAGES
 	st.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BYTES_SENT
 	st.Attributes[attr] = newStatusAttribute(attr, "Bytes sent", ibmmq.MQIACH_BYTES_SENT)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BYTES_RCVD
 	st.Attributes[attr] = newStatusAttribute(attr, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BUFFERS_SENT
 	st.Attributes[attr] = newStatusAttribute(attr, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BUFFERS_RCVD
 	st.Attributes[attr] = newStatusAttribute(attr, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_CHL_BATCHES
 	st.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 
 	// This is decoded by MQCHS_* values
 	attr = ATTR_CHL_STATUS
@@ -243,7 +243,7 @@ func CollectChannelStatus(patterns string) error {
 	// Need to clean out the prevValues elements to stop short-lived channels
 	// building up in the map
 	for a, _ := range st.Attributes {
-		if st.Attributes[a].delta {
+		if st.Attributes[a].Delta {
 			m := st.Attributes[a].prevValues
 			for key, _ := range m {
 				if _, ok := os.objectSeen[key]; ok {

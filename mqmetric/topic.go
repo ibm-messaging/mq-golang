@@ -78,10 +78,10 @@ func TopicInitAttributes() {
 	// These are the integer status fields that are of interest
 	attr = ATTR_TOPIC_PUB_MESSAGES
 	st.Attributes[attr] = newStatusAttribute(attr, "Published Messages", ibmmq.MQIACF_PUBLISH_COUNT)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 	attr = ATTR_TOPIC_SUB_MESSAGES
 	st.Attributes[attr] = newStatusAttribute(attr, "Received Messages", ibmmq.MQIACF_MESSAGE_COUNT)
-	st.Attributes[attr].delta = true // We have to manage the differences as MQ reports cumulative values
+	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
 
 	attr = ATTR_TOPIC_PUBLISHER_COUNT
 	st.Attributes[attr] = newStatusAttribute(attr, "Number of publishers", ibmmq.MQIA_PUB_COUNT)
@@ -155,7 +155,7 @@ func CollectTopicStatus(patterns string) error {
 	// Need to clean out the prevValues elements to stop short-lived topics
 	// building up in the map
 	for a, _ := range st.Attributes {
-		if st.Attributes[a].delta {
+		if st.Attributes[a].Delta {
 			m := st.Attributes[a].prevValues
 			for key, _ := range m {
 				if _, ok := os.objectSeen[key]; ok {

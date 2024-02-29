@@ -1,9 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## xxx xx 2023 - v5.5.x 
+## Feb 29 2024 - v5.5.4 
+- Update for MQ 9.3.5
 - ibmmq - Add simple tracing for MQI calls (MQIGO_TRACE env var)
 - samples - Add sample obtaining and using a JWT token
+- Make Go 1.18 baseline compiler
 
 ## Nov 13 2023 - v5.5.3 
 - mqmetric - MQ 9.3 permits resource subscriptions for queues with '/' in name

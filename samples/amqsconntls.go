@@ -6,7 +6,8 @@ parameters are still needed here - channel name and connection information -
 along with the queue manager name.
 
 For example, run as
-   amqsconn QMGR1 "SYSTEM.SSL.SVRCONN" "myhost.example.com(1414)"
+
+	amqsconn QMGR1 "SYSTEM.SSL.SVRCONN" "myhost.example.com(1414)"
 
 If the MQSAMP_USER_ID environment variable is set, then a userid/password
 flow is also made to authenticate to the queue manager.

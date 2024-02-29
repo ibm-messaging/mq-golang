@@ -82,7 +82,7 @@ func SubInitAttributes() {
 	// These are the integer status fields that are of interest
 	attr = ATTR_SUB_MESSAGES
 	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACF_MESSAGE_COUNT)
-	st.Attributes[attr].delta = true
+	st.Attributes[attr].Delta = true
 
 	os.init = true
 	traceExit("SubInitAttributes", 0)
