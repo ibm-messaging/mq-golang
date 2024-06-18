@@ -356,7 +356,7 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		pcfparm = new(ibmmq.PCFParameter)
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
-		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQCA_Q_DESC), int64(ibmmq.MQCA_CLUSTER_NAME)}
+		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQIA_DEFINITION_TYPE), int64(ibmmq.MQCA_Q_DESC), int64(ibmmq.MQCA_CLUSTER_NAME)}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -580,6 +580,13 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 					qInfo.AttrUsage = v
 				}
 			}
+		case ibmmq.MQIA_DEFINITION_TYPE:
+			v := elem.Int64Value[0]
+			if v > 0 {
+				if qInfo, ok := qInfoMap[qName]; ok {
+					qInfo.DefType = v
+				}
+			}
 		case ibmmq.MQCA_Q_DESC:
 			v := elem.String[0]
 			if v != "" {
@@ -608,30 +615,42 @@ func QueueNormalise(attr *StatusAttribute, v int64) float64 {
 	return statusNormalise(attr, v)
 }
 
-// Return the nominated MQCA* attribute from the object's attributes
+// Return the nominated MQCA*/MQIA* attribute from the object's attributes
 // stored in the map
 func GetQueueAttribute(key string, attribute int32) string {
 	var o *ObjInfo
-	v := "-"
+	v := DUMMY_STRING
 	ok := false
 
 	o, ok = qInfoMap[key]
 
 	if !ok {
 		// return something so Prometheus doesn't turn it into "0.0"
-		return "-"
+		return DUMMY_STRING
 	}
 
 	switch attribute {
 	case ibmmq.MQCA_CLUSTER_NAME:
 		v = o.Cluster
+	case ibmmq.MQIA_DEFINITION_TYPE:
+		defType := int32(o.DefType)
+		switch defType {
+		case ibmmq.MQQDT_PREDEFINED:
+			v = "Predefined"
+		case ibmmq.MQQDT_PERMANENT_DYNAMIC:
+			v = "PermDyn"
+		case ibmmq.MQQDT_TEMPORARY_DYNAMIC:
+			v = "TempDyn"
+		case ibmmq.MQQDT_SHARED_DYNAMIC:
+			v = "SharedDyn"
+		}
 	default:
-		v = "-"
+		v = DUMMY_STRING
 	}
 	v = strings.TrimSpace(v)
 
 	if v == "" {
-		v = "-"
+		v = DUMMY_STRING
 	}
 	return v
 }

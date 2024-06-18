@@ -93,6 +93,7 @@ type ObjInfo struct {
 	// These are used for queue information
 	AttrMaxDepth int64  // The queue attribute value. Not the max depth reported by RESET QSTATS
 	AttrUsage    int64  // Normal or XMITQ
+	DefType      int64  // Predefined or temp/perm dynamic queue
 	Cluster      string // The name of a single cluster in which the queue is shared (CLUSTERNL not supported here)
 	// Some channel information
 	AttrMaxInst  int64
@@ -162,7 +163,7 @@ func VerifyConfig() (int32, error) {
 
 	if err == nil {
 		selectors := []int32{ibmmq.MQIA_MAX_Q_DEPTH, ibmmq.MQIA_DEFINITION_TYPE}
-		v, err = ci.si.replyQObj.InqMap(selectors)
+		v, err = ci.si.replyQObj.Inq(selectors)
 		if err == nil {
 			maxQDepth := v[ibmmq.MQIA_MAX_Q_DEPTH].(int32)
 			// Function has tuning based on number of queues to be monitored
@@ -1534,7 +1535,7 @@ func GetObjectDescription(key string, objectType int32) string {
 
 	if !ok || strings.TrimSpace(o.Description) == "" {
 		// return something so Prometheus doesn't turn it into "0.0"
-		return "-"
+		return DUMMY_STRING
 	} else {
 		return o.Description
 	}

@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Jun 18 2024 - v5.6.0 
+- Update for MQ 9.4.0
+
 ## Feb 29 2024 - v5.5.4 
 - Update for MQ 9.3.5
 - ibmmq - Add simple tracing for MQI calls (MQIGO_TRACE env var)

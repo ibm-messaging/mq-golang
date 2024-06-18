@@ -67,7 +67,7 @@ type StatusValue struct {
 // Initialise with default values.
 func newStatusAttribute(n string, d string, p int32) *StatusAttribute {
 	s := new(StatusAttribute)
-	s.MetricName = n
+	s.MetricName = formatAttrName(n) // Convert to a canonical metric name
 	s.Description = d
 	s.Delta = false
 	s.pcfAttr = p

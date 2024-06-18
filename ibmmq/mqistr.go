@@ -1463,6 +1463,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_934"
 		case 935:
 			s = "MQCMDL_LEVEL_935"
+		case 940:
+			s = "MQCMDL_LEVEL_940"
 		default:
 			s = ""
 		}
@@ -1561,6 +1563,10 @@ func MQItoString(class string, value int) string {
 			s = "MQCOMPRESS_ZLIBHIGH"
 		case 8:
 			s = "MQCOMPRESS_SYSTEM"
+		case 16:
+			s = "MQCOMPRESS_LZ4FAST"
+		case 32:
+			s = "MQCOMPRESS_LZ4HIGH"
 		case 268435455:
 			s = "MQCOMPRESS_ANY"
 		default:
@@ -5731,6 +5737,8 @@ func MQItoString(class string, value int) string {
 			s = "MQ_CERT_VAL_POLICY_ANY"
 		case 1:
 			s = "MQ_CERT_VAL_POLICY_RFC5280"
+		case 2:
+			s = "MQ_CERT_VAL_POLICY_NONE"
 		default:
 			s = ""
 		}

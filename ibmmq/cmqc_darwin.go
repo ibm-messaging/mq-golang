@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  2/1/24 12:04 PM
-*   Build Level:   p935-L240201
+*   Generated on:  6/5/24 2:30 PM
+*   Build Level:   p940-L240605.1
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1032,7 +1032,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 935
+	MQCMDL_CURRENT_LEVEL           int32  = 940
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1085,6 +1085,7 @@ const (
 	MQCMDL_LEVEL_933               int32  = 933
 	MQCMDL_LEVEL_934               int32  = 934
 	MQCMDL_LEVEL_935               int32  = 935
+	MQCMDL_LEVEL_940               int32  = 940
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1338,6 +1339,8 @@ const (
 	MQCNO_VERSION_8                int32  = 8
 	MQCODL_AS_INPUT                int32  = -1
 	MQCOMPRESS_ANY                 int32  = 268435455
+	MQCOMPRESS_LZ4FAST             int32  = 16
+	MQCOMPRESS_LZ4HIGH             int32  = 32
 	MQCOMPRESS_NONE                int32  = 0
 	MQCOMPRESS_NOT_AVAILABLE       int32  = -1
 	MQCOMPRESS_RLE                 int32  = 1
@@ -1862,7 +1865,7 @@ const (
 	MQIACF_INVALID_DEST_COUNT      int32  = 1371
 	MQIACF_ITEM_COUNT              int32  = 1378
 	MQIACF_KNOWN_DEST_COUNT        int32  = 1369
-	MQIACF_LAST_USED               int32  = 1465
+	MQIACF_LAST_USED               int32  = 1466
 	MQIACF_LDAP_CONNECTION_STATUS  int32  = 1409
 	MQIACF_LISTENER_ATTRS          int32  = 1222
 	MQIACF_LISTENER_STATUS_ATTRS   int32  = 1223
@@ -2078,6 +2081,7 @@ const (
 	MQIACF_SYSP_UNIT_STATUS        int32  = 1215
 	MQIACF_SYSP_WLM_INTERVAL       int32  = 1202
 	MQIACF_SYSP_WLM_INT_UNITS      int32  = 1268
+	MQIACF_SYSP_ZHYPERLINK         int32  = 1466
 	MQIACF_SYSP_ZHYPERWRITE        int32  = 1414
 	MQIACF_SYSTEM_OBJECTS          int32  = 1404
 	MQIACF_THREAD_ID               int32  = 1025
@@ -3411,6 +3415,7 @@ const (
 	MQRCCF_HB_INTERVAL_WRONG_TYPE  int32  = 4078
 	MQRCCF_HOBJ_ERROR              int32  = 3315
 	MQRCCF_HOST_NOT_AVAILABLE      int32  = 4010
+	MQRCCF_INCOMPATIBLE_QM_IN_QSG  int32  = 3389
 	MQRCCF_INCORRECT_Q             int32  = 3079
 	MQRCCF_INCORRECT_STREAM        int32  = 3075
 	MQRCCF_INDOUBT_VALUE_ERROR     int32  = 3053
@@ -4973,6 +4978,7 @@ const (
 	MQ_CERT_LABEL_LENGTH           int32  = 64
 	MQ_CERT_VAL_POLICY_ANY         int32  = 0
 	MQ_CERT_VAL_POLICY_DEFAULT     int32  = 0
+	MQ_CERT_VAL_POLICY_NONE        int32  = 2
 	MQ_CERT_VAL_POLICY_RFC5280     int32  = 1
 	MQ_CF_LEID_LENGTH              int32  = 12
 	MQ_CF_STRUC_DESC_LENGTH        int32  = 64

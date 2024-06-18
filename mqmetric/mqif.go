@@ -200,7 +200,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 				ibmmq.MQIA_MAX_HANDLES,
 				ibmmq.MQIA_PLATFORM}
 
-			v, err = ci.si.qMgrObject.InqMap(selectors)
+			v, err = ci.si.qMgrObject.Inq(selectors)
 			if err == nil {
 				ci.si.resolvedQMgrName = v[ibmmq.MQCA_Q_MGR_NAME].(string)
 				ci.si.platform = v[ibmmq.MQIA_PLATFORM].(int32)
@@ -663,4 +663,9 @@ Return the current command level
 func GetCommandLevel() int32 {
 	ci := getConnection(GetConnectionKey())
 	return ci.si.commandLevel
+}
+
+func GetResolvedQMgrName() string {
+	ci := getConnection(GetConnectionKey())
+	return ci.si.resolvedQMgrName
 }
