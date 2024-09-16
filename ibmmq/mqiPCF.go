@@ -321,8 +321,9 @@ func ReadPCFEmbeddedHeader(buf []byte) (*MQEPH, int) {
 	binary.Read(p, endian, &eph.CodedCharSetId)
 	offset += 4
 
-	s := string(buf[offset : offset+8])
-	s = trimToNull(s)
+	// We don't actually use this next field
+	// s := string(buf[offset : offset+8])
+	// s = trimToNull(s)
 	offset += 8
 	p.Next(8)
 

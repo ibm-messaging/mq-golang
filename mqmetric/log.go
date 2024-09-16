@@ -74,6 +74,7 @@ func logError(format string, v ...interface{}) {
 
 // Panic and Fatal are not going to be used for now but
 // are in here for completeness
+/*
 func logFatal(format string, v ...interface{}) {
 	if logger != nil && logger.Fatal != nil {
 		logger.Fatal(format, v...)
@@ -84,6 +85,7 @@ func logPanic(format string, v ...interface{}) {
 		logger.Panic(format, v...)
 	}
 }
+*/
 
 // Some interfaces to enable tracing. In its simplest form, tracing the
 // entry point just needs the function name. There are often several exit

@@ -25,6 +25,7 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 */
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
@@ -212,13 +213,13 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 					evEnabled := v[ibmmq.MQIA_PERFORMANCE_EVENT].(int32)
 					if ci.useResetQStats && evEnabled == 0 {
 						errorString = "Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)"
-						err = fmt.Errorf(errorString)
+						err = errors.New(errorString)
 					}
 				} else {
-					if cc.UsePublications == true {
+					if cc.UsePublications {
 						if ci.si.commandLevel < 900 && ci.si.platform != ibmmq.MQPL_APPLIANCE {
 							errorString = "Unsupported system: Queue manager must be at least V9.0 for full monitoring. Disable the usePublications attribute for limited capability."
-							err = fmt.Errorf(errorString)
+							err = errors.New(errorString)
 							mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_FAILED, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
 						} else {
 							ci.usePublications = cc.UsePublications
@@ -497,7 +498,7 @@ func (mqtd *MQTopicDescriptor) unsubscribe() {
 
 			subObj, err := ci.si.qMgr.Sub(mqsd, &ci.si.replyQObj)
 			if err == nil {
-				err = subObj.Close(ibmmq.MQCO_REMOVE_SUB)
+				subObj.Close(ibmmq.MQCO_REMOVE_SUB)
 			} else {
 				logDebug("Resub failed for %s with %v %+v", topic, err, subObj)
 			}

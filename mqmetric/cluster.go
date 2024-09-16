@@ -192,9 +192,10 @@ func parseClusterData(cfh *ibmmq.MQCFH, buf []byte) string {
 
 		logTrace("parseClusterData - looking at elem %+v", elem)
 		if !statusGetIntAttributes(GetObjectStatus(GetConnectionKey(), OT_CLUSTER), elem, key) {
+			// There's not actually any additional attributes we care about for now
 			switch elem.Parameter {
-			case ibmmq.MQCA_CLUSTER_NAME:
-				ClusterName = trimToNull(elem.String[0])
+			//case ibmmq.MQCA_CLUSTER_NAME:
+			// ClusterName = trimToNull(elem.String[0])
 			}
 		}
 	}

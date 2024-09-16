@@ -73,6 +73,16 @@ const (
 	SQUASH_CHL_STATUS_RUNNING    = 2
 )
 
+// If connected to a z/OS queue manager, the short/long index is
+// as setup here. Otherwise we need to swap 0/1 indices.
+func idxDefault(zos bool, val int) int {
+	if zos {
+		return val
+	} else {
+		return (1 - val)
+	}
+}
+
 /*
 Unlike the statistics produced via a topic, there is no discovery
 of the attributes available in object STATUS queries. There is also
@@ -87,6 +97,11 @@ func ChannelInitAttributes() {
 	ci := getConnection(GetConnectionKey())
 	os := &ci.objectStatus[OT_CHANNEL]
 	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
+
+	zos := false
+	if ci.si.platform == ibmmq.MQPL_ZOS {
+		zos = true
+	}
 
 	if os.init {
 		traceExit("ChannelInitAttributes", 1)
@@ -143,26 +158,32 @@ func ChannelInitAttributes() {
 	st.Attributes[attr].squash = true
 	os.init = true
 
+	// Some of the short/long status values are the opposite way round on the different platforms!
+	// Really a bug in the PCF code (internal reference 304982), but it's not likely to be fixed because of compatibility.
+	// In most cases, and always on ZOS, the SHORT is first followed by LONG. But the following
+	// attributes are reversed:
+	//   COMPRESSION_RATE, COMPRESSION_TIME, EXIT_TIME: Not reported here anyway
+	//   NETWORK_TIME, XMITQ_TIME, BATCH_SIZE: Reported here
 	attr = ATTR_CHL_NETTIME_SHORT
 	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	st.Attributes[attr].index = 0
+	st.Attributes[attr].index = idxDefault(zos, 0)
 	attr = ATTR_CHL_NETTIME_LONG
 	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	st.Attributes[attr].index = 1
+	st.Attributes[attr].index = idxDefault(zos, 1)
 
 	attr = ATTR_CHL_BATCHSZ_SHORT
 	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	st.Attributes[attr].index = 0
+	st.Attributes[attr].index = idxDefault(zos, 0)
 	attr = ATTR_CHL_BATCHSZ_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	st.Attributes[attr].index = 1
+	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Long", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
+	st.Attributes[attr].index = idxDefault(zos, 1)
 
 	attr = ATTR_CHL_XQTIME_SHORT
 	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	st.Attributes[attr].index = 0
+	st.Attributes[attr].index = idxDefault(zos, 0)
 	attr = ATTR_CHL_XQTIME_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	st.Attributes[attr].index = 1
+	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Long", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
+	st.Attributes[attr].index = idxDefault(zos, 1)
 
 	attr = ATTR_CHL_SINCE_MSG
 	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", -1)

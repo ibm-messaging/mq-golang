@@ -25,14 +25,14 @@ package mqmetric
 */
 
 import (
-	"fmt"
+	// "fmt"
 	"strings"
 	"time"
 
 	ibmmq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
-var statusDummy = fmt.Sprintf("dummy")
+// var statusDummy = fmt.Sprintf("dummy")
 var timeTravelWarningIssued = false
 
 /*

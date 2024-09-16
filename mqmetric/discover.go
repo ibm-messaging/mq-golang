@@ -277,7 +277,7 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 		infoMap = amqpInfoMap
 		fn = inquireAMQPChannelAttributes
 	default:
-		err = fmt.Errorf("Unsupported object type: ", objectType)
+		err = fmt.Errorf("Unsupported object type: %d", objectType)
 	}
 
 	if err == nil {
@@ -302,7 +302,7 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 	ci := getConnection(GetConnectionKey())
 
 	// What metrics can the queue manager provide?
-	if err == nil && redo == false {
+	if err == nil && !redo {
 		err = discoverStats(dc)
 	}
 
@@ -759,7 +759,7 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			// For older levels of MQ, because of the possible complexities of pattern matching, we don't
 			// actually fail the discovery process, but instead issue a warning and continue with
 			// other queues.
-			if strings.Contains(qName, "/") && ci.globalSlashWarning == false && GetCommandLevel() < ibmmq.MQCMDL_LEVEL_930 {
+			if strings.Contains(qName, "/") && ci.globalSlashWarning && GetCommandLevel() < ibmmq.MQCMDL_LEVEL_930 {
 				ci.localSlashWarning = true // First time through, issue the warning for all queues
 				logError("Warning: Cannot subscribe to queue containing '/': %s", qName)
 				continue
