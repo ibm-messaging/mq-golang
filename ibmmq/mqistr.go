@@ -1465,6 +1465,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_935"
 		case 940:
 			s = "MQCMDL_LEVEL_940"
+		case 941:
+			s = "MQCMDL_LEVEL_941"
 		default:
 			s = ""
 		}
@@ -5739,6 +5741,34 @@ func MQItoString(class string, value int) string {
 			s = "MQ_CERT_VAL_POLICY_RFC5280"
 		case 2:
 			s = "MQ_CERT_VAL_POLICY_NONE"
+		default:
+			s = ""
+		}
+
+	case "HTTPSCERTREV":
+		switch v {
+		case 0:
+			s = "MQ_HTTPSCERTREV_DEFAULT"
+		case 1:
+			s = "MQ_HTTPSCERTREV_REQUIRED"
+		case 2:
+			s = "MQ_HTTPSCERTREV_DISABLED"
+		case 3:
+			s = "MQ_HTTPSCERTREV_OPTIONAL"
+		default:
+			s = ""
+		}
+
+	case "HTTPSCERTVAL":
+		switch v {
+		case 0:
+			s = "MQ_HTTPSCERTVAL_DEFAULT"
+		case 1:
+			s = "MQ_HTTPSCERTVAL_ANY"
+		case 2:
+			s = "MQ_HTTPSCERTVAL_NONE"
+		case 3:
+			s = "MQ_HTTPSCERTVAL_HOSTNAMECN"
 		default:
 			s = ""
 		}

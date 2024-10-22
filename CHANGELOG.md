@@ -1,6 +1,14 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Oct 24 2024 - v5.6.1 
+- Update for MQ 9.4.1
+- Some linter-suggested code changes
+- ibmmq - Support for new MQSCO HTTPS fields
+- ibmmq - Support for parsing MQRFH2 structures
+- mqmetric - Force conversion to 1208 for resource metrics (#345)
+- New package for instrumenting applications for OpenTelemetry Tracing
+
 ## Jun 18 2024 - v5.6.0 
 - Update for MQ 9.4.0
 

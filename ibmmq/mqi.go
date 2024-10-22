@@ -22,7 +22,7 @@ directories.
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016, 2023
+  Copyright (c) IBM Corporation 2016, 2024
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -139,6 +139,32 @@ func IsUsableHObj(o MQObject) bool {
 	} else {
 		return false
 	}
+}
+
+func IsUsableHandle(mh MQMessageHandle) bool {
+	rc := false
+	if mh.hMsg != C.MQHM_NONE && mh.hMsg != C.MQHM_UNUSABLE_HMSG {
+		rc = true
+	}
+	return rc
+}
+
+// There may be times when we want to inspect the actual value of some of the
+// types
+func (handle *MQMessageHandle) GetValue() int64 {
+	return int64(handle.hMsg)
+}
+
+func (x *MQQueueManager) GetValue() int32 {
+	return int32(x.hConn)
+}
+
+func (hObj *MQObject) GetValue() int32 {
+	return int32(hObj.hObj)
+}
+
+func (hObj *MQObject) GetHConn() *MQQueueManager {
+	return hObj.qMgr
 }
 
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
@@ -274,6 +300,14 @@ func (x *MQQueueManager) Disc() error {
 
 	traceEntry("Disc")
 
+	// Cleanup any allocated message Handles. If the
+	// MQDISC fails (unusual), that's still OK because we would reallocate
+	// the handles on any subsequent use.
+	f := otelFuncs.Disc
+	if f != nil {
+		f(x)
+	}
+
 	savedConn := x.hConn
 	C.MQDISC(&x.hConn, &mqcc, &mqrc)
 	mqreturn := MQReturn{MQCC: int32(mqcc),
@@ -334,6 +368,11 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 		return object, &mqreturn
 	}
 
+	f := otelFuncs.Open
+	if f != nil {
+		f(&object, good, goOpenOptions)
+	}
+
 	// ObjectName may have changed because it's a model queue
 	object.Name = good.ObjectName
 	if good.ObjectType == C.MQOT_TOPIC {
@@ -372,6 +411,10 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 		return &mqreturn
 	}
 
+	f := otelFuncs.Close
+	if f != nil {
+		f(object)
+	}
 	cbRemoveHandle(savedHConn, savedHObj)
 	traceExit("Close")
 	return nil
@@ -584,6 +627,7 @@ Put a message to a queue or publish to a topic
 */
 func (object MQObject) Put(gomd *MQMD,
 	gopmo *MQPMO, buffer []byte) error {
+
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqmd C.MQMD
@@ -600,6 +644,12 @@ func (object MQObject) Put(gomd *MQMD,
 
 	bufflen := len(buffer)
 	logTrace("BufferLength: %d", bufflen)
+
+	opts := gopmo.OtelOpts
+	f1 := otelFuncs.PutTraceBefore
+	if f1 != nil {
+		f1(opts, object.qMgr, gomd, gopmo, buffer)
+	}
 
 	copyMDtoC(&mqmd, gomd)
 	copyPMOtoC(&mqpmo, gopmo)
@@ -618,6 +668,11 @@ func (object MQObject) Put(gomd *MQMD,
 
 	copyMDfromC(&mqmd, gomd)
 	copyPMOfromC(&mqpmo, gopmo)
+
+	f2 := otelFuncs.PutTraceAfter
+	if f2 != nil {
+		f2(opts, object.qMgr, gopmo)
+	}
 
 	mqreturn := MQReturn{MQCC: int32(mqcc),
 		MQRC: int32(mqrc),
@@ -640,6 +695,7 @@ sequences
 */
 func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	gopmo *MQPMO, buffer []byte) error {
+
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
 	var mqmd C.MQMD
@@ -653,6 +709,12 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	if err != nil {
 		traceExitErr("Put1", 1, err)
 		return err
+	}
+
+	opts := gopmo.OtelOpts
+	f1 := otelFuncs.PutTraceBefore
+	if f1 != nil {
+		f1(opts, x, gomd, gopmo, buffer)
 	}
 
 	copyODtoC(&mqod, good)
@@ -679,6 +741,11 @@ func (x *MQQueueManager) Put1(good *MQOD, gomd *MQMD,
 	copyMDfromC(&mqmd, gomd)
 	copyPMOfromC(&mqpmo, gopmo)
 
+	f2 := otelFuncs.PutTraceAfter
+	if f2 != nil {
+		f2(opts, x, gopmo)
+	}
+
 	mqreturn := MQReturn{MQCC: int32(mqcc),
 		MQRC: int32(mqrc),
 		verb: "MQPUT1",
@@ -700,10 +767,15 @@ The length of the retrieved message is returned.
 */
 func (object MQObject) Get(gomd *MQMD,
 	gogmo *MQGMO, buffer []byte) (int, error) {
+
 	traceEntry("Get")
-	rc, err := object.getInternal(gomd, gogmo, buffer, false)
+	datalen, removed, err := object.getInternal(gomd, gogmo, buffer, false)
+	if removed > 0 {
+		copy(buffer, buffer[removed:])
+		datalen -= removed
+	}
 	traceExitErr("Get", 0, err)
-	return rc, err
+	return datalen, err
 }
 
 /*
@@ -715,28 +787,29 @@ func (object MQObject) GetSlice(gomd *MQMD,
 	gogmo *MQGMO, buffer []byte) ([]byte, int, error) {
 
 	traceEntry("GetSlice")
-	realDatalen, err := object.getInternal(gomd, gogmo, buffer, true)
+	realDatalen, removed, err := object.getInternal(gomd, gogmo, buffer, true)
 
 	// The datalen will be set even if the buffer is too small - there
 	// will be one of MQRC_TRUNCATED_MSG_ACCEPTED or _FAILED depending on the
 	// GMO options. In any case, we return the available data along with the
 	// error code but need to make sure that the real untruncated
 	// message length is also returned. Also ensure we don't try to read past the
-	// end of the buffer.
+	// end of the buffer. The realDatalen value still includes any removed RFH2 block
+	// so you can tell how big a buffer you will need on any retry after truncation.
 	datalen := realDatalen
 	if datalen > cap(buffer) {
 		datalen = cap(buffer)
 	}
 
 	traceExitErr("GetSlice", 0, err)
-	return buffer[0:datalen], realDatalen, err
+	return buffer[removed:datalen], realDatalen, err
 }
 
 /*
 This is the real function that calls MQGET.
 */
 func (object MQObject) getInternal(gomd *MQMD,
-	gogmo *MQGMO, buffer []byte, useCap bool) (int, error) {
+	gogmo *MQGMO, buffer []byte, useCap bool) (int, int, error) {
 
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
@@ -745,17 +818,18 @@ func (object MQObject) getInternal(gomd *MQMD,
 	var datalen C.MQLONG
 	var ptr C.PMQVOID
 
+	removed := 0
 	traceEntry("getInternal")
 
 	err := checkMD(gomd, "MQGET")
 	if err != nil {
 		traceExitErr("getInternal", 1, err)
-		return 0, err
+		return 0, removed, err
 	}
 	err = checkGMO(gogmo, "MQGET")
 	if err != nil {
 		traceExitErr("getInternal", 2, err)
-		return 0, err
+		return 0, removed, err
 	}
 
 	bufflen := 0
@@ -767,6 +841,11 @@ func (object MQObject) getInternal(gomd *MQMD,
 		logTrace("BufferLength: %d", bufflen)
 	}
 
+	opts := gogmo.OtelOpts
+	f1 := otelFuncs.GetTraceBefore
+	if f1 != nil {
+		f1(opts, object.qMgr, &object, gogmo, false)
+	}
 	copyMDtoC(&mqmd, gomd)
 	copyGMOtoC(&mqgmo, gogmo)
 
@@ -800,13 +879,22 @@ func (object MQObject) getInternal(gomd *MQMD,
 		verb: "MQGET",
 	}
 
+	// Only process OTEL tracing if we actually got a message
+	if mqcc == C.MQCC_OK || mqrc == C.MQRC_TRUNCATED_MSG_ACCEPTED {
+		f2 := otelFuncs.GetTraceAfter
+		if f2 != nil {
+			removed = f2(opts, &object, gogmo, gomd, buffer[0:datalen], false)
+			logTrace("Removed: %d Datalen: %d BufLen: %d %+v", removed, datalen, bufflen, buffer)
+		}
+	}
+
 	if mqcc != C.MQCC_OK {
 		traceExitErr("getInternal", 3, &mqreturn)
-		return godatalen, &mqreturn
+		return godatalen, removed, &mqreturn
 	}
 
 	traceExit("getInternal")
-	return godatalen, nil
+	return godatalen, removed, nil
 
 }
 
@@ -1385,7 +1473,7 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 	copyPDfromC(&mqpd, gopd)
 
 	if mqcc != C.MQCC_OK {
-		traceExitErr("DltMP", 1, &mqreturn)
+		traceExitErr("InqMP", 1, &mqreturn)
 		return "", nil, &mqreturn
 	}
 
@@ -1427,7 +1515,7 @@ func (handle *MQMessageHandle) InqMP(goimpo *MQIMPO, gopd *MQPD, name string) (s
 		propertyValue = nil
 	}
 
-	traceExit("DltMP")
+	traceExit("InqMP")
 	return goimpo.ReturnedName, propertyValue, nil
 }
 
@@ -1443,6 +1531,8 @@ func GetHeader(md *MQMD, buf []byte) (interface{}, int, error) {
 	switch md.Format {
 	case MQFMT_DEAD_LETTER_HEADER:
 		return getHeaderDLH(md, buf)
+	case MQFMT_RF_HEADER_2:
+		return getHeaderRFH2(md, buf)
 	}
 
 	mqreturn := &MQReturn{MQCC: int32(MQCC_FAILED),

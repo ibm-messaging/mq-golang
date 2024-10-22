@@ -51,7 +51,6 @@ func NewMQCBD() *MQCBD {
 	cbd.CallbackFunction = nil
 	cbd.CallbackName = ""
 	cbd.MaxMsgLength = C.MQCBD_FULL_MSG_LENGTH
-
 	return cbd
 }
 

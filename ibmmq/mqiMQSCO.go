@@ -52,6 +52,50 @@ void freeScoKeyRepoPassword(MQSCO *mqsco) {
 #endif
 }
 
+void setHTTPSKeyStore(MQSCO *mqsco, PMQCHAR HTTPSKeyStore, MQLONG length) {
+#if defined(MQSCO_VERSION_7) && MQSCO_CURRENT_VERSION >= MQSCO_VERSION_7
+  if (mqsco->Version < MQSCO_VERSION_7) {
+	  mqsco->Version = MQSCO_VERSION_7;
+  }
+  mqsco->HTTPSKeyStoreOffset = 0;
+  mqsco->HTTPSKeyStorePtr = NULL;
+  mqsco->HTTPSKeyStoreLength = length;
+  if (HTTPSKeyStore != NULL && length > 0) {
+    mqsco->HTTPSKeyStorePtr = HTTPSKeyStore;
+  }
+#else
+  if (HTTPSKeyStore != NULL) {
+    free(HTTPSKeyStore);
+  }
+#endif
+}
+
+void freeHTTPSKeyStore(MQSCO *mqsco) {
+#if defined(MQSCO_VERSION_7) && MQSCO_CURRENT_VERSION >= MQSCO_VERSION_7
+  if (mqsco->HTTPSKeyStorePtr != NULL) {
+    free(mqsco->HTTPSKeyStorePtr);
+  }
+#endif
+}
+
+void setHTTPSCertValidation(MQSCO *mqsco, MQLONG val) {
+#if defined(MQSCO_VERSION_7) && MQSCO_CURRENT_VERSION >= MQSCO_VERSION_7
+  if (mqsco->Version < MQSCO_VERSION_7) {
+	  mqsco->Version = MQSCO_VERSION_7;
+  }
+  mqsco->HTTPSCertValidation = val;
+#endif
+}
+
+void setHTTPSCertRevocation(MQSCO *mqsco, MQLONG val) {
+#if defined(MQSCO_VERSION_7) && MQSCO_CURRENT_VERSION >= MQSCO_VERSION_7
+  if (mqsco->Version < MQSCO_VERSION_7) {
+	  mqsco->Version = MQSCO_VERSION_7;
+  }
+  mqsco->HTTPSCertRevocation = val;
+#endif
+}
+
 */
 import "C"
 
@@ -68,6 +112,10 @@ type MQSCO struct {
 	CertificateValPolicy   int32
 	CertificateLabel       string
 	KeyRepoPassword        string
+
+	HTTPSCertValidation int32
+	HTTPSCertRevocation int32
+	HTTPSKeyStore       string
 }
 
 /*
@@ -88,6 +136,9 @@ func NewMQSCO() *MQSCO {
 	sco.CertificateValPolicy = int32(C.MQ_CERT_VAL_POLICY_DEFAULT)
 	sco.CertificateLabel = ""
 	sco.KeyRepoPassword = ""
+	sco.HTTPSKeyStore = ""
+	sco.HTTPSCertValidation = 0
+	sco.HTTPSCertRevocation = 0
 
 	return sco
 }
@@ -120,6 +171,17 @@ func copySCOtoC(mqsco *C.MQSCO, gosco *MQSCO) {
 	if gosco.KeyRepoPassword != "" {
 		C.setScoKeyRepoPassword(mqsco, C.PMQCHAR(C.CString(gosco.KeyRepoPassword)), C.MQLONG(len(gosco.KeyRepoPassword)))
 	}
+
+	if gosco.HTTPSKeyStore != "" {
+		C.setHTTPSKeyStore(mqsco, C.PMQCHAR(C.CString(gosco.HTTPSKeyStore)), C.MQLONG(len(gosco.HTTPSKeyStore)))
+	}
+
+	if gosco.HTTPSCertRevocation != 0 {
+		C.setHTTPSCertRevocation(mqsco, C.MQLONG(gosco.HTTPSCertRevocation))
+	}
+	if gosco.HTTPSCertValidation != 0 {
+		C.setHTTPSCertValidation(mqsco, C.MQLONG(gosco.HTTPSCertValidation))
+	}
 	return
 }
 
@@ -128,6 +190,7 @@ Only need to free the KeyRepoPassword if it were set
 */
 func copySCOfromC(mqsco *C.MQSCO, gosco *MQSCO) {
 	C.freeScoKeyRepoPassword(mqsco) // The code in this function checks validity
+	C.freeHTTPSKeyStore(mqsco)      // The code in this function checks validity
 
 	return
 }

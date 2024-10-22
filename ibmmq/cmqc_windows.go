@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  6/5/24 2:30 PM
-*   Build Level:   p940-L240605.1
+*   Generated on:  10/2/24 4:42 PM
+*   Build Level:   p941-L241002
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1032,7 +1032,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 940
+	MQCMDL_CURRENT_LEVEL           int32  = 941
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1086,6 +1086,7 @@ const (
 	MQCMDL_LEVEL_934               int32  = 934
 	MQCMDL_LEVEL_935               int32  = 935
 	MQCMDL_LEVEL_940               int32  = 940
+	MQCMDL_LEVEL_941               int32  = 941
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -3827,6 +3828,7 @@ const (
 	MQRC_HOBJ_QUIESCED             int32  = 2517
 	MQRC_HOBJ_QUIESCED_NO_MSGS     int32  = 2518
 	MQRC_HOST_NOT_AVAILABLE        int32  = 2538
+	MQRC_HTTPS_KEYSTORE_ERROR      int32  = 2604
 	MQRC_IDENTITY_MISMATCH         int32  = 2434
 	MQRC_IIH_ERROR                 int32  = 2148
 	MQRC_IMPO_ERROR                int32  = 2464
@@ -3887,6 +3889,7 @@ const (
 	MQRC_MSG_HANDLE_COPY_FAILURE   int32  = 2532
 	MQRC_MSG_HANDLE_IN_USE         int32  = 2499
 	MQRC_MSG_ID_ERROR              int32  = 2206
+	MQRC_MSG_LENGTH_ERROR          int32  = 2491
 	MQRC_MSG_MARKED_BROWSE_CO_OP   int32  = 2200
 	MQRC_MSG_NOT_ALLOWED_IN_GROUP  int32  = 2417
 	MQRC_MSG_NOT_MATCHED           int32  = 2363
@@ -4343,14 +4346,15 @@ const (
 	MQSCOPE_AS_PARENT              int32  = 1
 	MQSCOPE_QMGR                   int32  = 4
 	MQSCO_CELL                     int32  = 2
-	MQSCO_CURRENT_LENGTH           int32  = 648
-	MQSCO_CURRENT_VERSION          int32  = 6
+	MQSCO_CURRENT_LENGTH           int32  = 672
+	MQSCO_CURRENT_VERSION          int32  = 7
 	MQSCO_LENGTH_1                 int32  = 536
 	MQSCO_LENGTH_2                 int32  = 544
 	MQSCO_LENGTH_3                 int32  = 560
 	MQSCO_LENGTH_4                 int32  = 568
 	MQSCO_LENGTH_5                 int32  = 632
 	MQSCO_LENGTH_6                 int32  = 648
+	MQSCO_LENGTH_7                 int32  = 672
 	MQSCO_Q_MGR                    int32  = 1
 	MQSCO_RESET_COUNT_DEFAULT      int32  = 0
 	MQSCO_VERSION_1                int32  = 1
@@ -4359,6 +4363,7 @@ const (
 	MQSCO_VERSION_4                int32  = 4
 	MQSCO_VERSION_5                int32  = 5
 	MQSCO_VERSION_6                int32  = 6
+	MQSCO_VERSION_7                int32  = 7
 	MQSCYC_MIXED                   int32  = 1
 	MQSCYC_UPPER                   int32  = 0
 	MQSD_CURRENT_LENGTH            int32  = 344
@@ -5025,6 +5030,14 @@ const (
 	MQ_GROUP_ADDRESS_LENGTH        int32  = 264
 	MQ_GROUP_ID_LENGTH             int32  = 24
 	MQ_HOST_NAME_LENGTH            int32  = 256
+	MQ_HTTPSCERTREV_DEFAULT        int32  = 0
+	MQ_HTTPSCERTREV_DISABLED       int32  = 2
+	MQ_HTTPSCERTREV_OPTIONAL       int32  = 3
+	MQ_HTTPSCERTREV_REQUIRED       int32  = 1
+	MQ_HTTPSCERTVAL_ANY            int32  = 1
+	MQ_HTTPSCERTVAL_DEFAULT        int32  = 0
+	MQ_HTTPSCERTVAL_HOSTNAMECN     int32  = 3
+	MQ_HTTPSCERTVAL_NONE           int32  = 2
 	MQ_INITIAL_KEY_LENGTH          int32  = 256
 	MQ_INSTALLATION_DESC_LENGTH    int32  = 64
 	MQ_INSTALLATION_NAME_LENGTH    int32  = 16
