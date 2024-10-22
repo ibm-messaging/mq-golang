@@ -27,12 +27,15 @@ don't need to repeat common setups eg of MQMD or MQSD structures.
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
 var (
 	getBuffer = make([]byte, 32768)
+	// if true, then use qmgr ccsid to convert resource metric publications. if false, always assume 1208
+	convertSubs = false
 )
 
 type ConnectionConfig struct {
@@ -85,6 +88,12 @@ type MQTopicDescriptor struct {
 	topic   string
 	durable bool
 	managed bool
+}
+
+func init() {
+	if os.Getenv("IBMMQ_CONVERT_SUBS") != "" {
+		convertSubs = true
+	}
 }
 
 func (e MQMetricError) Error() string { return e.Err + " : " + e.MQReturn.Error() }
@@ -375,6 +384,16 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 
 	traceEntry("getMessageWithHObj")
 	getmqmd := ibmmq.NewMQMD()
+
+	// This is called for the resource metrics and metadata only, which
+	// is always put with codepage 1208. Even if a qmgr cannot convert to
+	// that CCSID. So we explicitly ask for that instead of using the default
+	// qmgr codepage. The fact that publications are fixed to use 1208 does not
+	// appear to be documented, but it does seem to be true.
+	if !convertSubs {
+		getmqmd.CodedCharSetId = 1208
+	}
+
 	gmo := ibmmq.NewMQGMO()
 	gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
 	gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING

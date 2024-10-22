@@ -43,6 +43,8 @@ type MQCBC struct {
 	BufferLength   int32
 	Flags          int32
 	ReconnectDelay int32
+
+	OtelOpts OtelOpts
 }
 
 /*

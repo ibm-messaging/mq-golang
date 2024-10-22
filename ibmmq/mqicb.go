@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2024
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ type cbInfo struct {
 	callbackFunction MQCB_FUNCTION
 	callbackArea     interface{}
 	connectionArea   interface{}
+	otelOpts         OtelOpts
 }
 
 // This map is indexed by a combination of the hConn and hObj values
@@ -90,8 +91,10 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	// This should never be NULL
 	copyCBCfromC(mqcbc, gocbc)
 
-	mqreturn := &MQReturn{MQCC: int32(mqcbc.CompCode),
-		MQRC: int32(mqcbc.Reason),
+	mqrc := int32(mqcbc.Reason)
+	mqcc := int32(mqcbc.CompCode)
+	mqreturn := &MQReturn{MQCC: mqcc,
+		MQRC: mqrc,
 		verb: "MQCALLBACK",
 	}
 
@@ -100,13 +103,8 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 	info, ok := cbMap[key]
 	mapUnlock()
 
-	// The MQ Client libraries seem to sometimes call us with an EVENT
-	// even if it's not been registered. And therefore the cbMap does not
-	// contain a matching callback function with the hObj.  It has
-	// been seen with a 2033 return (see issue #75).
-	//
-	// This feels like wrong behaviour from the client, but we need to find a
-	// way to deal with it even if it gets fixed in future.
+	// The MQ Client libraries sometimes call us with an EVENT that is
+	// not associated with a particular hObj.
 	// The way I've chosen is to find the first entry in
 	// the map associated with the hConn and call its registered function with
 	// a dummy hObj.
@@ -134,14 +132,28 @@ func MQCALLBACK_Go(hConn C.MQHCONN, mqmd *C.MQMD, mqgmo *C.MQGMO, mqBuffer C.PMQ
 			gogmo.MsgHandle.qMgr = cbHObj.qMgr
 		}
 
+		// Set the context elements that we stashed before, and which are
+		// not used in the C structure
 		gocbc.CallbackArea = info.callbackArea
 		gocbc.ConnectionArea = info.connectionArea
+		gocbc.OtelOpts.Context = info.otelOpts.Context
 
+		removed := 0
 		// Get the data
 		b := C.GoBytes(unsafe.Pointer(mqBuffer), C.int(mqcbc.DataLength))
+
+		// Only process OTEL tracing if we actually got a message
+		if mqcc == C.MQCC_OK || mqrc == C.MQRC_TRUNCATED_MSG_ACCEPTED {
+			f2 := otelFuncs.GetTraceAfter
+			if f2 != nil {
+				removed = f2(info.otelOpts, cbHObj, gogmo, gomd, b, true)
+			}
+		}
+
 		// And finally call the user function
 		logTrace("Calling user function with %d bytes", len(b))
-		info.callbackFunction(cbHObj.qMgr, cbHObj, gomd, gogmo, b, gocbc, mqreturn)
+		info.callbackFunction(cbHObj.qMgr, cbHObj, gomd, gogmo, b[removed:], gocbc, mqreturn)
+
 	}
 
 	if mqreturn.MQCC != C.MQCC_OK {
@@ -157,6 +169,7 @@ criteria in the message descriptor and get-message-options. There are 2 variatio
 the function - one for queue-based and one for an hConn-wide event handler that does not
 require an hObj.
 */
+
 func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *MQGMO) error {
 	var mqrc C.MQLONG
 	var mqcc C.MQLONG
@@ -179,6 +192,11 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 	}
 
 	mqOperation = C.MQLONG(goOperation)
+
+	f1 := otelFuncs.GetTraceBefore
+	if f1 != nil {
+		f1(gogmo.OtelOpts, object.qMgr, object, gogmo, true)
+	}
 	copyCBDtoC(&mqcbd, gocbd)
 	copyMDtoC(&mqmd, gomd)
 	copyGMOtoC(&mqgmo, gogmo)
@@ -215,10 +233,15 @@ func (object *MQObject) CB(goOperation int32, gocbd *MQCBD, gomd *MQMD, gogmo *M
 		info := &cbInfo{hObj: object,
 			callbackFunction: gocbd.CallbackFunction,
 			connectionArea:   nil,
-			callbackArea:     gocbd.CallbackArea}
+			callbackArea:     gocbd.CallbackArea,
+		}
+		info.otelOpts.Context = gogmo.OtelOpts.Context
+		info.otelOpts.RemoveRFH2 = gogmo.OtelOpts.RemoveRFH2
+
 		mapLock()
 		cbMap[key] = info
 		mapUnlock()
+
 	default: // Other values leave the map alone
 	}
 
@@ -268,7 +291,8 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 		info := &cbInfo{hObj: &MQObject{qMgr: object, Name: ""},
 			callbackFunction: gocbd.CallbackFunction,
 			connectionArea:   nil,
-			callbackArea:     gocbd.CallbackArea}
+			callbackArea:     gocbd.CallbackArea,
+		}
 		mapLock()
 		cbMap[key] = info
 		mapUnlock()

@@ -52,6 +52,8 @@ type MQPMO struct {
 	NewMsgHandle      MQMessageHandle
 	Action            int32
 	PubLevel          int32
+
+	OtelOpts OtelOpts
 }
 
 /*
@@ -76,6 +78,8 @@ func NewMQPMO() *MQPMO {
 	pmo.Action = int32(C.MQACTP_NEW)
 	pmo.PubLevel = 9
 
+	pmo.OtelOpts.Context = nil
+	pmo.OtelOpts.RemoveRFH2 = false
 	return pmo
 }
 

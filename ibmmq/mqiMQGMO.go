@@ -27,7 +27,9 @@ package ibmmq
 
 */
 import "C"
-import "bytes"
+import (
+	"bytes"
+)
 
 /*
 MQGMO is a structure containing the MQ Get Message Options (MQGMO)
@@ -48,6 +50,7 @@ type MQGMO struct {
 	ReturnedLength int32
 	Reserved2      int32
 	MsgHandle      MQMessageHandle
+	OtelOpts       OtelOpts
 }
 
 /*
@@ -72,6 +75,8 @@ func NewMQGMO() *MQGMO {
 	gmo.Reserved2 = 0
 	gmo.MsgHandle.hMsg = C.MQHM_NONE
 
+	gmo.OtelOpts.Context = nil
+	gmo.OtelOpts.RemoveRFH2 = false
 	return gmo
 }
 

@@ -5745,6 +5745,34 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "HTTPSCERTREV":
+		switch v {
+		case 0:
+			s = "MQ_HTTPSCERTREV_DEFAULT"
+		case 1:
+			s = "MQ_HTTPSCERTREV_REQUIRED"
+		case 2:
+			s = "MQ_HTTPSCERTREV_DISABLED"
+		case 3:
+			s = "MQ_HTTPSCERTREV_OPTIONAL"
+		default:
+			s = ""
+		}
+
+	case "HTTPSCERTVAL":
+		switch v {
+		case 0:
+			s = "MQ_HTTPSCERTVAL_DEFAULT"
+		case 1:
+			s = "MQ_HTTPSCERTVAL_ANY"
+		case 2:
+			s = "MQ_HTTPSCERTVAL_NONE"
+		case 3:
+			s = "MQ_HTTPSCERTVAL_HOSTNAMECN"
+		default:
+			s = ""
+		}
+
 	case "MQTT":
 		switch v {
 		case 65536:
