@@ -32,7 +32,7 @@ import (
 )
 
 type MQRFH2 struct {
-	strucLength    int32
+	StrucLength    int32
 	Encoding       int32
 	CodedCharSetId int32
 	Format         string
@@ -40,6 +40,12 @@ type MQRFH2 struct {
 	NameValueCCSID int32
 }
 
+// This file manipulates MQRFH2 structures. Most of the time, I would
+// expect people to use message properties. Those are generally much easier
+// to work with. But there might be times when you want to go to the raw level.
+//
+// Functions are included to create the header, to set the body name/value strings,
+// and then to extract the header and strings.
 func NewMQRFH2(md *MQMD) *MQRFH2 {
 
 	rfh2 := new(MQRFH2)
@@ -49,7 +55,7 @@ func NewMQRFH2(md *MQMD) *MQRFH2 {
 	rfh2.Format = ""
 	rfh2.Flags = MQRFH_NONE
 
-	rfh2.strucLength = int32(MQRFH_STRUC_LENGTH_FIXED_2)
+	rfh2.StrucLength = int32(MQRFH_STRUC_LENGTH_FIXED_2)
 
 	if md != nil {
 
@@ -74,15 +80,18 @@ func NewMQRFH2(md *MQMD) *MQRFH2 {
 	return rfh2
 }
 
-func (rfh2 *MQRFH2) Bytes() []byte {
-	buf := make([]byte, rfh2.strucLength)
+// Return a byte array based on the contents of the RFH2 header
+// This builds one of the pieces needed for the complete element. This
+// function does not need to be public
+func (rfh2 *MQRFH2) bytes() []byte {
+	buf := make([]byte, MQRFH_STRUC_LENGTH_FIXED_2)
 	offset := 0
 
 	copy(buf[offset:], "RHF ")
 	offset += 4
 	endian.PutUint32(buf[offset:], uint32(MQRFH_VERSION_2))
 	offset += 4
-	endian.PutUint32(buf[offset:], uint32(rfh2.strucLength))
+	endian.PutUint32(buf[offset:], uint32(rfh2.StrucLength))
 	offset += 4
 
 	endian.PutUint32(buf[offset:], uint32(rfh2.Encoding))
@@ -106,6 +115,9 @@ func (rfh2 *MQRFH2) Bytes() []byte {
 We have a byte array for the message contents. The start of that buffer
 is the MQRFH2 structure. We read the bytes from that fixed header to match
 the C structure definition for each field. We will assume use of RFH v2
+
+This function is not called directly by applications. They can use the GetHeader
+function instead, which covers both RFH2 and DLH structures.
 */
 func getHeaderRFH2(md *MQMD, buf []byte) (*MQRFH2, int, error) {
 
@@ -116,7 +128,7 @@ func getHeaderRFH2(md *MQMD, buf []byte) (*MQRFH2, int, error) {
 	r := bytes.NewBuffer(buf)
 	_ = readStringFromFixedBuffer(r, 4) // StrucId
 	binary.Read(r, endian, &version)
-	binary.Read(r, endian, &rfh2.strucLength)
+	binary.Read(r, endian, &rfh2.StrucLength)
 
 	binary.Read(r, endian, &rfh2.Encoding)
 	binary.Read(r, endian, &rfh2.CodedCharSetId)
@@ -125,18 +137,21 @@ func getHeaderRFH2(md *MQMD, buf []byte) (*MQRFH2, int, error) {
 	binary.Read(r, endian, &rfh2.Flags)
 	binary.Read(r, endian, &rfh2.NameValueCCSID)
 
-	return rfh2, int(rfh2.strucLength), nil
+	return rfh2, int(rfh2.StrucLength), nil
 }
 
-// Split the namevalue pairs in the RFH2 into a string array
-// Each consists of a length/string duple, so we read the length
+// Split the name/value strings in the RFH2 into a string array
+// In the message body , each consists of a length/string duple, so we read the length
 // and then the string. And repeat until the buffer is exhausted.
-func GetRFH2Properties(hdr *MQRFH2, buf []byte) []string {
+// Each returned string will be a complete XML-like element which requires
+// further parsing to extract individual properties.
+func (hdr *MQRFH2) Get(buf []byte) []string {
 	var l int32
 	props := make([]string, 0)
 	r := bytes.NewBuffer(buf[MQRFH_STRUC_LENGTH_FIXED_2:])
 
-	for offset := 0; offset < r.Len(); {
+	propsLen := r.Len() // binary.Read modifies the buffer length so get it at the start of the loop
+	for offset := 0; offset < propsLen; {
 		binary.Read(r, endian, &l)
 		offset += 4
 		s := readStringFromFixedBuffer(r, l)
@@ -144,4 +159,31 @@ func GetRFH2Properties(hdr *MQRFH2, buf []byte) []string {
 		offset += int(l)
 	}
 	return props
+}
+
+// Add a set of name/value strings to the RFH2. Return
+// the byte array of the combined header and values, and modify
+// the input RFH2 structure to have the correct length
+func (hdr *MQRFH2) Set(p []string) []byte {
+	var b []byte
+
+	for i := 0; i < len(p); i++ {
+		s := p[i]
+		l := roundTo4(int32(len(s)))
+		s = (s + space4)[0:l] // Pad with spaces to rounded length
+
+		w := new(bytes.Buffer)
+		binary.Write(w, endian, l)
+
+		b = append(b, w.Bytes()...)
+		b = append(b, s...)
+		//fmt.Printf("b: %d %+v\n", i, b)
+
+	}
+
+	// Now we know the length of the combined name/value strings, add it
+	// to the header structure and make that the first part of the bytes response
+	hdr.StrucLength = int32(len(b)) + MQRFH_STRUC_LENGTH_FIXED_2
+	b = append(hdr.bytes(), b...)
+	return b
 }

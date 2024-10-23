@@ -168,6 +168,7 @@ func (hObj *MQObject) GetHConn() *MQQueueManager {
 }
 
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
+const space4 = "    "
 const space8 = "        "
 const (
 	mqDateTimeFormat = "20060102150405.00 MST" // Used as the way to parse a string into a time.Time type with magic values

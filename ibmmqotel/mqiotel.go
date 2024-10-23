@@ -396,7 +396,7 @@ func otelPutTraceBefore(otelOpts mq.OtelOpts, x *mq.MQQueueManager, md *mq.MQMD,
 		hdr, _, _ := mq.GetHeader(md, buffer)
 		rfh2, ok := hdr.(*mq.MQRFH2)
 		if ok {
-			props := mq.GetRFH2Properties(rfh2, buffer)
+			props := rfh2.Get(buffer)
 
 			for i := 0; i < len(props); i++ {
 				if strings.Contains(props[i], "<"+traceparent+">") {
@@ -611,7 +611,7 @@ func otelGetTraceAfter(otelOpts mq.OtelOpts, hObj *mq.MQObject, gogmo *mq.MQGMO,
 		if err == nil {
 			rfh2, ok := hdr.(*mq.MQRFH2)
 			if ok {
-				props := mq.GetRFH2Properties(rfh2, buffer)
+				props := rfh2.Get(buffer)
 
 				traceparentVal = extractRFH2PropVal(props, traceparent)
 				tracestateVal = extractRFH2PropVal(props, tracestate)
