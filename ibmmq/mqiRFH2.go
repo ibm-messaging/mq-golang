@@ -56,7 +56,7 @@ func NewMQRFH2(md *MQMD) *MQRFH2 {
 	rfh2.Flags = MQRFH_NONE
 
 	rfh2.StrucLength = int32(MQRFH_STRUC_LENGTH_FIXED_2)
-
+	rfh2.NameValueCCSID = 1208
 	if md != nil {
 
 		rfh2.Encoding = md.Encoding
@@ -81,13 +81,14 @@ func NewMQRFH2(md *MQMD) *MQRFH2 {
 }
 
 // Return a byte array based on the contents of the RFH2 header
-// This builds one of the pieces needed for the complete element. This
-// function does not need to be public
+// This builds one of the pieces needed for the complete element when you are
+// PUTting a message.  An application will not need to call this, but should
+// instead use the Get() function to return the full byte array - header and strings
 func (rfh2 *MQRFH2) bytes() []byte {
 	buf := make([]byte, MQRFH_STRUC_LENGTH_FIXED_2)
 	offset := 0
 
-	copy(buf[offset:], "RHF ")
+	copy(buf[offset:], "RFH ")
 	offset += 4
 	endian.PutUint32(buf[offset:], uint32(MQRFH_VERSION_2))
 	offset += 4
@@ -177,7 +178,6 @@ func (hdr *MQRFH2) Set(p []string) []byte {
 
 		b = append(b, w.Bytes()...)
 		b = append(b, s...)
-		//fmt.Printf("b: %d %+v\n", i, b)
 
 	}
 
