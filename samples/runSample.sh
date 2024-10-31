@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This is an example of running one of the sample programs in a container.
 
 function latestSemVer {
@@ -31,13 +33,13 @@ echo Building container with tag $TAG:$VER
 
 # Build the container which includes compilation of the program. Can set the FROM
 # environment variable outside this script to choose which base image to work from.
-# The UBI variant is built on the Red Hat Universal Base Image set of containers; the
-# default is built on Ubuntu/Debian containers.
-if [ "$FROM" = "UBI" ]
+# The UBI default variant is built on the Red Hat Universal Base Image set of containers;
+# the alternative is built on Ubuntu/Debian containers.
+if [ "$FROM" = "DEB" ]
 then
-  dfile="runSample.ubi.Dockerfile"
-else
   dfile="runSample.deb.Dockerfile"
+else
+  dfile="runSample.ubi.Dockerfile"
 fi
 
 # Setting NOCACHE environment variable will force a complete rebuild of the container
@@ -64,7 +66,7 @@ then
   then
     # Run the container. Can override default command line values in amqsput via
     # env vars here.
-    docker run -e MQSERVER="SYSTEM.DEF.SVRCONN/TCP/$addr($port)" \
+    docker run --rm -e MQSERVER="SYSTEM.DEF.SVRCONN/TCP/$addr($port)" \
        -e QUEUE=DEV.QUEUE.1 \
        -e QMGR=QM1 \
        $TAG:$VER

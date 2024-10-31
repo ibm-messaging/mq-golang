@@ -46,8 +46,8 @@ Building a container:
 * runSample.*.Dockerfile : Instructions to create containers with runtime dependencies
 * runSample.gomod        : Copied into the container as `go.mod`
 Two variants of the Dockerfile are provided. Set the `FROM` environment variable to "UBI"
-to use Red Hat Universal Base Images as the starting points for building and runtime;
-otherwise an Ubuntu/Debian combination is used.
+to use Red Hat Universal Base Images as the starting points for building and runtime; set it to
+"DEP" to use a Ubuntu/Debian combination.
 
 The `mqitest` sample program in its own subdirectory is a more general demonstration
 of many of the features available from the MQI rather than focussed on a specific

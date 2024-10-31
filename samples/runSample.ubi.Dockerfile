@@ -23,8 +23,8 @@
 #
 # The base images are taken from the Red Hat Universal Base Images repository
 
-# Start by setting some global variables that can still be overridden on the build command line.
-ARG BASE_IMAGE=registry.access.redhat.com/ubi8/ubi
+# Start by setting some global variables that could still be overridden on the build command line.
+ARG BASE_IMAGE=registry.access.redhat.com/ubi8/go-toolset:1.21
 ARG GOPATH_ARG="/go"
 
 ###########################################################
@@ -35,15 +35,15 @@ FROM $BASE_IMAGE AS builder
 ARG GOPATH_ARG
 ENV GOPATH=$GOPATH_ARG \
     ORG="github.com/ibm-messaging"
-ARG GOVERSION=1.18
 ARG GOARCH=amd64
 ARG MQARCH=X64
 
 
-# Install the Go compiler and some other tools. The version of Go that
-# is available from the repository is new enough that we don't need to
-# explicitly pull it from Google. Installing Go also gives prereqs like the C compiler.
-RUN yum --disableplugin=subscription-manager -y install wget curl tar golang \
+# Make sure we install some other tools. The version of Go that
+# is available from this base image is new enough that we don't need to
+# explicitly pull a newer version from Google.
+USER 0
+RUN yum --disableplugin=subscription-manager -y install gzip curl tar  \
   && yum --disableplugin=subscription-manager clean all
 
 # Create a location for the go programs and the MQ installation

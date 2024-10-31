@@ -12,53 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=ubuntu:20.04
-FROM $BASE_IMAGE
+ARG BASE_IMAGE=registry.access.redhat.com/ubi8/go-toolset:1.21
+FROM $BASE_IMAGE AS builder
 
 ARG GOPATH_ARG="/go"
-ARG GOVERSION=1.18      
 ARG GOARCH=amd64
 ARG MQARCH=X64
 
-ENV GOVERSION=${GOVERSION}   \
-    GOPATH=$GOPATH_ARG \
-    GOTAR=go${GOVERSION}.linux-${GOARCH}.tar.gz \
+ENV GOPATH=$GOPATH_ARG \
     ORG="github.com/ibm-messaging"
 
-
-# Install the Go compiler and Git
-RUN export DEBIAN_FRONTEND=noninteractive \
-  && bash -c 'source /etc/os-release; \
-     echo "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} main restricted" > /etc/apt/sources.list; \
-     echo "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates main restricted" >> /etc/apt/sources.list; \
-     echo "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-backports main restricted universe" >> /etc/apt/sources.list; \
-     echo "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME} universe" >> /etc/apt/sources.list; \
-     echo "deb http://archive.ubuntu.com/ubuntu/ ${UBUNTU_CODENAME}-updates universe" >> /etc/apt/sources.list;' \
-  && apt-get update \
-  && apt-get install -y --no-install-recommends \
-    git \
-    wget \
-    ca-certificates \
-    curl \
-    tar \
-    bash \
-    build-essential \
-  && rm -rf /var/lib/apt/lists/*
+# Make sure we've got permissions inside the container
+USER 0
 
 # Create location for the git clone and MQ installation
 RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
   && chmod -R 777 $GOPATH \
   && mkdir -p $GOPATH/src/$ORG \
   && cd /tmp       \
-  && wget -nv https://dl.google.com/go/${GOTAR} \
-  && tar -xf ${GOTAR} \
-  && mv go /usr/lib/go-${GOVERSION} \
-  && rm -f ${GOTAR} \
   && mkdir -p /opt/mqm \
   && chmod a+rx /opt/mqm
 
-# Location of the downloadable MQ client package \
-ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
+# Location of the downloadable MQ client package
+ARG RDURL_ARG="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist"
+ENV RDURL=${RDURL_ARG} \
     RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz" \
     VRMF=9.4.1.0
 
@@ -77,13 +54,12 @@ RUN cd /opt/mqm \
 
 # Insert the script that will do the build
 COPY --chmod=777 buildInDocker.sh $GOPATH
-# RUN chmod 777 $GOPATH/buildInDocker.sh
 
 # Copy the rest of the source tree from this directory into the container
 # And make sure it's readable by the id that will run the compiles (not just root)
 ENV  REPO="mq-golang"
 COPY --chmod=0777 . $GOPATH/src/$ORG/$REPO
-# RUN chmod -R a+rx $GOPATH/src
 
 # Set the entrypoint to the script that will do the compilation
-ENTRYPOINT $GOPATH/buildInDocker.sh
+WORKDIR $GOPATH
+ENTRYPOINT [ "./buildInDocker.sh" ]
