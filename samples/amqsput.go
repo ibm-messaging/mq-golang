@@ -45,7 +45,6 @@ import (
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
-var qMgrObject ibmmq.MQObject
 var qObject ibmmq.MQObject
 
 // Main function that simply calls a subfunction to ensure defer routines are called before os.Exit happens

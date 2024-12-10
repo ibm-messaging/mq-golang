@@ -38,7 +38,6 @@ import (
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
-var qMgrObject ibmmq.MQObject
 var qCommandObject ibmmq.MQObject
 var qReplyObject ibmmq.MQObject
 
@@ -288,10 +287,10 @@ func getReplies() error {
 }
 
 // For some of the returned fields, print the name and value.
-// We are not going to print all of the different types that might be returned
-// but you can see the pattern. As an additional example, the QueueType field gets
-// transformed into the string equivalent. The amqsevta.c sample program in the MQ product
-// has much fuller examples of how to recognise and convert the different elements.
+// Only a subset of the possible data types are formatted.
+// Integer values are converted, where possible, into their string constant equivalent
+// The amqsevta.c sample program in the MQ product has much fuller examples of
+// how to recognise and convert the different elements.
 func printPcfParm(p *ibmmq.PCFParameter) {
 	name := ""
 	val := ""
@@ -299,11 +298,8 @@ func printPcfParm(p *ibmmq.PCFParameter) {
 	case ibmmq.MQCFT_INTEGER:
 		name = ibmmq.MQItoString("MQIA", int(p.Parameter))
 		v := int(p.Int64Value[0])
-		if p.Parameter == ibmmq.MQIA_Q_TYPE {
-			val = ibmmq.MQItoString("MQQT", v)
-		} else {
-			val = fmt.Sprintf("%d", v)
-		}
+		val = ibmmq.PCFValueToString(p.Parameter, int64(v))
+
 	case ibmmq.MQCFT_STRING:
 		name = ibmmq.MQItoString("MQCA", int(p.Parameter))
 		val = p.String[0]

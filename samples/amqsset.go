@@ -37,7 +37,6 @@ import (
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
-var qMgrObject ibmmq.MQObject
 var object ibmmq.MQObject
 
 /*
