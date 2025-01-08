@@ -48,6 +48,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	mq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
 
@@ -64,8 +65,11 @@ var (
 	otelInit    = false // Has the module been initialised
 	otelEnabled = false // Are we going to actually do any OTel work
 
-	objectHandleMap  = make(map[string]*mq.MQMessageHandle)
-	objectOptionsMap = make(map[string]*propOptions)
+	objectMapHandle  = make(map[string]*mq.MQMessageHandle)
+	objectMapOptions = make(map[string]*propOptions)
+
+	omh sync.Mutex
+	omo sync.Mutex
 )
 
 const (
@@ -91,6 +95,23 @@ const (
 func init() {
 	// Set this so any underlying equivalent code in the C library will not try to do its own thing
 	os.Setenv("AMQ_OTEL_INSTRUMENTED", "true")
+}
+
+// Go's locks are not concurrently accessible. So we need to add locks. This might not be required for
+// all operations, but better to be safe. These are trivial functions, but we might want to add tracing/debug
+// occasionally. So it's better to wrap the real calls.
+func lockMapOptions() {
+	omo.Lock()
+}
+func unlockMapOptions() {
+	omo.Unlock()
+}
+
+func lockMapHandle() {
+	omh.Lock()
+}
+func unlockMapHandle() {
+	omh.Unlock()
 }
 
 // This is the function that applications have to call, to ensure the OTel
@@ -142,30 +163,37 @@ func objectKey(hc *mq.MQQueueManager, ho *mq.MQObject) string {
 // Do we have a MsgHandle for this hConn? If not, create a new one
 func getMsgHandle(hConn *mq.MQQueueManager, hObj *mq.MQObject) *mq.MQMessageHandle {
 	key := objectKey(hConn, hObj)
-	if _, ok := objectHandleMap[key]; !ok {
+	lockMapHandle()
+	if _, ok := objectMapHandle[key]; !ok {
 
 		cmho := mq.NewMQCMHO()
 		mh, err := hConn.CrtMH(cmho)
 		if err == nil {
-			objectHandleMap[key] = &mh
+			objectMapHandle[key] = &mh
 		} else {
 			fmt.Printf(err.Error())
 		}
 
 	}
-	return objectHandleMap[key]
+
+	o := objectMapHandle[key]
+	unlockMapHandle()
+
+	return o
 }
 
 // Is the GMO/PMO MsgHandle one that we allocated?
 func compareMsgHandle(hConn *mq.MQQueueManager, hObj *mq.MQObject, mh *mq.MQMessageHandle) bool {
 	rc := false
 	key := objectKey(hConn, hObj)
-	if oh, ok := objectHandleMap[key]; ok {
+	lockMapHandle()
+	if oh, ok := objectMapHandle[key]; ok {
 		mhLocal := oh
 		if mhLocal.GetValue() == mh.GetValue() {
 			rc = true
 		}
 	}
+	unlockMapHandle()
 	return rc
 }
 
@@ -218,20 +246,24 @@ func otelDisc(qMgr *mq.MQQueueManager) {
 	// the hConn value. As this is MQDISC, we don't care about
 	// any specific hObj
 	prefix := fmt.Sprintf("%d/", qMgr.GetValue())
-	for k, mh := range objectHandleMap {
+	lockMapHandle()
+	for k, mh := range objectMapHandle {
 		if strings.HasPrefix(k, prefix) {
 			dmho := mq.NewMQDMHO()
 			mh.DltMH(dmho)
-			delete(objectHandleMap, k)
+			delete(objectMapHandle, k)
 		}
 	}
+	unlockMapHandle()
 
 	// And delete information about any OPENed object too
-	for k, _ := range objectOptionsMap {
+	lockMapOptions()
+	for k, _ := range objectMapOptions {
 		if strings.HasPrefix(k, prefix) {
-			delete(objectOptionsMap, k)
+			delete(objectMapOptions, k)
 		}
 	}
+	unlockMapOptions()
 
 	traceExit("disc")
 	return
@@ -309,7 +341,9 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
 		// Create an object to hold the discovered value
 		options := propOptions{propCtl: propCtl}
 		// replace any existing value for this object handle
-		objectOptionsMap[key] = &options
+		lockMapOptions()
+		objectMapOptions[key] = &options
+		unlockMapOptions()
 
 	} else {
 		logTrace("open: not doing Inquire")
@@ -324,7 +358,9 @@ func otelClose(hObj *mq.MQObject) {
 	traceEntry("close")
 
 	key := objectKey(hObj.GetHConn(), hObj)
-	delete(objectOptionsMap, key)
+	lockMapOptions()
+	delete(objectMapOptions, key)
+	unlockMapOptions()
 
 	traceExit("close")
 	return
@@ -506,12 +542,14 @@ func otelGetTraceBefore(otelOpts mq.OtelOpts, hConn *mq.MQQueueManager, hObj *mq
 	} else {
 		key := objectKey(hConn, hObj)
 		propCtl = -1
-		if opts, ok := objectOptionsMap[key]; ok {
+		lockMapOptions()
+		if opts, ok := objectMapOptions[key]; ok {
 			propCtl = opts.propCtl
 			// Stash the GMO options so they can be restored afterwards
 			opts.gmo = gogmo.Options
-			objectOptionsMap[key] = opts
+			objectMapOptions[key] = opts
 		}
+		unlockMapOptions()
 
 		// If we know that the app or queue is configured for not returning any properties, then we will override that into our handle
 		if (propGetOptions == mq.MQGMO_NO_PROPERTIES) || (propGetOptions == mq.MQGMO_PROPERTIES_AS_Q_DEF && propCtl == mq.MQPROP_NONE) {
@@ -594,11 +632,13 @@ func otelGetTraceAfter(otelOpts mq.OtelOpts, hObj *mq.MQObject, gogmo *mq.MQGMO,
 		if !async && compareMsgHandle(hc, ho, &mh) {
 			gogmo.MsgHandle = mq.MQMessageHandle{}
 			key := objectKey(hc, ho)
-			if opts, ok := objectOptionsMap[key]; ok {
+			lockMapOptions()
+			if opts, ok := objectMapOptions[key]; ok {
 				gogmo.Options = opts.gmo
 			} else {
 				gogmo.Options &= ^mq.MQGMO_PROPERTIES_IN_HANDLE
 			}
+			unlockMapOptions()
 			logTrace("Removing our handle: hObj %v", hObj)
 		}
 
