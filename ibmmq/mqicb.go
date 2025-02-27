@@ -36,6 +36,8 @@ extern void MQCALLBACK_C(MQHCONN hc,MQMD *md,MQGMO *gmo,PMQVOID buf,MQCBC *cbc);
 // of the registered hObj. That can lead to unexpected callback invocations.
 static void *saveHObj(PMQCBD mqcbd, MQHOBJ hObj) {
   mqcbd->CallbackArea = malloc(sizeof(MQHOBJ));
+  // If the malloc has failed, you've got real problems. But we can
+  // silently continue safely through this bit anyway.
   if (mqcbd->CallbackArea) {
     memcpy(mqcbd->CallbackArea,&hObj,sizeof(MQHOBJ));
   }
@@ -324,6 +326,7 @@ func (object *MQQueueManager) CB(goOperation int32, gocbd *MQCBD) error {
 	// defined here. And that in turn will call the user's callback function
 	mqcbd.CallbackFunction = (C.MQPTR)(unsafe.Pointer(C.MQCALLBACK_C))
 
+	// Unlike the queue.CB() function, we don't need to stash an hObj for the qMgr-wide callbacks
 	C.MQCB(object.hConn, mqOperation, (C.PMQVOID)(unsafe.Pointer(&mqcbd)),
 		C.MQHO_NONE, nil, nil,
 		&mqcc, &mqrc)

@@ -1,6 +1,24 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Feb 28 2025 - v5.6.2 
+- Update for MQ 9.4.2
+- ibmmq - Add function to map PCF attribute values to strings
+- ibmmq - Interpret more PCF types (the filters)
+- ibmmq - MaxSCOLength fix - PR #216
+- ibmmq - Add MQIGolangVersion function
+- ibmmq - Handle MQ C client callbacks with wrong hObj (#217)
+- mqmetric - Ignore the EXTENDED queue metrics unless explicitly enabled
+- mqmetric - Deal with possible duplication of metrics between QSTATUS and published QSTAT values 
+  Without this change, Prometheus (at least) will panic. The system topic metrics were extended
+  in MQ 9.4.2 and potentially in various fixpacks for older LTS releases; this version of the collector code is required
+  once you reach those qmgr levels.
+- mqmetric - Recognise Native HA Cross-region replication metrics
+- ibmmqotel - Fix concurrent maps (#218)
+- samples - Modify amqspcf.go to use PCF mapping functions
+- samples - Ensure Dockerfile examples do not pull base images from Dockerhub
+- samples - Remove unnecessary (incorrect) declarations
+
 ## Oct 24 2024 - v5.6.1 
 - Update for MQ 9.4.1
 - Some linter-suggested code changes

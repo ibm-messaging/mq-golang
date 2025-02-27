@@ -34,6 +34,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
@@ -290,7 +291,8 @@ func getReplies() error {
 // Only a subset of the possible data types are formatted.
 // Integer values are converted, where possible, into their string constant equivalent
 // The amqsevta.c sample program in the MQ product has much fuller examples of
-// how to recognise and convert the different elements.
+// how to recognise and convert the different elements. Also look at the amqsevtg.go
+// program in the mq-metric-samples repository.
 func printPcfParm(p *ibmmq.PCFParameter) {
 	name := ""
 	val := ""
@@ -298,7 +300,18 @@ func printPcfParm(p *ibmmq.PCFParameter) {
 	case ibmmq.MQCFT_INTEGER:
 		name = ibmmq.MQItoString("MQIA", int(p.Parameter))
 		v := int(p.Int64Value[0])
-		val = ibmmq.PCFValueToString(p.Parameter, int64(v))
+		if strings.HasSuffix(name, "_OPTIONS") {
+			set := ibmmq.PCFAttrToPrefix(p.Parameter)
+
+			for i := 0; i < 32; i++ {
+				bf := v&2 ^ i
+				if bf != 0 {
+					val = val + ibmmq.MQItoString(set, bf) + " "
+				}
+			}
+		} else {
+			val = ibmmq.PCFValueToString(p.Parameter, int64(v))
+		}
 
 	case ibmmq.MQCFT_STRING:
 		name = ibmmq.MQItoString("MQCA", int(p.Parameter))

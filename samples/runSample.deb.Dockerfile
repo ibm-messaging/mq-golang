@@ -24,7 +24,7 @@
 # as possible while still using a "regular" libc-based container.
 
 # Start by setting some global variables that can still be overridden on the build command line.
-ARG BASE_IMAGE=ubuntu:22.04
+ARG BASE_IMAGE=public.ecr.aws/ubuntu/ubuntu:22.04
 ARG GOPATH_ARG="/go"
 ARG GOVERSION=1.18      
 
@@ -77,7 +77,7 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz" \
-    VRMF=9.4.1.0
+    VRMF=9.4.2.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package
@@ -109,7 +109,7 @@ RUN cd $GOPATH_ARG/src && go mod tidy && go build -o $GOPATH_ARG/bin/amqsput amq
 ###########################################################
 # Now that there is a container with the compiled program we can build a smaller
 # runtime image. Start from one of the smaller base container images.
-FROM debian:bookworm-slim
+FROM public.ecr.aws/debian/debian:bookworm-slim
 ARG GOPATH_ARG
 ARG GOVERSION
 

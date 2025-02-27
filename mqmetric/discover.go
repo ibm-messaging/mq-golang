@@ -6,7 +6,7 @@ storage mechanisms including Prometheus and InfluxDB.
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2024
+  Copyright (c) IBM Corporation 2016, 2025
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -414,17 +414,7 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 				}
 			}
 
-			// The STATAPP metrics are not very useful as they only work for apps known at subscription
-			// time. As well as needing additional configuration.
-			// So we ignore these for now, but might enable them in future. Adding them to the subscription
-			// list by default would increase the handles in use without benefit. We do now support use of the
-			// NativeHA resources
-			switch cl.Name {
-			case "STATAPP":
-				logDebug("Not subscribing to Class STATAPP resources")
-			//case "NHAREPLICA":
-			//	logDebug("Not subscribing to Class NHAREPLICA resources")
-			default:
+			if includeClass(dc, cl.Name) {
 				cl.Parent.Classes[classIndex] = cl
 			}
 		}
@@ -484,12 +474,16 @@ func discoverTypes(dc DiscoverConfig, cl *MonClass) error {
 			}
 			if ty.Parent.Name == "STATQ" && dc.MonitoredQueues.SubscriptionSelector != "" {
 				if strings.Contains(dc.MonitoredQueues.SubscriptionSelector, ty.Name) {
-					cl.Types[typeIndex] = ty
+					if includeType(dc, ty.Name) {
+						cl.Types[typeIndex] = ty
+					}
 				} else {
 					logDebug("Not subscribing to Class STATQ Type %s resources", ty.Name)
 				}
 			} else {
-				cl.Types[typeIndex] = ty
+				if includeType(dc, ty.Name) {
+					cl.Types[typeIndex] = ty
+				}
 			}
 		}
 	}
@@ -506,6 +500,10 @@ func discoverElements(dc DiscoverConfig, ty *MonType) error {
 	var elem *MonElement
 
 	traceEntry("discoverElements")
+
+	k := GetConnectionKey()
+	ci := getConnection(k)
+
 	mqtd, err = subscribeManaged(ty.elementTopic, &metaReplyQObj)
 	if err == nil {
 		data, err = getMessageWithHObj(true, metaReplyQObj)
@@ -550,7 +548,9 @@ func discoverElements(dc DiscoverConfig, ty *MonType) error {
 			}
 
 			elem.MetricName = formatDescription(elem)
-			ty.Elements[elementIndex] = elem
+			if includeElem(ci, elem, true) {
+				ty.Elements[elementIndex] = elem
+			}
 		}
 	}
 
@@ -618,7 +618,11 @@ func discoverElementsNLS(dc DiscoverConfig, ty *MonType, locale string) error {
 			}
 
 			if description != "" {
-				ty.Elements[elementIndex].DescriptionNLS = description
+				elem, ok := ty.Elements[elementIndex]
+				if ok {
+					elem.DescriptionNLS = description
+				}
+
 			}
 		}
 	}
@@ -689,7 +693,9 @@ func discoverStats(dc DiscoverConfig) error {
 					if _, ok := nameSet[name]; ok {
 						err = fmt.Errorf("Non-unique metric description '%s'", elem.MetricName)
 					} else {
-						nameSet[name] = exists
+						if includeElem(ci, elem, true) {
+							nameSet[name] = exists
+						}
 					}
 				}
 			}
@@ -1148,6 +1154,10 @@ func ProcessPublications() error {
 					// labelling But for now we can ignore it.
 					_ = ibmmq.MQItoString("OT", int(elemList[i].Int64Value[0]))
 				case ibmmq.MQCACF_NHA_INSTANCE_NAME:
+					// We have either the instance name or the group name in the response
+					objName = strings.TrimSpace(elemList[i].String[0])
+					objType = OT_NHA
+				case ibmmq.MQCACF_NHA_GROUP_NAME:
 					objName = strings.TrimSpace(elemList[i].String[0])
 					objType = OT_NHA
 				case ibmmq.MQIAMO_MONITOR_CLASS:
@@ -1159,9 +1169,13 @@ func ProcessPublications() error {
 				case ibmmq.MQIAMO_MONITOR_FLAGS:
 					_ = int(elemList[i].Int64Value[0])
 				default:
-					value = elemList[i].Int64Value[0]
-					elementidx = int(elemList[i].Parameter)
-					values[elementidx] = value
+					if len(elemList[i].Int64Value) > 0 {
+						value = elemList[i].Int64Value[0]
+						elementidx = int(elemList[i].Parameter)
+						values[elementidx] = value
+					} else {
+						logDebug("Unparsed element: %+v", elemList[i])
+					}
 				}
 			}
 
@@ -1201,8 +1215,10 @@ func ProcessPublications() error {
 								objectInfoMap = qInfoMap
 								elemKey = objectName
 							} else if objType == OT_NHA {
+								// The objectname is EITHER the group name (for RECOVERY metrics)
+								// or the instance name (for REPLICATION metrics)
 								objectInfoMap = nhaInfoMap
-								elemKey = NativeHAKeyPrefix + objectName
+								elemKey = NativeHAKeyPrefix + objName
 							}
 							if qi, ok := objectInfoMap[objName]; ok {
 								if qi.firstCollection {
@@ -1233,7 +1249,10 @@ func ProcessPublications() error {
 						} else {
 							value = newValue
 						}
-						elem.Values[elemKey] = value
+
+						if includeElem(ci, elem, false) {
+							elem.Values[elemKey] = value
+						}
 					}
 				}
 			}
@@ -1255,6 +1274,74 @@ func ProcessPublications() error {
 
 	traceExit("ProcessPublications", 0)
 	return nil
+}
+
+// The STATAPP metrics are not very useful as they only work for apps known at subscription
+// time. As well as needing additional configuration.
+// So we ignore these for now. Adding them to the subscription
+// list by default would increase the handles in use without benefit.
+func includeClass(dc DiscoverConfig, cl string) bool {
+	rc := true
+	if cl == "STATAPP" {
+		rc = false
+	}
+	return rc
+}
+
+// A STATQ/EXTENDED block of metrics is available on some versions of MQ
+// that are really intended for use by L2/L3 service. So we exclude them
+// unless explicitly requested in the SubscriptionSelector config
+func includeType(dc DiscoverConfig, t string) bool {
+	rc := true
+
+	if t != "" && t == "EXTENDED" {
+		if dc.MonitoredQueues.SubscriptionSelector == "" {
+			logDebug("Not subscribing to Class STATQ Type %s resources", t)
+			rc = false
+		} else if !strings.Contains(dc.MonitoredQueues.SubscriptionSelector, t) {
+			logDebug("Not subscribing to Class STATQ Type %s resources", t)
+			rc = false
+		}
+	}
+
+	return rc
+}
+
+// This deals with situations where metrics have been added to the published elements
+// but duplicate values elsewhere. We will exclude them if we are already collecting them
+// through that other mechanism. Currently just 2 items are expected to need this rule.
+// This is called after any metric description/name mapping rules have been processed, so the metric name
+// is the converted string.
+//
+// Older versions of the collectors will not know to exclude the duplicate, but they will also not know
+// the mapped metric name. So they will emit both the QSTATS versions and the new duplicate metric but with
+// different names. Which might be confusing for anyone looking to build a new dashboard panel, but not
+// a fatal error.
+//
+// This is needed from MQ 9.4.2 onwards, and from various fixpack levels on 9.2 and 9.3 where the system
+// topic metrics were extended
+var excludeMetric = map[string]bool{
+	"input_handles":  true,
+	"output_handles": true,
+}
+
+func includeElem(ci *connectionInfo, elem *MonElement, discovering bool) bool {
+	rc := true
+
+	_, found := excludeMetric[elem.MetricName]
+	if found {
+		// We prefer to use the value from the DIS QSTATUS command as that is available everywhere, in all
+		// versions. The published metric is only available in a subset of versions.
+		if ci.useStatus {
+			// Only print this message during the discovery phase so we don't overwhelm the debug log
+			if discovering {
+				logDebug("Not including Class %s Type %s Element %s (already available elsewhere)", elem.Parent.Parent.Name, elem.Parent.Name, elem.MetricName)
+			}
+			rc = false
+
+		}
+	}
+	return rc
 }
 
 /*
