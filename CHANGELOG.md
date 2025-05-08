@@ -1,7 +1,7 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## May 08 2025 - v5.6.2.1
+## May 08 2025 - v5.6.3
 - mqmetric - Fixes for #222 and ibm-messaging/mq-metric-samples#395
 
 ## Feb 28 2025 - v5.6.2 
