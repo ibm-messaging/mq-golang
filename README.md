@@ -64,6 +64,19 @@ zip/tar file that does not need any privileges to install:
 * Download [IBM MQ redistributable client](https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist)
 * Unpack archive to fixed directory. E.g. `c:\IBM-MQC-Redist-Win64`  or `/opt/mqm`.
 
+For macOS, you can install the MQ Dev Toolkit using Homebrew.
+
+```
+brew tap ibm-messaging/ibmmq
+brew install ibm-messaging/ibmmq/mqdevtoolkit
+```
+
+### MacOS
+
+* Install the Go runtime and compiler. On macOS, after installing the MQ Dev Toolkit, the package will be located in the
+  `/opt/mqm`.
+* Install the git client and the gcc C compiler
+
 ### Linux
 
 * Install the Go runtime and compiler. On Linux, the packaging may vary but a typical directory for the code is
