@@ -10,14 +10,16 @@ There is no attempt in this sample to configure advanced security features
 such as TLS for the queue manager connection. It does, however, use a minimal
 TLS connection to the Token Server.
 
-Defaults are provided for all parameters. Use "-?" to see the options.
+Defaults are provided for all parameters. Use "-?" to see the options. The
+userid/password option is now deprecated; instead use the clientId/clientSecret
+mechanism.
 
 If an error occurs, the error is reported.
 */
 package main
 
 /*
-  Copyright (c) IBM Corporation 2023
+  Copyright (c) IBM Corporation 2023, 2025
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -39,6 +41,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,7 +49,6 @@ import (
 	"time"
 
 	"encoding/json"
-	"io/ioutil"
 
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
@@ -58,24 +60,27 @@ const (
 	defaultConnectionName = "localhost(1414)"
 
 	/* Get these values from the Token issuer. */
-	defaultTokenHost     = "localhost"
-	defaultTokenPort     = 8443
-	defaultTokenUserName = "jwtuser"
-	defaultTokenPassword = "passw0rd"
+	defaultTokenHost         = "localhost"
+	defaultTokenPort         = 8443
+	defaultTokenUserName     = "jwtuser"
+	defaultTokenPassword     = "passw0rd"
+	defaultTokenClientSecret = ""
+
 	defaultTokenClientId = "jwtcid"
 	defaultTokenRealm    = "mq"
 )
 
 type Config struct {
-	qMgrName       string
-	connectionName string
-	channel        string
-	tokenHost      string
-	tokenPort      int
-	tokenUserName  string
-	tokenPassword  string
-	tokenClientId  string
-	tokenRealm     string
+	qMgrName          string
+	connectionName    string
+	channel           string
+	tokenHost         string
+	tokenPort         int
+	tokenUserName     string
+	tokenPassword     string
+	tokenClientId     string
+	tokenClientSecret string
+	tokenRealm        string
 }
 
 // We only care about one field in the JSON data returned from
@@ -119,7 +124,11 @@ func main() {
 		if token != "" {
 			csp := ibmmq.NewMQCSP()
 			csp.Token = token
-			fmt.Printf("Using token: %s\n", token)
+			l := 100
+			if len(token) < 100 {
+				l = len(token)
+			}
+			fmt.Printf("Token: %s\n", token[0:l]+"...")
 
 			// Make the CNO refer to the CSP structure so it gets used during the connection
 			cno.SecurityParms = csp
@@ -159,13 +168,20 @@ func obtainToken() (string, error) {
 	var resp *http.Response
 
 	/*
-	   This curl command is the basis of the call to get a token. It uses form data to
-	   set the various parameters
+	   These curl commands are the base of the call to get a token. It uses form data to
+	   set the various parameters. The 2nd format is now preferred.
 
 	   curl -k -X POST "https://$host:$port/realms/$realm/protocol/openid-connect/token" \
 	        -H "Content-Type: application/x-www-form-urlencoded" \
 	        -d "username=$user" -d "password=$password" \
 	        -d "grant_type=password" -d "client_id=$cid" \
+	        -o $output -Ss
+
+
+	   curl -k -X POST "https://$host:$port/realms/$realm/protocol/openid-connect/token" \
+	        -H "Content-Type: application/x-www-form-urlencoded" \
+	        -d "client_secret=$secret" \
+	        -d "grant_type=client_credentials" -d "client_id=$cid" \
 	        -o $output -Ss
 	*/
 
@@ -186,10 +202,19 @@ func obtainToken() (string, error) {
 
 	// Fill in the pieces of data that the server expects
 	formData := url.Values{
-		"username":   {cf.tokenUserName},
-		"password":   {cf.tokenPassword},
-		"client_id":  {cf.tokenClientId},
-		"grant_type": {"password"},
+		"client_secret": {cf.tokenClientSecret},
+		"client_id":     {cf.tokenClientId},
+		"grant_type":    {"client_credentials"},
+	}
+
+	if cf.tokenClientSecret == "" {
+		fmt.Printf("Username/Password authentication is deprecated. Use clientSecret instead.\n")
+		formData = url.Values{
+			"username":   {cf.tokenUserName},
+			"password":   {cf.tokenPassword},
+			"client_id":  {cf.tokenClientId},
+			"grant_type": {"password"},
+		}
 	}
 
 	req, err := http.NewRequest("POST", endpoint, strings.NewReader(formData.Encode()))
@@ -214,7 +239,7 @@ func obtainToken() (string, error) {
 
 	// If it all worked, we can parse the response. We don't need all of the returned
 	// fields, only the token.
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	} else {
@@ -233,9 +258,11 @@ func initParms() {
 	flag.StringVar(&cf.tokenHost, "host", defaultTokenHost, "Hostname for the token server")
 	flag.IntVar(&cf.tokenPort, "port", defaultTokenPort, "Portnumber for the token server")
 
-	flag.StringVar(&cf.tokenUserName, "user", defaultTokenUserName, "UserName")
-	flag.StringVar(&cf.tokenPassword, "password", defaultTokenPassword, "Password")
+	flag.StringVar(&cf.tokenUserName, "user", defaultTokenUserName, "UserName (deprecated)")
+	flag.StringVar(&cf.tokenPassword, "password", defaultTokenPassword, "Password (deprecated)")
 	flag.StringVar(&cf.tokenClientId, "clientId", defaultTokenClientId, "ClientId")
+	flag.StringVar(&cf.tokenClientSecret, "clientSecret", defaultTokenClientSecret, "ClientSecret")
+
 	flag.StringVar(&cf.tokenRealm, "realm", defaultTokenRealm, "Realm")
 }
 

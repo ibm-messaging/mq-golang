@@ -1,8 +1,3 @@
-/*
-Package mqmetric contains a set of routines common to several
-commands used to export MQ metrics to different backend
-storage mechanisms including Prometheus and InfluxDB.
-*/
 package mqmetric
 
 /*
@@ -25,12 +20,12 @@ package mqmetric
 */
 
 /*
-Functions in this file use the DISPLAY QStatus command to extract metrics
-about MQ queues
+Functions in this file use the DISPLAY QSTATUS, DISPLAY QUEUE and RESET QSTATS commands
+to extract metrics about MQ queues
 */
 
 import (
-	//	"fmt"
+	_ "fmt"
 
 	"strings"
 	"time"
@@ -62,6 +57,7 @@ const (
 	ATTR_Q_DEPTH        = "depth"
 	ATTR_Q_INTERVAL_PUT = "mqput_mqput1_count"
 	ATTR_Q_INTERVAL_GET = "mqget_count"
+
 	// This is the Highest Depth returned over an interval via the
 	// RESET QSTATS command. Contrast with the attribute_max_depth
 	// value which is the DISPLAY QL(x) MAXDEPTH attribute.
@@ -91,9 +87,9 @@ func QueueInitAttributes() {
 	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Name")
 
 	attr = ATTR_Q_SINCE_PUT
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Put", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Put", DUMMY_PCFATTR)
 	attr = ATTR_Q_SINCE_GET
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Get", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Get", DUMMY_PCFATTR)
 
 	// These are the integer status fields that are of interest
 	attr = ATTR_Q_MSGAGE
@@ -142,9 +138,9 @@ func QueueInitAttributes() {
 	// usually - but not always - come from the published resource stats. So we don't have direct access to it.
 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
 	attr = ATTR_Q_MAX_DEPTH
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", DUMMY_PCFATTR)
 	attr = ATTR_Q_USAGE
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", -1)
+	st.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", DUMMY_PCFATTR)
 
 	attr = ATTR_Q_QTIME_SHORT
 	st.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)

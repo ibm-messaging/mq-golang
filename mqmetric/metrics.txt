@@ -281,12 +281,24 @@ Class: channel
   ATTR_CHL_NETTIME_LONG           : nettime_long
   ATTR_CHL_NETTIME_SHORT          : nettime_short
   ATTR_CHL_RQMNAME                : rqmname
+  ATTR_CHL_SECPROT                : security_protocol
   ATTR_CHL_SINCE_MSG              : time_since_msg
+  ATTR_CHL_SSLCIPH                : sslciph
+  ATTR_CHL_START                  : start_epoch
   ATTR_CHL_STATUS                 : status
   ATTR_CHL_SUBSTATE               : substate
   ATTR_CHL_TYPE                   : type
   ATTR_CHL_XQTIME_LONG            : xmitq_time_long
   ATTR_CHL_XQTIME_SHORT           : xmitq_time_short
+
+Class: channelmqtt
+  ATTR_CHL_MQTT_CLIENT_ID         : clientid
+  ATTR_CHL_MQTT_INDOUBT_INPUT     : indoubt_input
+  ATTR_CHL_MQTT_INDOUBT_OUTPUT    : indoubt_output
+  ATTR_CHL_MQTT_MESSAGES_RECEIVED : messages_rcvd
+  ATTR_CHL_MQTT_MESSAGES_SENT     : messages_sent
+  ATTR_CHL_MQTT_PENDING_OUT       : pending_outbound
+  ATTR_CHL_MQTT_PROTOCOL          : protocol
 
 Class: cluster
   ATTR_CLUSTER_QMTYPE             : qmtype
@@ -295,6 +307,7 @@ Class: cluster
 
 Class: qmgr
   ATTR_QMGR_ACTIVE_LISTENERS      : active_listeners
+  ATTR_QMGR_ACTIVE_SERVICES       : active_services
   ATTR_QMGR_CHINIT_STATUS         : channel_initiator_status
   ATTR_QMGR_CMD_SERVER_STATUS     : command_server_status
   ATTR_QMGR_CONNECTION_COUNT      : connection_count
@@ -306,6 +319,7 @@ Class: qmgr
   ATTR_QMGR_LOG_RESTART_EXTENT    : log_extent_restart
   ATTR_QMGR_LOG_RESTART_SIZE      : log_size_restart
   ATTR_QMGR_LOG_REUSABLE_SIZE     : log_size_reusable
+  ATTR_QMGR_LOG_START             : log_start_epoch
   ATTR_QMGR_MAX_ACTIVE_CHANNELS   : max_active_channels
   ATTR_QMGR_MAX_CHANNELS          : max_channels
   ATTR_QMGR_MAX_TCP_CHANNELS      : max_tcp_channels
@@ -360,4 +374,4 @@ Class: bufferpool/pageset
   ATTR_PS_TOTAL                   : pages_total
   ATTR_PS_UNUSED                  : pages_unused
 
-This page was automatically generated from the source tree on 2025-02-22 07:16:25
+This page was automatically generated from the source tree on 2025-06-10 08:22:57

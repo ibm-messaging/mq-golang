@@ -1,8 +1,3 @@
-/*
-Package mqmetric contains a set of routines common to several
-commands used to export MQ metrics to different backend
-storage mechanisms including Prometheus and InfluxDB.
-*/
 package mqmetric
 
 /*
@@ -115,6 +110,8 @@ const defaultMaxQDepth = 5000
 var qInfoMap map[string]*ObjInfo   // These maps probably need to be moved into the ci.si structures but at least they
 var chlInfoMap map[string]*ObjInfo // are not public interface elements
 var amqpInfoMap map[string]*ObjInfo
+var mqttInfoMap map[string]*ObjInfo
+
 var qMgrInfo = new(ObjInfo)
 var nhaInfoMap map[string]*ObjInfo
 
@@ -168,13 +165,13 @@ func VerifyConfig() (int32, error) {
 			maxQDepth := v[ibmmq.MQIA_MAX_Q_DEPTH].(int32)
 			// Function has tuning based on number of queues to be monitored
 			// Current published resource topics are approx 16 subs for 95 elements on the qmgr
-			// ... and 35 elements per queue in 4 subs
-			// Round these to 20 and 5 for a bit of headroom
+			// ... and 35 elements per queue in 6 subs
+			// Round these to 20 and 8 for a bit of headroom
 			// Make recommended minimum qdepth  60 / 10 * total per interval to allow one minute of data
 			// as MQ publications are at 10 second interval by default (and no public tuning)
 			// and assume monitor collection interval is one minute
 			// Since we don't do pubsub-based collection on z/OS, this qdepth doesn't matter
-			recommendedDepth := (20 + len(qInfoMap)*5) * 6
+			recommendedDepth := (20 + len(qInfoMap)*8) * 6
 			if maxQDepth < int32(recommendedDepth) && ci.usePublications {
 				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on queue count is at least %d", ci.si.replyQBaseName, maxQDepth, recommendedDepth)
 				compCode = ibmmq.MQCC_WARNING
@@ -276,6 +273,11 @@ func RediscoverAttributes(objectType int32, objectPatterns string) error {
 		amqpInfoMap = make(map[string]*ObjInfo)
 		infoMap = amqpInfoMap
 		fn = inquireAMQPChannelAttributes
+	case OT_CHANNEL_MQTT:
+		// Always start with a clean slate for these maps
+		mqttInfoMap = make(map[string]*ObjInfo)
+		infoMap = mqttInfoMap
+		fn = inquireMQTTChannelAttributes
 	default:
 		err = fmt.Errorf("Unsupported object type: %d", objectType)
 	}
@@ -319,7 +321,15 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 				qInfoMap[key] = new(ObjInfo)
 			}
 		}
+	}
 
+	if err == nil {
+		// If we're on z/OS then we can bypass all the subscriptions
+		if ci.si.platform == ibmmq.MQPL_ZOS {
+			logDebug("Setting connection to grab qdepth via QSTATUS")
+			ci.useDepthFromStatus = true
+			return nil
+		}
 	}
 
 	if err == nil {
@@ -916,7 +926,11 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 			pcfparm = new(ibmmq.PCFParameter)
 			pcfparm.Type = ibmmq.MQCFT_INTEGER
 			pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
-			pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+			if filterType == OT_CHANNEL_AMQP {
+				pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+			} else {
+				pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_MQTT)}
+			}
 			cfh.ParameterCount++
 			buf = append(buf, pcfparm.Bytes()...)
 		}
@@ -1617,6 +1631,8 @@ func GetObjectDescription(key string, objectType int32) string {
 		o, ok = chlInfoMap[key]
 	case OT_CHANNEL_AMQP:
 		o, ok = amqpInfoMap[key]
+	case OT_CHANNEL_MQTT:
+		o, ok = mqttInfoMap[key]
 	case OT_Q_MGR:
 		o = qMgrInfo
 		ok = true

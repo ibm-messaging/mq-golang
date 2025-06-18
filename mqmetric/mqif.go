@@ -1,7 +1,7 @@
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2023
+  Copyright (c) IBM Corporation 2016, 2025
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -54,7 +54,9 @@ type ConnectionConfig struct {
 	ShowInactiveChannels bool
 	HideSvrConnJobname   bool
 	HideAMQPClientId     bool
-	WaitInterval         int
+	HideMQTTClientId     bool
+
+	WaitInterval int
 
 	CcdtUrl  string
 	ConnName string
@@ -133,6 +135,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 	ci.showInactiveChannels = cc.ShowInactiveChannels
 	ci.hideSvrConnJobname = cc.HideSvrConnJobname
 	ci.hideAMQPClientId = cc.HideAMQPClientId
+	ci.hideMQTTClientId = cc.HideMQTTClientId
 
 	ci.durableSubPrefix = cc.DurableSubPrefix
 
@@ -227,6 +230,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 					if ci.useResetQStats && evEnabled == 0 {
 						errorString = "Requested use of RESET QSTATS but queue manager has PERFMEV(DISABLED)"
 						err = errors.New(errorString)
+						mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_FAILED, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
 					}
 				} else {
 					if cc.UsePublications {
@@ -250,6 +254,8 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 			mqreturn = err.(*ibmmq.MQReturn)
 		}
 	}
+
+	// err = errors.New("TESTING") // for testing - force an error
 
 	// MQOPEN of the COMMAND QUEUE
 	if err == nil {
@@ -314,7 +320,10 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 		clearDurableSubscriptions(ci.durableSubPrefix, ci.si.cmdQObj, ci.si.statusReplyQObj)
 	}
 
+	// If anything has gone wrong in the initial connection and object access then return an error.
 	if err != nil {
+		// All the `err` objects should have been converted to `mqreturn` objects. But if not,
+		// then force it with a FAILED code.
 		if mqreturn == nil {
 			mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_FAILED, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
 		}
@@ -422,7 +431,9 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 	// Backout the first attempt so we retry the same message
 	if err != nil && err.(*ibmmq.MQReturn).MQRC == ibmmq.MQRC_NOT_CONVERTED {
 		if transNeeded {
-			hObj.GetHConn().Back()
+			if ibmmq.IsUsableHObj(hObj) {
+				hObj.GetHConn().Back()
+			}
 		}
 		convertToAlternateCP = true
 		getmqmd.CodedCharSetId = ALTERNATE_CCSID
@@ -430,7 +441,9 @@ func getMessageWithHObj(wait bool, hObj ibmmq.MQObject) ([]byte, error) {
 	}
 
 	if transNeeded {
-		hObj.GetHConn().Cmit()
+		if ibmmq.IsUsableHObj(hObj) {
+			hObj.GetHConn().Cmit()
+		}
 	}
 	// By the time we've been through here once successfully, we should know
 	// whether we need to continue with the transactional version

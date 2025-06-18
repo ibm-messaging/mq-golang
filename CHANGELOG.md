@@ -1,7 +1,19 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## May 08 2025 - v5.6.3
+## Jun 16 2025 - v5.6.4 
+- Update for MQ 9.4.3
+- mqmetric - Add MQTT metrics
+- mqmetric - Add security_protocol metric for channels 
+- mqmetric - Add sslciph label/tag for channels
+- mqmetric - Fail connection in preference to warning when unexpected error
+- mqmetric - Some z/OS versions don't support MQINQ(MQCA_VERSION) (#395) 
+- mqmetric - Add startTime (epoch, milliseconds) for all channel types
+- mqmetric - Add active_service metric for qmgr
+- mqmetric - Increase recommended max qdepth on replyQ as there are now more potential queue subscriptions
+- samples  - JWT prefer to use ClientSecret instead of Password
+
+## May 08 2025 - v5.6.3  
 - mqmetric - Fixes for #222 and ibm-messaging/mq-metric-samples#395
 
 ## Feb 28 2025 - v5.6.2 

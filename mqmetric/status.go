@@ -1,12 +1,7 @@
-/*
-Package mqmetric contains a set of routines common to several
-commands used to export MQ metrics to different backend
-storage mechanisms including Prometheus and InfluxDB.
-*/
 package mqmetric
 
 /*
-  Copyright (c) IBM Corporation 2016, 2023
+  Copyright (c) IBM Corporation 2016, 2025
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -80,7 +75,7 @@ func newStatusAttribute(n string, d string, p int32) *StatusAttribute {
 }
 
 func newPseudoStatusAttribute(n string, d string) *StatusAttribute {
-	s := newStatusAttribute(n, d, -1)
+	s := newStatusAttribute(n, d, DUMMY_PCFATTR)
 	s.Pseudo = true
 	return s
 }
@@ -145,6 +140,32 @@ func statusTimeDiff(now time.Time, d string, t string) int64 {
 	//logError("statusTimeDiff d:%s t:%s diff:%d tzoffset: %f err:%v\n", d, t, rc, ci.tzOffsetSecs, err)
 	traceExitF("statusTimeDiff", 0, "Diff: %d", rc)
 	return rc
+}
+
+func statusTimeEpoch(d string, t string) int64 {
+
+	traceEntry("statusTimeEpoch")
+	ci := getConnection(GetConnectionKey())
+
+	// If there's any error in parsing the timestamp - perhaps
+	// the value has not been set yet - then just return 0
+	epoch := int64(0)
+
+	timeStampLayout := timeStampLayoutDot
+	if len(d) == 10 && len(t) == 8 {
+		if strings.Contains(t, ":") {
+			timeStampLayout = timeStampLayoutColon
+		}
+		parsedT, err := time.ParseInLocation(timeStampLayout, d+" "+t, time.Local)
+		if err == nil {
+			epoch = parsedT.UnixNano() / (1000 * 1000) // convert to milliseconds
+			// The collector may not be running in the same timezone as the qmgr, so we adjust it a bit more
+			epoch -= int64(ci.tzOffsetSecs * 1000)
+		}
+	}
+	// logInfo("statusTimeEpoch d:%s t:%s tzoffset:%f err:%v t.Local:%+v\n", d, t, ci.tzOffsetSecs, err, time.Local)
+	traceExit("statusTimeEpoch", 0)
+	return epoch
 }
 
 func clearQ(hObj ibmmq.MQObject) {

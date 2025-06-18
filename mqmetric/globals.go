@@ -1,3 +1,8 @@
+/*
+Package mqmetric contains a set of routines common to several
+commands used to export MQ metrics to different backend
+storage mechanisms including Prometheus and OpenTelemetry.
+*/
 package mqmetric
 
 /*
@@ -35,7 +40,6 @@ type sessionInfo struct {
 
 	platform         int32
 	commandLevel     int32
-	version          string // includes fixpack levels eg "09040001"
 	maxHandles       int32
 	resolvedQMgrName string
 
@@ -55,6 +59,7 @@ type connectionInfo struct {
 	showInactiveChannels bool
 	hideSvrConnJobname   bool
 	hideAMQPClientId     bool
+	hideMQTTClientId     bool
 
 	durableSubPrefix string
 
@@ -101,7 +106,8 @@ const (
 	OT_PS            = 18
 	OT_CLUSTER       = 19
 	OT_CHANNEL_AMQP  = 20
-	OT_LAST_USED     = OT_CHANNEL_AMQP
+	OT_CHANNEL_MQTT  = 21
+	OT_LAST_USED     = OT_CHANNEL_MQTT
 )
 
 var connectionMap = make(map[string]*connectionInfo)
@@ -109,6 +115,7 @@ var connectionKey string
 
 const DUMMY_STRING = "-" // To provide a non-empty value for certain fields
 const DEFAULT_CONNECTION_KEY = "@defaultConnection"
+const DUMMY_PCFATTR = -1 // For metrics that don't have an explicit PCF attribute
 
 // This are used externally so we need to maintain them as public exports until
 // there's a major version change. At which point we will move them to fields of
@@ -119,6 +126,7 @@ var (
 	QueueManagerStatus StatusSet
 	ChannelStatus      StatusSet
 	ChannelAMQPStatus  StatusSet
+	ChannelMQTTStatus  StatusSet
 	QueueStatus        StatusSet
 	TopicStatus        StatusSet
 	SubStatus          StatusSet
@@ -142,6 +150,7 @@ func newConnectionInfo(key string) *connectionInfo {
 	ci.showInactiveChannels = false
 	ci.hideSvrConnJobname = false
 	ci.hideAMQPClientId = false
+	ci.hideMQTTClientId = false
 
 	ci.globalSlashWarning = false
 	ci.localSlashWarning = false
@@ -184,6 +193,8 @@ func GetObjectStatus(key string, objectType int) *StatusSet {
 			return &ChannelStatus
 		case OT_CHANNEL_AMQP:
 			return &ChannelAMQPStatus
+		case OT_CHANNEL_MQTT:
+			return &ChannelMQTTStatus
 		case OT_Q_MGR:
 			return &QueueManagerStatus
 		case OT_Q:
