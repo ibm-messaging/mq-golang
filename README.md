@@ -56,7 +56,7 @@ tree. Initial setup tends to be platform-specific, but subsequent steps are inde
 
 ### MQ Client SDK
 The MQ Client SDK for C programs is required in order to compile and run Go programs. You may have this from an MQ
-Client installation image (eg rpm, dep for Linux; msi for Windows).
+Client installation image (eg `rpm`, `deb` for Linux; `msi` for Windows).
 
 For Linux x64 and Windows systems, you may also choose to use the MQ Redistributable Client package which is a simple
 zip/tar file that does not need any privileges to install:
@@ -71,17 +71,17 @@ brew tap ibm-messaging/ibmmq
 brew install ibm-messaging/ibmmq/mqdevtoolkit
 ```
 
-### MacOS
-
-* Install the Go runtime and compiler. On macOS, after installing the MQ Dev Toolkit, the package will be located in the
-  `/opt/mqm`.
-* Install the git client and the gcc C compiler
-
 ### Linux
 
 * Install the Go runtime and compiler. On Linux, the packaging may vary but a typical directory for the code is
   `/usr/lib/golang`.
 * Create a working directory. For example, ```mkdir $HOME/gowork```
+* Install the git client and the gcc C compiler
+
+### MacOS
+
+* Install the Go runtime and compiler. On macOS, after installing the MQ Dev Toolkit, the package will be located in the
+  `/opt/mqm`.
 * Install the git client and the gcc C compiler
 
 ### Windows
