@@ -97,7 +97,7 @@ func init() {
 	os.Setenv("AMQ_OTEL_INSTRUMENTED", "true")
 }
 
-// Go's locks are not concurrently accessible. So we need to add locks. This might not be required for
+// Go's maps are not concurrently accessible. So we need to add locks. This might not be required for
 // all operations, but better to be safe. These are trivial functions, but we might want to add tracing/debug
 // occasionally. So it's better to wrap the real calls.
 func lockMapOptions() {
@@ -143,7 +143,6 @@ func Setup() {
 			GetTraceAfter:  otelGetTraceAfter,
 		}
 		mq.SetOtelFuncs(f)
-
 	}
 
 	logTrace("OTelEnabled: %v", otelEnabled)

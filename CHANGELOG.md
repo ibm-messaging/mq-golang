@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## XXX XX 2025 - v5.6.5 
+- mqmetric - Make command requests (and replies) expire after a while
+
 ## Jun 16 2025 - v5.6.4 
 - Update for MQ 9.4.3
 - mqmetric - Add MQTT metrics

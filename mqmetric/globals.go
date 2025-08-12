@@ -117,6 +117,12 @@ const DUMMY_STRING = "-" // To provide a non-empty value for certain fields
 const DEFAULT_CONNECTION_KEY = "@defaultConnection"
 const DUMMY_PCFATTR = -1 // For metrics that don't have an explicit PCF attribute
 
+// Command messages are put with an expiry so they don't hang around too long. And any remaining
+// responses are also set to expire because of an MQRO setting. We use the WaitInterval as the basis.
+// First multiply by 10 (to get from seconds to the tenths used in MQMD.Expiry), then give more time
+// than the actual waitInterval to allow traval in both directions + processing + a slop factor
+const EXPIRY_MULTIPLIER = 10 * 5
+
 // This are used externally so we need to maintain them as public exports until
 // there's a major version change. At which point we will move them to fields of
 // the objectStatus structure, retrievable by a getXXX() call instead of as public

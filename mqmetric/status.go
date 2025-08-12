@@ -222,6 +222,8 @@ func statusSetCommandHeaders() (*ibmmq.MQMD, *ibmmq.MQPMO, *ibmmq.MQCFH, []byte)
 	putmqmd.MsgType = ibmmq.MQMT_REQUEST
 	putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
+	putmqmd.Expiry = int32(ci.waitInterval) * EXPIRY_MULTIPLIER
+
 	buf := make([]byte, 0)
 
 	traceExit("statusSetCommandHeaders", 0)

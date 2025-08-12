@@ -885,6 +885,8 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 		putmqmd.MsgType = ibmmq.MQMT_REQUEST
 		putmqmd.Report = ibmmq.MQRO_PASS_DISCARD_AND_EXPIRY
 
+		putmqmd.Expiry = int32(ci.waitInterval) * EXPIRY_MULTIPLIER
+
 		cfh := ibmmq.NewMQCFH()
 		cfh.Version = ibmmq.MQCFH_VERSION_3
 		cfh.Type = ibmmq.MQCFT_COMMAND_XR
