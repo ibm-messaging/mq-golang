@@ -1,25 +1,27 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## XXX XX 2025 - v5.6.5 
+## XXX XX 2025 - v5.6.5
+- Update for MQ 9.4.4
 - mqmetric - Make command requests (and replies) expire after a while
+- mqmetric - Add option to add CUSTOM attribute to qmgr/queue tags (ibm-messaging/mq-metric-samples#392)
 
-## Jun 16 2025 - v5.6.4 
+## Jun 16 2025 - v5.6.4
 - Update for MQ 9.4.3
 - mqmetric - Add MQTT metrics
-- mqmetric - Add security_protocol metric for channels 
+- mqmetric - Add security_protocol metric for channels
 - mqmetric - Add sslciph label/tag for channels
 - mqmetric - Fail connection in preference to warning when unexpected error
-- mqmetric - Some z/OS versions don't support MQINQ(MQCA_VERSION) (#395) 
+- mqmetric - Some z/OS versions don't support MQINQ(MQCA_VERSION) (#395)
 - mqmetric - Add startTime (epoch, milliseconds) for all channel types
 - mqmetric - Add active_service metric for qmgr
 - mqmetric - Increase recommended max qdepth on replyQ as there are now more potential queue subscriptions
 - samples  - JWT prefer to use ClientSecret instead of Password
 
-## May 08 2025 - v5.6.3  
+## May 08 2025 - v5.6.3
 - mqmetric - Fixes for #222 and ibm-messaging/mq-metric-samples#395
 
-## Feb 28 2025 - v5.6.2 
+## Feb 28 2025 - v5.6.2
 - Update for MQ 9.4.2
 - ibmmq - Add function to map PCF attribute values to strings
 - ibmmq - Interpret more PCF types (the filters)
@@ -27,7 +29,7 @@ Newest updates are at the top of this file.
 - ibmmq - Add MQIGolangVersion function
 - ibmmq - Handle MQ C client callbacks with wrong hObj (#217)
 - mqmetric - Ignore the EXTENDED queue metrics unless explicitly enabled
-- mqmetric - Deal with possible duplication of metrics between QSTATUS and published QSTAT values 
+- mqmetric - Deal with possible duplication of metrics between QSTATUS and published QSTAT values
   Without this change, Prometheus (at least) will panic. The system topic metrics were extended
   in MQ 9.4.2 and potentially in various fixpacks for older LTS releases; this version of the collector code is required
   once you reach those qmgr levels.
@@ -37,7 +39,7 @@ Newest updates are at the top of this file.
 - samples - Ensure Dockerfile examples do not pull base images from Dockerhub
 - samples - Remove unnecessary (incorrect) declarations
 
-## Oct 24 2024 - v5.6.1 
+## Oct 24 2024 - v5.6.1
 - Update for MQ 9.4.1
 - Some linter-suggested code changes
 - ibmmq - Support for new MQSCO HTTPS fields
@@ -45,16 +47,16 @@ Newest updates are at the top of this file.
 - mqmetric - Force conversion to 1208 for resource metrics (#345)
 - New package for instrumenting applications for OpenTelemetry Tracing
 
-## Jun 18 2024 - v5.6.0 
+## Jun 18 2024 - v5.6.0
 - Update for MQ 9.4.0
 
-## Feb 29 2024 - v5.5.4 
+## Feb 29 2024 - v5.5.4
 - Update for MQ 9.3.5
 - ibmmq - Add simple tracing for MQI calls (MQIGO_TRACE env var)
 - samples - Add sample obtaining and using a JWT token
 - Make Go 1.18 baseline compiler
 
-## Nov 13 2023 - v5.5.3 
+## Nov 13 2023 - v5.5.3
 - mqmetric - MQ 9.3 permits resource subscriptions for queues with '/' in name
 
 ## Nov 08 2023 - v5.5.2
@@ -64,8 +66,8 @@ Newest updates are at the top of this file.
 ## Oct 19 2023 - v5.5.1
 - Update for MQ 9.3.4
 - ibmmq - Support for new CSP JWT Token field
-- mqmetric - metrics.txt now includes the published resource metrics, automatically generated 
-             from product documentation 
+- mqmetric - metrics.txt now includes the published resource metrics, automatically generated
+             from product documentation
 - Refresh links to IBM documentation
 
 ## Jun 21 2023 - v5.5.0
@@ -77,14 +79,14 @@ Newest updates are at the top of this file.
 - Update for MQ 9.3.2
 - mqmetric - Add hostname tag for 9.3.2 qmgrs (added to DIS QMSTATUS response) (ibm-messaging/mq-metric-samples#184)
 - mqmetric - Add subscriptions to NativeHA published metrics
-- mqmetric - Add metrics for status of log extents 
+- mqmetric - Add metrics for status of log extents
 
 ## Jan 10 2023 - v5.3.3
 - ibmmq - Add more attributes that can be MQINQ'd
 - mqmetric - New metric qmgr_active_listeners (ibm-messaging/mq-metric-samples#183)
 - mqmetric - Add qmgr description as tag (ibm-messaging/mq-metric-samples#184)
-- mqmetric - Add metrics.txt to list the available metrics that do not come from 
-             the amqsrua-style publication          
+- mqmetric - Add metrics.txt to list the available metrics that do not come from
+             the amqsrua-style publication
 
 ## Oct 17 2022 - v5.3.2
 - Update for MQ 9.3.1
@@ -94,7 +96,7 @@ Newest updates are at the top of this file.
 - mqmetric - Add metrics for AMQP channels
 - mqmetric - Add cluster name as tag for queues (#191)
 - Rewrite README to better match recent compiler versions and module management
-- Update expected Go compiler version 
+- Update expected Go compiler version
 
 ## Jul 23 2022 - v5.3.1
 - Fix #189 compile problem

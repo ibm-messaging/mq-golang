@@ -82,6 +82,7 @@ type ObjInfo struct {
 	exists          bool // Used during rediscovery
 	firstCollection bool // To indicate discard needed of first stat
 	Description     string
+	Custom          string
 	// Qmgr attributes
 	QMgrName string
 	HostName string
@@ -392,40 +393,42 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 		defer metaReplyQObj.Close(0)
 		defer mqtd.unsubscribe()
 
-		elemList, _ := parsePCFResponse(data)
+		if err == nil {
+			elemList, _ := parsePCFResponse(data)
 
-		for i := 0; i < len(elemList); i++ {
-			if elemList[i].Type != ibmmq.MQCFT_GROUP {
-				continue
-			}
-			group := elemList[i]
-			cl := new(MonClass)
-			classIndex := 0
-			cl.Types = make(map[int]*MonType)
-			cl.Parent = GetPublishedMetrics(k)
-
-			for j := 0; j < len(group.GroupList); j++ {
-				elem := group.GroupList[j]
-				switch elem.Parameter {
-				case ibmmq.MQIAMO_MONITOR_CLASS:
-					classIndex = int(elem.Int64Value[0])
-				case ibmmq.MQIAMO_MONITOR_FLAGS:
-					cl.flags = int(elem.Int64Value[0])
-				case ibmmq.MQCAMO_MONITOR_CLASS:
-					cl.Name = elem.String[0]
-				case ibmmq.MQCAMO_MONITOR_DESC:
-					cl.Description = elem.String[0]
-				case ibmmq.MQCA_TOPIC_STRING:
-					cl.typesTopic = elem.String[0]
-				default:
-					e2 := fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
-					traceExitErr("discoverClasses", 1, e2)
-					return e2
+			for i := 0; i < len(elemList); i++ {
+				if elemList[i].Type != ibmmq.MQCFT_GROUP {
+					continue
 				}
-			}
+				group := elemList[i]
+				cl := new(MonClass)
+				classIndex := 0
+				cl.Types = make(map[int]*MonType)
+				cl.Parent = GetPublishedMetrics(k)
 
-			if includeClass(dc, cl.Name) {
-				cl.Parent.Classes[classIndex] = cl
+				for j := 0; j < len(group.GroupList); j++ {
+					elem := group.GroupList[j]
+					switch elem.Parameter {
+					case ibmmq.MQIAMO_MONITOR_CLASS:
+						classIndex = int(elem.Int64Value[0])
+					case ibmmq.MQIAMO_MONITOR_FLAGS:
+						cl.flags = int(elem.Int64Value[0])
+					case ibmmq.MQCAMO_MONITOR_CLASS:
+						cl.Name = elem.String[0]
+					case ibmmq.MQCAMO_MONITOR_DESC:
+						cl.Description = elem.String[0]
+					case ibmmq.MQCA_TOPIC_STRING:
+						cl.typesTopic = elem.String[0]
+					default:
+						e2 := fmt.Errorf("Unknown parameter %d in class discovery", elem.Parameter)
+						traceExitErr("discoverClasses", 1, e2)
+						return e2
+					}
+				}
+
+				if includeClass(dc, cl.Name) {
+					cl.Parent.Classes[classIndex] = cl
+				}
 			}
 		}
 	}
@@ -449,50 +452,52 @@ func discoverTypes(dc DiscoverConfig, cl *MonClass) error {
 		defer metaReplyQObj.Close(0)
 		defer mqtd.unsubscribe()
 
-		elemList, _ := parsePCFResponse(data)
+		if err == nil {
+			elemList, _ := parsePCFResponse(data)
 
-		for i := 0; i < len(elemList); i++ {
-			if elemList[i].Type != ibmmq.MQCFT_GROUP {
-				continue
-			}
-
-			group := elemList[i]
-			ty := new(MonType)
-			ty.Elements = make(map[int]*MonElement)
-			ty.subHobj = make(map[string]*MQTopicDescriptor)
-
-			typeIndex := 0
-			ty.Parent = cl
-
-			for j := 0; j < len(group.GroupList); j++ {
-				elem := group.GroupList[j]
-				switch elem.Parameter {
-
-				case ibmmq.MQIAMO_MONITOR_TYPE:
-					typeIndex = int(elem.Int64Value[0])
-				case ibmmq.MQCAMO_MONITOR_TYPE:
-					ty.Name = elem.String[0]
-				case ibmmq.MQCAMO_MONITOR_DESC:
-					ty.Description = elem.String[0]
-				case ibmmq.MQCA_TOPIC_STRING:
-					ty.elementTopic = elem.String[0]
-				default:
-					e2 := fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
-					traceExitErr("discoverTypes", 1, e2)
-					return e2
+			for i := 0; i < len(elemList); i++ {
+				if elemList[i].Type != ibmmq.MQCFT_GROUP {
+					continue
 				}
-			}
-			if ty.Parent.Name == "STATQ" && dc.MonitoredQueues.SubscriptionSelector != "" {
-				if strings.Contains(dc.MonitoredQueues.SubscriptionSelector, ty.Name) {
+
+				group := elemList[i]
+				ty := new(MonType)
+				ty.Elements = make(map[int]*MonElement)
+				ty.subHobj = make(map[string]*MQTopicDescriptor)
+
+				typeIndex := 0
+				ty.Parent = cl
+
+				for j := 0; j < len(group.GroupList); j++ {
+					elem := group.GroupList[j]
+					switch elem.Parameter {
+
+					case ibmmq.MQIAMO_MONITOR_TYPE:
+						typeIndex = int(elem.Int64Value[0])
+					case ibmmq.MQCAMO_MONITOR_TYPE:
+						ty.Name = elem.String[0]
+					case ibmmq.MQCAMO_MONITOR_DESC:
+						ty.Description = elem.String[0]
+					case ibmmq.MQCA_TOPIC_STRING:
+						ty.elementTopic = elem.String[0]
+					default:
+						e2 := fmt.Errorf("Unknown parameter %d in type discovery", elem.Parameter)
+						traceExitErr("discoverTypes", 1, e2)
+						return e2
+					}
+				}
+				if ty.Parent.Name == "STATQ" && dc.MonitoredQueues.SubscriptionSelector != "" {
+					if strings.Contains(dc.MonitoredQueues.SubscriptionSelector, ty.Name) {
+						if includeType(dc, ty.Name) {
+							cl.Types[typeIndex] = ty
+						}
+					} else {
+						logDebug("Not subscribing to Class STATQ Type %s resources", ty.Name)
+					}
+				} else {
 					if includeType(dc, ty.Name) {
 						cl.Types[typeIndex] = ty
 					}
-				} else {
-					logDebug("Not subscribing to Class STATQ Type %s resources", ty.Name)
-				}
-			} else {
-				if includeType(dc, ty.Name) {
-					cl.Types[typeIndex] = ty
 				}
 			}
 		}
@@ -520,46 +525,48 @@ func discoverElements(dc DiscoverConfig, ty *MonType) error {
 		defer metaReplyQObj.Close(0)
 		defer mqtd.unsubscribe()
 
-		elemList, _ := parsePCFResponse(data)
+		if err == nil {
+			elemList, _ := parsePCFResponse(data)
 
-		for i := 0; i < len(elemList); i++ {
+			for i := 0; i < len(elemList); i++ {
 
-			if elemList[i].Type == ibmmq.MQCFT_STRING && elemList[i].Parameter == ibmmq.MQCA_TOPIC_STRING {
-				ty.ObjectTopic = elemList[i].String[0]
-				continue
-			}
-
-			if elemList[i].Type != ibmmq.MQCFT_GROUP {
-				continue
-			}
-
-			group := elemList[i]
-
-			elem = new(MonElement)
-			elementIndex := 0
-			elem.Parent = ty
-			elem.Values = make(map[string]int64)
-
-			for j := 0; j < len(group.GroupList); j++ {
-				e := group.GroupList[j]
-				switch e.Parameter {
-
-				case ibmmq.MQIAMO_MONITOR_ELEMENT:
-					elementIndex = int(e.Int64Value[0])
-				case ibmmq.MQIAMO_MONITOR_DATATYPE:
-					elem.Datatype = int32(e.Int64Value[0])
-				case ibmmq.MQCAMO_MONITOR_DESC:
-					elem.Description = e.String[0]
-				default:
-					e2 := fmt.Errorf("Unknown parameter %d in type discovery", e.Parameter)
-					traceExitErr("discoverElements", 1, e2)
-					return e2
+				if elemList[i].Type == ibmmq.MQCFT_STRING && elemList[i].Parameter == ibmmq.MQCA_TOPIC_STRING {
+					ty.ObjectTopic = elemList[i].String[0]
+					continue
 				}
-			}
 
-			elem.MetricName = formatDescription(elem)
-			if includeElem(ci, elem, true) {
-				ty.Elements[elementIndex] = elem
+				if elemList[i].Type != ibmmq.MQCFT_GROUP {
+					continue
+				}
+
+				group := elemList[i]
+
+				elem = new(MonElement)
+				elementIndex := 0
+				elem.Parent = ty
+				elem.Values = make(map[string]int64)
+
+				for j := 0; j < len(group.GroupList); j++ {
+					e := group.GroupList[j]
+					switch e.Parameter {
+
+					case ibmmq.MQIAMO_MONITOR_ELEMENT:
+						elementIndex = int(e.Int64Value[0])
+					case ibmmq.MQIAMO_MONITOR_DATATYPE:
+						elem.Datatype = int32(e.Int64Value[0])
+					case ibmmq.MQCAMO_MONITOR_DESC:
+						elem.Description = e.String[0]
+					default:
+						e2 := fmt.Errorf("Unknown parameter %d in type discovery", e.Parameter)
+						traceExitErr("discoverElements", 1, e2)
+						return e2
+					}
+				}
+
+				elem.MetricName = formatDescription(elem)
+				if includeElem(ci, elem, true) {
+					ty.Elements[elementIndex] = elem
+				}
 			}
 		}
 	}
@@ -1645,6 +1652,25 @@ func GetObjectDescription(key string, objectType int32) string {
 		return DUMMY_STRING
 	} else {
 		return o.Description
+	}
+}
+
+func GetObjectCustom(key string, objectType int32) string {
+	var o *ObjInfo
+	ok := false
+	switch objectType {
+	case ibmmq.MQOT_Q:
+		o, ok = qInfoMap[key]
+	case OT_Q_MGR:
+		o = qMgrInfo
+		ok = true
+	}
+
+	if !ok || strings.TrimSpace(o.Custom) == "" {
+		// return something so Prometheus doesn't turn it into "0.0"
+		return DUMMY_STRING
+	} else {
+		return o.Custom
 	}
 }
 

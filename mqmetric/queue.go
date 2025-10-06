@@ -354,6 +354,9 @@ func inquireQueueAttributes(objectPatternsList string) error {
 		pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
 		pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
 		pcfparm.Int64Value = []int64{int64(ibmmq.MQIA_MAX_Q_DEPTH), int64(ibmmq.MQIA_USAGE), int64(ibmmq.MQIA_DEFINITION_TYPE), int64(ibmmq.MQCA_Q_DESC), int64(ibmmq.MQCA_CLUSTER_NAME)}
+		if ci.showCustomAttribute {
+			pcfparm.Int64Value = append(pcfparm.Int64Value, int64(ibmmq.MQCA_CUSTOM))
+		}
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
@@ -593,6 +596,14 @@ func parseQAttrData(cfh *ibmmq.MQCFH, buf []byte) {
 			if v != "" {
 				if qInfo, ok := qInfoMap[qName]; ok {
 					qInfo.Description = printableStringUTF8(v)
+				}
+			}
+
+		case ibmmq.MQCA_CUSTOM:
+			v := elem.String[0]
+			if v != "" {
+				if qInfo, ok := qInfoMap[qName]; ok {
+					qInfo.Custom = printableStringUTF8(v)
 				}
 			}
 

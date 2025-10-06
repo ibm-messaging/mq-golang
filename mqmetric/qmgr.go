@@ -192,6 +192,10 @@ func collectQueueManagerAttrsZOS() error {
 		ibmmq.MQIA_TCP_CHANNELS,
 		ibmmq.MQIA_MAX_CHANNELS}
 
+	if ci.showCustomAttribute {
+		selectors = append(selectors, ibmmq.MQCA_CUSTOM)
+	}
+
 	v, err := ci.si.qMgrObject.Inq(selectors)
 	if err == nil {
 		maxchls := v[ibmmq.MQIA_MAX_CHANNELS].(int32)
@@ -209,6 +213,9 @@ func collectQueueManagerAttrsZOS() error {
 		st.Attributes[ATTR_QMGR_STATUS].Values[key] = newStatusValueInt64(int64(ibmmq.MQQMSTA_RUNNING))
 		qMgrInfo.Description = desc
 		qMgrInfo.QMgrName = key
+		if ci.showCustomAttribute {
+			qMgrInfo.Custom = v[ibmmq.MQCA_CUSTOM].(string)
+		}
 	}
 	traceExitErr("collectQueueManagerAttrsZOS", 0, err)
 
@@ -222,16 +229,21 @@ func collectQueueManagerAttrsDist() error {
 	st := GetObjectStatus(GetConnectionKey(), OT_Q_MGR)
 
 	selectors := []int32{ibmmq.MQCA_Q_MGR_NAME,
-		ibmmq.MQCA_Q_MGR_DESC}
+		ibmmq.MQCA_Q_MGR_DESC, ibmmq.MQCA_CUSTOM}
 
 	v, err := ci.si.qMgrObject.Inq(selectors)
 	desc := DUMMY_STRING
+	custom := DUMMY_STRING
+
 	if err == nil {
 		key := v[ibmmq.MQCA_Q_MGR_NAME].(string)
 		desc = v[ibmmq.MQCA_Q_MGR_DESC].(string)
+		custom = v[ibmmq.MQCA_CUSTOM].(string)
+
 		st.Attributes[ATTR_QMGR_NAME].Values[key] = newStatusValueString(key)
 		qMgrInfo.Description = desc
 		qMgrInfo.QMgrName = key
+		qMgrInfo.Custom = custom
 	}
 
 	traceExitErr("collectQueueManagerAttrsDist", 0, err)
