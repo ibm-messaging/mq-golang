@@ -1,7 +1,7 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## XXX XX 2025 - v5.6.5
+## Oct 16 2025 - v5.6.5
 - Update for MQ 9.4.4
 - mqmetric - Make command requests (and replies) expire after a while
 - mqmetric - Add option to add CUSTOM attribute to qmgr/queue tags (ibm-messaging/mq-metric-samples#392)

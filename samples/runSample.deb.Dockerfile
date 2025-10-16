@@ -1,4 +1,4 @@
-# © Copyright IBM Corporation 2019, 2024
+# © Copyright IBM Corporation 2019, 2025
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz" \
-    VRMF=9.4.3.0
+    VRMF=9.4.4.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package

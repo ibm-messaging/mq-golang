@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  5/27/25 12:25 PM
-*   Build Level:   p943-L250527
+*   Generated on:  10/3/25, 11:37 AM
+*   Build Level:   p944-L251003
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -1047,7 +1047,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 943
+	MQCMDL_CURRENT_LEVEL           int32  = 944
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1104,6 +1104,7 @@ const (
 	MQCMDL_LEVEL_941               int32  = 941
 	MQCMDL_LEVEL_942               int32  = 942
 	MQCMDL_LEVEL_943               int32  = 943
+	MQCMDL_LEVEL_944               int32  = 944
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -5086,6 +5087,7 @@ const (
 	MQ_DISTINGUISHED_NAME_LENGTH   int32  = 1024
 	MQ_DNS_GROUP_NAME_LENGTH       int32  = 18
 	MQ_DSG_NAME_LENGTH             int32  = 8
+	MQ_ENCRYPTION_KEY_LENGTH       int32  = 256
 	MQ_ENTITY_NAME_LENGTH          int32  = 1024
 	MQ_ENV_INFO_LENGTH             int32  = 96
 	MQ_EXIT_DATA_LENGTH            int32  = 32
