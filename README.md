@@ -12,6 +12,8 @@ A minimum level of MQ V8 is required to build these packages, although it should
 This package is provided as-is with no guarantees of support or updates. You cannot use IBM formal support channels
 (Cases/PMRs) for assistance with material in this repository.
 
+This does not affect the status of the underlying MQ C client libraries which have their own support conditions.
+
 There are also no guarantees of compatibility with any future versions of the package; the API is subject to change
 based on any feedback. Versioned releases are made in this repository to assist with using stable APIs. Future versions
 will follow semver guidance so that breaking changes will only be done with a new major version number on the module.
