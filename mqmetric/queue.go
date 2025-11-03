@@ -94,10 +94,16 @@ func QueueInitAttributes() {
 	// These are the integer status fields that are of interest
 	attr = ATTR_Q_MSGAGE
 	st.Attributes[attr] = newStatusAttribute(attr, "Oldest Message", ibmmq.MQIACF_OLDEST_MSG_AGE)
-	attr = ATTR_Q_IPPROCS
-	st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
-	attr = ATTR_Q_OPPROCS
-	st.Attributes[attr] = newStatusAttribute(attr, "Output Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+
+	// Don't want to add these if only the UsePublication option is active, as the descriptions
+	// of the metrics can conflict in Prometheus. These are the same attributes from the
+	// excludeMetric map in discover.go
+	if ci.useStatus {
+		attr = ATTR_Q_IPPROCS
+		st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
+		attr = ATTR_Q_OPPROCS
+		st.Attributes[attr] = newStatusAttribute(attr, "Output Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+	}
 	attr = ATTR_Q_UNCOM
 	if ci.si.platform == ibmmq.MQPL_ZOS {
 		st.Attributes[attr] = newStatusAttribute(attr, "Uncommitted Messages (Yes/No)", ibmmq.MQIACF_UNCOMMITTED_MSGS)

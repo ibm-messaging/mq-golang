@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Nov 03 2025 - v5.6.6
+- mqmetric - Fix for ibm-messaging/mq-metric-samples#440
+
 ## Oct 16 2025 - v5.6.5
 - Update for MQ 9.4.4
 - mqmetric - Make command requests (and replies) expire after a while
