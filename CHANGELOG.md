@@ -1,6 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Nov 12 2025 - v5.6.7
+- mqmetric - Improve performance of clearing response queues if messages are (wrongly) persistent
+  * Add warning message if persistent messages are found
+- mqmetric - Make sure queue/qmgr attributes are always available for tagging metrics
+
 ## Nov 03 2025 - v5.6.6
 - mqmetric - Fix for ibm-messaging/mq-metric-samples#440
 
@@ -22,13 +27,13 @@ Newest updates are at the top of this file.
 - samples  - JWT prefer to use ClientSecret instead of Password
 
 ## May 08 2025 - v5.6.3
-- mqmetric - Fixes for #222 and ibm-messaging/mq-metric-samples#395
+- mqmetric - Fixes for ibm-messaging/mg-golang#222 and ibm-messaging/mq-metric-samples#395
 
 ## Feb 28 2025 - v5.6.2
 - Update for MQ 9.4.2
 - ibmmq - Add function to map PCF attribute values to strings
 - ibmmq - Interpret more PCF types (the filters)
-- ibmmq - MaxSCOLength fix - PR #216
+- ibmmq - MaxSCOLength fix - (#216)
 - ibmmq - Add MQIGolangVersion function
 - ibmmq - Handle MQ C client callbacks with wrong hObj (#217)
 - mqmetric - Ignore the EXTENDED queue metrics unless explicitly enabled
@@ -63,7 +68,7 @@ Newest updates are at the top of this file.
 - mqmetric - MQ 9.3 permits resource subscriptions for queues with '/' in name
 
 ## Nov 08 2023 - v5.5.2
-- ibmmq - #204 data race fix
+- ibmmq - data race fix (#204)
 - mqmetric - deal with empty QueueSubFilter option
 
 ## Oct 19 2023 - v5.5.1
@@ -102,7 +107,7 @@ Newest updates are at the top of this file.
 - Update expected Go compiler version
 
 ## Jul 23 2022 - v5.3.1
-- Fix #189 compile problem
+- Fix compile problem (#189)
 
 ## Jun 23 2022 - v5.3.0
 - Update for MQ 9.3.0
@@ -141,8 +146,8 @@ Scope of mqmetric changes seem to justify new minor number
 * Update for MQ 9.2.2
 * Add DltMH calls to clarify samples
 * mqmetric - Restructure to allow multiple connections & reduce public interfaces
-* mqmetric - Deal with discovery of large numbers of queues (#133, #161)
-* ibmmq - Add PutDateTime as time.Time field in MQMD, MQDLH. Use of the string forms should be considered deprecated (inspired by #159)
+* mqmetric - Deal with discovery of large numbers of queues (ibm-messaging/mg-golang#133, ibm-messaging/mg-golang#161)
+* ibmmq - Add PutDateTime as time.Time field in MQMD, MQDLH. Use of the string forms should be considered deprecated (inspired by ibm-messaging/mg-golang#159)
 * Add a DEPRECATIONS file for when advance notice might be needed
 
 ## Dec 04 2020 - v5.1.3
@@ -229,9 +234,9 @@ Scope of mqmetric changes seem to justify new minor number
 
 ## May 31 2019 - v4.0.6
 * mqmetric - Allow limited monitoring of V8 Distributed platforms
-  * Set `ibmmq.usePublications` to *false* to enable in monitor programs #104
+  * Set `ibmmq.usePublications` to *false* to enable in monitor programs(#104)
 * mqmetric - Added queue_attribute_max_depth to permit %full calculation
-  * Set `ibmmq.useStatus` to *true* to enable in monitor programs #105
+  * Set `ibmmq.useStatus` to *true* to enable in monitor programs (#105)
 * samples - Correct use of the new form of the Inq() verb
 
 ## April 23 2019

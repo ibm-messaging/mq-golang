@@ -796,16 +796,15 @@ func discoverQueues(monitoredQueuePatterns string) error {
 			qInfoMap[qName] = qInfoElem
 		}
 
-		if ci.useStatus {
-			if usingRegExp {
-				for qName, _ := range qInfoMap {
-					if len(qName) > 0 {
-						inquireQueueAttributes(qName)
-					}
+		// Get the object attributes that are going to be used for tags
+		if usingRegExp {
+			for qName, _ := range qInfoMap {
+				if len(qName) > 0 {
+					inquireQueueAttributes(qName)
 				}
-			} else {
-				inquireQueueAttributes(monitoredQueuePatterns)
 			}
+		} else {
+			inquireQueueAttributes(monitoredQueuePatterns)
 		}
 
 		if ci.localSlashWarning {
@@ -1461,15 +1460,14 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 	}
 
 	// Convert suitable metrics to base units
-	if elem.Datatype == ibmmq.MQIAMO_MONITOR_PERCENT ||
-		elem.Datatype == ibmmq.MQIAMO_MONITOR_HUNDREDTHS {
+	switch elem.Datatype {
+	case ibmmq.MQIAMO_MONITOR_PERCENT, ibmmq.MQIAMO_MONITOR_HUNDREDTHS:
 		f = f / 100
-	} else if elem.Datatype == ibmmq.MQIAMO_MONITOR_MB {
+	case ibmmq.MQIAMO_MONITOR_MB:
 		f = f * 1024 * 1024
-	} else if elem.Datatype == ibmmq.MQIAMO_MONITOR_GB {
+	case ibmmq.MQIAMO_MONITOR_GB:
 		f = f * 1024 * 1024 * 1024
-	} else if elem.Datatype ==
-		ibmmq.MQIAMO_MONITOR_MICROSEC {
+	case ibmmq.MQIAMO_MONITOR_MICROSEC:
 		f = f / 1000000
 	}
 

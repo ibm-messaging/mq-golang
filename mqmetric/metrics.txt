@@ -254,7 +254,9 @@ and the basic associated metric name.
 As an example, one of the metrics available in Prometheus might be "ibmmq_channel_bytes_sent" with
 the full name created by combining the product name, the class, and the individual metric.
 
-Access to these metrics requires the "useObjectStatus" (or "-ibmmq.useStatus" as command line flag) configuration
+For queues and queue managers, these metrics are always available.
+
+Access to other metrics in this set requires the "useObjectStatus" (or "-ibmmq.useStatus" as command line flag) configuration
 attribute to be set for the collector.
 
 Class: amqp

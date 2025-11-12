@@ -29,6 +29,7 @@ import (
 
 // var statusDummy = fmt.Sprintf("dummy")
 var timeTravelWarningIssued = false
+var persistenceWarningIssued = false
 
 /*
 This file defines types and constructors for elements related to status
@@ -169,12 +170,15 @@ func statusTimeEpoch(d string, t string) int64 {
 }
 
 func clearQ(hObj ibmmq.MQObject) {
+	p := 0
 	buf := make([]byte, 0)
-	// Empty replyQ in case any left over from previous errors
+	// Empty reply and publication destination queues in case any left over from previous runs.
+	// Do it in batches if the messages are persistent. Which they shouldn't be, but you
+	// never know.
 	for ok := true; ok; {
 		getmqmd := ibmmq.NewMQMD()
 		gmo := ibmmq.NewMQGMO()
-		gmo.Options = ibmmq.MQGMO_NO_SYNCPOINT
+		gmo.Options = ibmmq.MQGMO_SYNCPOINT_IF_PERSISTENT
 		gmo.Options |= ibmmq.MQGMO_FAIL_IF_QUIESCING
 		gmo.Options |= ibmmq.MQGMO_NO_WAIT
 		gmo.Options |= ibmmq.MQGMO_CONVERT
@@ -184,7 +188,33 @@ func clearQ(hObj ibmmq.MQObject) {
 		if err != nil && err.(*ibmmq.MQReturn).MQCC == ibmmq.MQCC_FAILED {
 			ok = false
 		}
+
+		if getmqmd.Persistence == ibmmq.MQPER_PERSISTENT {
+			p++
+			if (p % 50) == 0 {
+				err = hObj.GetHConn().Cmit()
+				if err != nil {
+					logError("Problem committing removal of persistent messages: %v", err)
+				} else {
+					p = 0
+				}
+			}
+
+			if !persistenceWarningIssued {
+				persistenceWarningIssued = true
+				logWarn("Response messages are unnecessarily persistent. Check the DEFPSIST value on the configured reply queues.")
+			}
+		}
 	}
+
+	// If we've not committed removal of a final batch of persistent messages, do it now.
+	if p > 0 {
+		err := hObj.GetHConn().Cmit()
+		if err != nil {
+			logError("Problem committing removal of persistent messages: %v", err)
+		}
+	}
+
 	return
 }
 
