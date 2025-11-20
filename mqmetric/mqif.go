@@ -280,9 +280,11 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 	}
 
 	// MQOPEN of a reply queue also used for subscription delivery
+	inputOpt := ibmmq.MQOO_INPUT_EXCLUSIVE
+	// inputOpt = ibmmq.MQOO_INPUT_SHARED
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
-		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions := inputOpt | ibmmq.MQOO_FAIL_IF_QUIESCING
 		openOptions |= ibmmq.MQOO_INQUIRE
 		mqod.ObjectType = ibmmq.MQOT_Q
 		mqod.ObjectName = replyQ
@@ -290,7 +292,25 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 		ci.si.replyQBaseName = replyQ
 		if err == nil {
 			ci.si.queuesOpened = true
-			clearQ(ci.si.replyQObj)
+			ci.si.replyQReadAhead = false
+
+			// There may be performance benefits to using READAHEAD on the reply queues, but we
+			// need to know if it's going to be used. We don't use the MQOO option to ask for
+			// it explicitly, but rely on the queue's default option. So find that with an MQINQ
+			// and stash it.
+			selectors := []int32{ibmmq.MQIA_DEF_READ_AHEAD}
+			vals, inqErr := ci.si.replyQObj.Inq(selectors)
+			if inqErr == nil {
+				ra := vals[ibmmq.MQIA_DEF_READ_AHEAD]
+				if ra == ibmmq.MQREADA_YES {
+					ci.si.replyQReadAhead = true
+				}
+			} else {
+				// log the error but ignore it
+				logWarn("Cannot find DEF_READ_AHEAD for %s: %v", mqod.ObjectName, inqErr)
+
+			}
+			clearQ(ci.si.replyQObj, ci.si.replyQReadAhead)
 		} else {
 			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
@@ -300,7 +320,9 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 	// MQOPEN of a second reply queue used for status polling
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
-		openOptions := ibmmq.MQOO_INPUT_EXCLUSIVE | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions := inputOpt | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions |= ibmmq.MQOO_INQUIRE
+
 		mqod.ObjectType = ibmmq.MQOT_Q
 		ci.si.replyQ2BaseName = replyQ2
 		if replyQ2 != "" {
@@ -313,13 +335,33 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
 		} else {
-			clearQ(ci.si.statusReplyQObj)
+			// If replyQ2 is not set, we can reuse knowledge from the previous
+			// block about how readahead is configured.
+			if replyQ2 != "" {
+				ci.si.statusReplyQReadAhead = false
+
+				selectors := []int32{ibmmq.MQIA_DEF_READ_AHEAD}
+				vals, inqErr := ci.si.statusReplyQObj.Inq(selectors)
+				if inqErr == nil {
+					ra := vals[ibmmq.MQIA_DEF_READ_AHEAD]
+					if ra == ibmmq.MQREADA_YES {
+						ci.si.statusReplyQReadAhead = true
+					}
+				} else {
+					// log the error but ignore it
+					logWarn("Cannot find DEF_READ_AHEAD for %s: %v", mqod.ObjectName, inqErr)
+
+				}
+			} else {
+				ci.si.statusReplyQReadAhead = ci.si.replyQReadAhead
+			}
+			clearQ(ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
 		}
 	}
 
 	// Start from a clean set of subscriptions. Errors from this can be ignored.
 	if err == nil && ci.durableSubPrefix != "" && ci.usePublications {
-		clearDurableSubscriptions(ci.durableSubPrefix, ci.si.cmdQObj, ci.si.statusReplyQObj)
+		clearDurableSubscriptions(ci.durableSubPrefix, ci.si.cmdQObj, ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
 	}
 
 	// If anything has gone wrong in the initial connection and object access then return an error.
@@ -586,13 +628,13 @@ We can't use the resubscribe/close technique here because a) we don't know in ad
 subscription names are and b) we don't know which queue is attached - the collector configuration
 might have changed. So we do this cleanup using the PCF commands.
 */
-func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj ibmmq.MQObject) {
+func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj ibmmq.MQObject, readAhead bool) {
 	var err error
 
 	subNameList := make(map[string]string)
 	traceEntry("clearDurableSubscriptions")
 
-	clearQ(replyQObj)
+	clearQ(replyQObj, readAhead)
 	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 
 	// Can allow all the other fields to default
@@ -639,7 +681,7 @@ func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj 
 	// For each of th returned subscription names, do the delete
 	for subName, _ := range subNameList {
 		logDebug("About to delete subscription %s", subName)
-		clearQ(replyQObj)
+		clearQ(replyQObj, readAhead)
 
 		putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
 		// Can allow all the other fields to default

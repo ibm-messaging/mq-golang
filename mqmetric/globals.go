@@ -29,14 +29,19 @@ import (
 )
 
 type sessionInfo struct {
-	qMgr            ibmmq.MQQueueManager
-	cmdQObj         ibmmq.MQObject
-	replyQObj       ibmmq.MQObject
-	qMgrObject      ibmmq.MQObject
+	qMgr       ibmmq.MQQueueManager
+	cmdQObj    ibmmq.MQObject
+	qMgrObject ibmmq.MQObject
+
 	replyQBaseName  string
 	replyQ2BaseName string
-	statusReplyQObj ibmmq.MQObject
-	statusReplyBuf  []byte
+
+	replyQObj       ibmmq.MQObject
+	replyQReadAhead bool
+
+	statusReplyQObj       ibmmq.MQObject
+	statusReplyQReadAhead bool
+	statusReplyBuf        []byte
 
 	platform         int32
 	commandLevel     int32
