@@ -279,45 +279,10 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 
 	}
 
-	// MQOPEN of a reply queue also used for subscription delivery
+	// MQOPEN of a reply queue used for status polling, and responses to any other PCF commands.
+	// Although this is replyQ2, we now open it first to give a chance of executing CLEAR QL(replyQ) before
+	// that subscription delivery queue has been opened
 	inputOpt := ibmmq.MQOO_INPUT_EXCLUSIVE
-	// inputOpt = ibmmq.MQOO_INPUT_SHARED
-	if err == nil {
-		mqod := ibmmq.NewMQOD()
-		openOptions := inputOpt | ibmmq.MQOO_FAIL_IF_QUIESCING
-		openOptions |= ibmmq.MQOO_INQUIRE
-		mqod.ObjectType = ibmmq.MQOT_Q
-		mqod.ObjectName = replyQ
-		ci.si.replyQObj, err = ci.si.qMgr.Open(mqod, openOptions)
-		ci.si.replyQBaseName = replyQ
-		if err == nil {
-			ci.si.queuesOpened = true
-			ci.si.replyQReadAhead = false
-
-			// There may be performance benefits to using READAHEAD on the reply queues, but we
-			// need to know if it's going to be used. We don't use the MQOO option to ask for
-			// it explicitly, but rely on the queue's default option. So find that with an MQINQ
-			// and stash it.
-			selectors := []int32{ibmmq.MQIA_DEF_READ_AHEAD}
-			vals, inqErr := ci.si.replyQObj.Inq(selectors)
-			if inqErr == nil {
-				ra := vals[ibmmq.MQIA_DEF_READ_AHEAD]
-				if ra == ibmmq.MQREADA_YES {
-					ci.si.replyQReadAhead = true
-				}
-			} else {
-				// log the error but ignore it
-				logWarn("Cannot find DEF_READ_AHEAD for %s: %v", mqod.ObjectName, inqErr)
-
-			}
-			clearQ(ci.si.replyQObj, ci.si.replyQReadAhead)
-		} else {
-			errorString = "Cannot open queue " + mqod.ObjectName
-			mqreturn = err.(*ibmmq.MQReturn)
-		}
-	}
-
-	// MQOPEN of a second reply queue used for status polling
 	if err == nil {
 		mqod := ibmmq.NewMQOD()
 		openOptions := inputOpt | ibmmq.MQOO_FAIL_IF_QUIESCING
@@ -335,27 +300,76 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
 		} else {
-			// If replyQ2 is not set, we can reuse knowledge from the previous
-			// block about how readahead is configured.
-			if replyQ2 != "" {
-				ci.si.statusReplyQReadAhead = false
 
+			// There may be performance benefits to using READAHEAD on the reply queues, but we
+			// need to know if it's going to be used. We don't use the MQOO option to ask for
+			// it explicitly, but rely on the queue's default option. So find that with an MQINQ
+			// and stash it.
+			ci.si.statusReplyQReadAhead = false
+
+			selectors := []int32{ibmmq.MQIA_DEF_READ_AHEAD}
+			vals, inqErr := ci.si.statusReplyQObj.Inq(selectors)
+			if inqErr == nil {
+				ra := vals[ibmmq.MQIA_DEF_READ_AHEAD]
+				if ra == ibmmq.MQREADA_YES {
+					ci.si.statusReplyQReadAhead = true
+				}
+				logTrace("DEF_READ_AHEAD for %s: %d", mqod.ObjectName, ra)
+
+			} else {
+				// log the error but ignore it
+				logWarn("Cannot find DEF_READ_AHEAD for %s: %v", mqod.ObjectName, inqErr)
+
+			}
+
+			// This queue ought always to be empty, but we'll clear it via repeated MQGETs anyway.
+			clearQ(ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
+
+			// Before we open the subscription delivery queue, we will try to clear it using the CLEAR QLOCAL.
+			// command. We can't do that once it's been opened. But if this fails, ignore the error. The reply queue
+			// names have to be different, and replyQ must refer to a local queue. But we can't check the queue type
+			// in advance, so we'll try it anyway.
+			if replyQ2 != "" && replyQ2 != replyQ {
+				clearQPCF(replyQ, ci.si.cmdQObj, ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
+			}
+		}
+	}
+
+	// MQOPEN of a reply queue used for subscription delivery
+	if err == nil {
+		mqod := ibmmq.NewMQOD()
+		openOptions := inputOpt | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions |= ibmmq.MQOO_INQUIRE
+		mqod.ObjectType = ibmmq.MQOT_Q
+		mqod.ObjectName = replyQ
+		ci.si.replyQObj, err = ci.si.qMgr.Open(mqod, openOptions)
+		ci.si.replyQBaseName = replyQ
+		if err == nil {
+			ci.si.queuesOpened = true
+			ci.si.replyQReadAhead = false
+
+			// Do the inquire again, this time for the main replyQ, if it's not the same as the 2ary reply queue
+			if replyQ2 != "" && replyQ2 != replyQ {
 				selectors := []int32{ibmmq.MQIA_DEF_READ_AHEAD}
-				vals, inqErr := ci.si.statusReplyQObj.Inq(selectors)
+				vals, inqErr := ci.si.replyQObj.Inq(selectors)
 				if inqErr == nil {
 					ra := vals[ibmmq.MQIA_DEF_READ_AHEAD]
 					if ra == ibmmq.MQREADA_YES {
-						ci.si.statusReplyQReadAhead = true
+						ci.si.replyQReadAhead = true
 					}
+					logTrace("DEF_READ_AHEAD for %s: %d", mqod.ObjectName, ra)
 				} else {
 					// log the error but ignore it
 					logWarn("Cannot find DEF_READ_AHEAD for %s: %v", mqod.ObjectName, inqErr)
-
 				}
 			} else {
-				ci.si.statusReplyQReadAhead = ci.si.replyQReadAhead
+				ci.si.replyQReadAhead = ci.si.statusReplyQReadAhead
 			}
-			clearQ(ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
+
+			clearQ(ci.si.replyQObj, ci.si.replyQReadAhead)
+		} else {
+			errorString = "Cannot open queue " + mqod.ObjectName
+			mqreturn = err.(*ibmmq.MQReturn)
 		}
 	}
 
@@ -715,6 +729,47 @@ func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj 
 
 	traceExitErr("clearDurableSubscriptions", 0, err)
 
+}
+
+func clearQPCF(qName string, cmdQObj ibmmq.MQObject, replyQObj ibmmq.MQObject, readAhead bool) {
+	var err error
+
+	traceEntryF("clearQPCF", "for queue %s", qName)
+
+	clearQ(replyQObj, readAhead)
+	putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+
+	// Can allow all the other fields to default
+	cfh.Command = ibmmq.MQCMD_CLEAR_Q
+
+	// Add the parameters one at a time into a buffer
+	pcfparm := new(ibmmq.PCFParameter)
+	pcfparm.Type = ibmmq.MQCFT_STRING
+	pcfparm.Parameter = ibmmq.MQCA_Q_NAME
+	pcfparm.String = []string{qName}
+	cfh.ParameterCount++
+	buf = append(buf, pcfparm.Bytes()...)
+
+	// Once we know the total number of parameters, put the
+	// CFH header on the front of the buffer.
+	buf = append(cfh.Bytes(), buf...)
+
+	// And now put the command to the queue
+	err = cmdQObj.Put(putmqmd, pmo, buf)
+	if err != nil {
+		traceExitErr("clearQPCF", 1, err)
+		return
+	}
+
+	// Don't really care about the responses, just loop until
+	// the operation is complete one way or the other
+	for allReceived := false; !allReceived; {
+		_, _, allReceived, err = statusGetReply(putmqmd.MsgId)
+	}
+
+	traceExitErr("clearQPCF", 0, err)
+
+	return
 }
 
 // Given a PCF response message, parse it to extract the desired fields

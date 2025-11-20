@@ -172,11 +172,11 @@ func statusTimeEpoch(d string, t string) int64 {
 	return epoch
 }
 
-func clearMsgWithoutTruncation(hObj ibmmq.MQObject) (*ibmmq.MQMD, int, error) {
+func getMsgWithoutTruncation(hObj ibmmq.MQObject) (*ibmmq.MQMD, int, error) {
 	var err error
 	var md *ibmmq.MQMD
 
-	traceEntry("clearMsgWithoutTruncation")
+	traceEntry("getMsgWithoutTruncation")
 
 	msgLen := 0
 	for trunc := true; trunc; {
@@ -189,7 +189,7 @@ func clearMsgWithoutTruncation(hObj ibmmq.MQObject) (*ibmmq.MQMD, int, error) {
 		gmo.Options |= ibmmq.MQGMO_NO_WAIT
 		gmo.Options |= ibmmq.MQGMO_CONVERT
 
-		logTrace("clearQWithoutTruncation: Trying MQGET with clearQBuffer size %d ", len(clearQBuf))
+		// logTrace("clearQWithoutTruncation: Trying MQGET with clearQBuffer size %d ", len(clearQBuf))
 		msgLen, err = hObj.Get(md, gmo, clearQBuf)
 		if err != nil {
 			mqreturn := err.(*ibmmq.MQReturn)
@@ -200,15 +200,21 @@ func clearMsgWithoutTruncation(hObj ibmmq.MQObject) (*ibmmq.MQMD, int, error) {
 					clearQBuf = clearQBuf[0:maxBufSize]
 				}
 			} else {
-				traceExitF("clearMsgWithoutTruncation", 1, "BufSize %d Error %v", len(clearQBuf), err)
-				return md, msgLen, err
+				if mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+					traceExitF("getMsgWithoutTruncation", 1, "BufSize %d Error %v", len(clearQBuf), err)
+					return md, msgLen, err
+				} else {
+					// Quit cleanly
+					trunc = false
+					// err = nil
+				}
 			}
 		} else {
 			trunc = false
 		}
 	}
 
-	traceExit("clearMsgWithoutTruncation", 0)
+	traceExit("getMsgWithoutTruncation", 0)
 	return md, msgLen, err
 }
 
@@ -219,8 +225,7 @@ func clearQ(hObj ibmmq.MQObject, usingReadAhead bool) {
 	p := 0
 	buf := make([]byte, 0)
 
-	traceEntry("clearQ")
-	logTrace("clearQ: QueueName=%s readAhead=%v", hObj.Name, usingReadAhead)
+	traceEntryF("clearQ", "QueueName=%s readAhead=%v", hObj.Name, usingReadAhead)
 
 	// Empty reply and publication destination queues in case any left over from previous runs.
 	// Do it in batches if the messages are persistent. Which they shouldn't be, but you
@@ -239,23 +244,21 @@ func clearQ(hObj ibmmq.MQObject, usingReadAhead bool) {
 
 		} else {
 			// logDebug("Reverting to clearMsgWithoutTruncation")
-			getmqmd, _, err = clearMsgWithoutTruncation(hObj)
+			getmqmd, _, err = getMsgWithoutTruncation(hObj)
 		}
 
-		// logDebug("clearQ: got message with err %v", err)
+		// logDebug("clearQ: got message with err %v p=%d", err, getmqmd.Persistence)
 
 		if err != nil && err.(*ibmmq.MQReturn).MQCC == ibmmq.MQCC_FAILED {
 			ok = false
-		}
-
-		if getmqmd.Persistence == ibmmq.MQPER_PERSISTENT {
+		} else if getmqmd.Persistence == ibmmq.MQPER_PERSISTENT {
 			p++
 			if (p % 50) == 0 {
 				err = hObj.GetHConn().Cmit()
 				if err != nil {
 					logError("Problem committing removal of persistent messages: %v", err)
 				} else {
-					logDebug("Successful MQCMIT")
+					logTrace("Successful MQCMIT")
 					p = 0
 				}
 			}
@@ -274,7 +277,7 @@ func clearQ(hObj ibmmq.MQObject, usingReadAhead bool) {
 		if err != nil {
 			logError("Problem committing removal of persistent messages: %v", err)
 		} else {
-			logDebug("Successful MQCMIT")
+			logTrace("Successful MQCMIT")
 
 		}
 	}
