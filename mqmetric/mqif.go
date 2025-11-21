@@ -698,6 +698,7 @@ func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj 
 		clearQ(replyQObj, readAhead)
 
 		putmqmd, pmo, cfh, buf := statusSetCommandHeaders()
+
 		// Can allow all the other fields to default
 		cfh.Command = ibmmq.MQCMD_DELETE_SUBSCRIPTION
 
@@ -731,6 +732,9 @@ func clearDurableSubscriptions(prefix string, cmdQObj ibmmq.MQObject, replyQObj 
 
 }
 
+// This tries to issue the "CLEAR QLOCAL" command for fast emptying of a queue during startup, before
+// we've actually opened the queue. This will fail if the queue is not a predefined local queue, but
+// we can ignore that error.
 func clearQPCF(qName string, cmdQObj ibmmq.MQObject, replyQObj ibmmq.MQObject, readAhead bool) {
 	var err error
 
