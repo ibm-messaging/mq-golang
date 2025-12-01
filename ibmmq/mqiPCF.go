@@ -251,6 +251,21 @@ func (p *PCFParameter) Bytes() []byte {
 			offset += 4
 		}
 
+	case C.MQCFT_INTEGER_FILTER:
+		buf = make([]byte, C.MQCFIF_STRUC_LENGTH)
+		offset := 0
+
+		endian.PutUint32(buf[offset:], uint32(p.Type))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(len(buf)))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(p.Filter.Parameter))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(p.Filter.Operator))
+		offset += 4
+		endian.PutUint32(buf[offset:], uint32(p.Filter.FilterValue.(int32)))
+		offset += 4
+
 	case C.MQCFT_STRING:
 		buf = make([]byte, C.MQCFST_STRUC_LENGTH_FIXED+roundTo4(int32(len(p.String[0]))))
 		offset := 0
