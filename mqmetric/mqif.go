@@ -48,9 +48,12 @@ type ConnectionConfig struct {
 	TZOffsetSecs  float64
 	SingleConnect bool
 
-	UsePublications      bool
-	UseStatus            bool
-	UseResetQStats       bool
+	UsePublications bool
+	UseStatus       bool
+	UseResetQStats  bool
+	UseStatistics   bool
+	StatisticsQ     string
+
 	ShowInactiveChannels bool
 	ShowCustomAttribute  bool
 	HideSvrConnJobname   bool
@@ -217,6 +220,9 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 				ibmmq.MQIA_PERFORMANCE_EVENT,
 				ibmmq.MQIA_MAX_HANDLES,
 				ibmmq.MQIA_PLATFORM}
+			if cc.UseStatistics {
+				selectors = append(selectors, ibmmq.MQIA_STATISTICS_MQI)
+			}
 
 			v, err = ci.si.qMgrObject.Inq(selectors)
 			if err == nil {
@@ -224,9 +230,12 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 				ci.si.platform = v[ibmmq.MQIA_PLATFORM].(int32)
 				ci.si.commandLevel = v[ibmmq.MQIA_COMMAND_LEVEL].(int32)
 				ci.si.maxHandles = v[ibmmq.MQIA_MAX_HANDLES].(int32)
+				ci.useStatistics = cc.UseStatistics
 
 				if ci.si.platform == ibmmq.MQPL_ZOS {
 					ci.usePublications = false
+					ci.useStatistics = false
+
 					ci.useResetQStats = cc.UseResetQStats
 					evEnabled := v[ibmmq.MQIA_PERFORMANCE_EVENT].(int32)
 					if ci.useResetQStats && evEnabled == 0 {
@@ -245,6 +254,15 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 						}
 					} else {
 						ci.usePublications = false
+					}
+
+					if cc.UseStatistics {
+						evEnabled := v[ibmmq.MQIA_STATISTICS_MQI].(int32)
+						if evEnabled == 0 {
+							errorString = "Configuration has asked to use statistics events but queue manager has STATMQI set to OFF."
+							err = errors.New(errorString)
+							mqreturn = &ibmmq.MQReturn{MQCC: ibmmq.MQCC_FAILED, MQRC: ibmmq.MQRC_ENVIRONMENT_ERROR}
+						}
 					}
 				}
 			} else {
@@ -300,6 +318,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 			errorString = "Cannot open queue " + mqod.ObjectName
 			mqreturn = err.(*ibmmq.MQReturn)
 		} else {
+			ci.si.queuesOpened = true
 
 			// There may be performance benefits to using READAHEAD on the reply queues, but we
 			// need to know if it's going to be used. We don't use the MQOO option to ask for
@@ -331,6 +350,11 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 			// in advance, so we'll try it anyway.
 			if replyQ2 != "" && replyQ2 != replyQ {
 				clearQPCF(replyQ, ci.si.cmdQObj, ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
+			}
+
+			// Similarly, clear the statistics queue (default SYSTEM.ADMIN.STATISTICS.QUEUE) if that is configured
+			if cc.UseStatistics && cc.StatisticsQ != "" {
+				// clearQPCF(cc.StatisticsQ, ci.si.cmdQObj, ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
 			}
 		}
 	}
@@ -373,6 +397,45 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 		}
 	}
 
+	// MQOPEN of the queue used for statistics messages if configured
+	if err == nil && cc.UseStatistics {
+		mqod := ibmmq.NewMQOD()
+		openOptions := inputOpt | ibmmq.MQOO_FAIL_IF_QUIESCING
+		openOptions |= ibmmq.MQOO_INQUIRE
+
+		mqod.ObjectType = ibmmq.MQOT_Q
+		mqod.ObjectName = cc.StatisticsQ
+		ci.si.statisticsQObj, err = ci.si.qMgr.Open(mqod, openOptions)
+		ci.si.statisticsQName = cc.StatisticsQ
+		ci.si.statisticsQBuf = make([]byte, 32768)
+		if err == nil {
+			ci.si.queuesOpened = true
+			ci.si.statisticsQReadAhead = false
+
+			// Do the inquire again, this time for the statistics queue
+			selectors := []int32{ibmmq.MQIA_DEF_READ_AHEAD}
+			vals, inqErr := ci.si.statisticsQObj.Inq(selectors)
+			if inqErr == nil {
+				ra := vals[ibmmq.MQIA_DEF_READ_AHEAD]
+				if ra == ibmmq.MQREADA_YES {
+					ci.si.statisticsQReadAhead = true
+				}
+				logTrace("DEF_READ_AHEAD for %s: %d", mqod.ObjectName, ra)
+			} else {
+				// log the error but ignore it
+				logWarn("Cannot find DEF_READ_AHEAD for %s: %v", mqod.ObjectName, inqErr)
+			}
+
+			clearQ(ci.si.statisticsQObj, ci.si.statisticsQReadAhead)
+
+			initStatisticsAttrs(ci)
+
+		} else {
+			errorString = "Cannot open queue " + mqod.ObjectName
+			mqreturn = err.(*ibmmq.MQReturn)
+		}
+	}
+
 	// Start from a clean set of subscriptions. Errors from this can be ignored.
 	if err == nil && ci.durableSubPrefix != "" && ci.usePublications {
 		clearDurableSubscriptions(ci.durableSubPrefix, ci.si.cmdQObj, ci.si.statusReplyQObj, ci.si.statusReplyQReadAhead)
@@ -399,7 +462,8 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 }
 
 /*
-EndConnection tidies up by closing the queues and disconnecting.
+EndConnection tidies up by closing the queues and disconnecting. All errors here
+are ignored as there's very little that can be done if anything goes wrong.
 */
 func EndConnection() {
 	traceEntry("EndConnection")
@@ -427,6 +491,9 @@ func EndConnection() {
 		ci.si.replyQObj.Close(0)
 		ci.si.statusReplyQObj.Close(0)
 		ci.si.qMgrObject.Close(0)
+		if ci.useStatistics {
+			ci.si.statisticsQObj.Close(0)
+		}
 	}
 
 	// MQDISC regardless of other errors

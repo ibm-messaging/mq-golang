@@ -5,7 +5,8 @@ This repository demonstrates how you can call IBM MQ from applications written i
 The repository originally also contained programs that exported MQ statistics to monitoring systems. These programs have
 been moved to a GitHub repository called [mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples).
 
-A minimum level of MQ V8 is required to build these packages, although it should be possible to connect as a client to even older versions of queue manager.
+A minimum level of MQ V8 is required to build these packages, although it should be possible to connect as a client to
+even older versions of queue manager.
 
 ## Health Warning
 
@@ -44,8 +45,8 @@ not needed for general application programs.
 ## Using the package
 
 To use code in this repository, you will need to be able to build Go applications. You must also have a copy of MQ
-installed to build against. The package uses `cgo` to access the MQI C structures and definitions. It assumes that MQ has been
-installed in the default location (on a Linux platform this would be `/opt/mqm`) but this can be changed with
+installed to build against. The package uses `cgo` to access the MQI C structures and definitions. It assumes that MQ
+has been installed in the default location (on a Linux platform this would be `/opt/mqm`) but this can be changed with
 environment variables if necessary.
 
 Windows compatibility is also included. Current versions of the Go compiler permit standard Windows paths (eg including
@@ -185,11 +186,12 @@ via an issue, if you have another project that might be suitable for inclusion h
 
 | Repository                           | Description   |
 |--------------------------------------|---------------|
-|[ibm-messaging/mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples)| Extracts metrics for use in Prometheus, Influx<br>JSON consumers etc.|
+|[ibm-messaging/mq-metric-samples](https://github.com/ibm-messaging/mq-metric-samples)| Extracts metrics for use in Otel, Prometheus, Influx<br>JSON consumers etc.|
 |[ibm-messaging/mq-golang-jms20](https://github.com/ibm-messaging/mq-golang-jms20)   | JMS-style messaging interface for Go applications|
 |[ibm-messaging/mq-container](https://github.com/ibm-messaging/mq-container)         | Building MQ into containers. Uses features from this package<br>for configuration and monitoring  |
 |[felix-lessoer/qbeat](https://github.com/felix-lessoer/qbeat)                       | Extract monitoring and statistics from MQ for use in Elasticsearch|
 |[ibm-messaging/mq-mqi-nodejs](https://github.com/ibm-messaging/mq-mqi-nodejs)       | A similar MQI interface for Node.js applications|
+|[ibm-messaging/mq-mqi-python](https://github.com/ibm-messaging/mq-mqi-python)       | A similar MQI interface for Python applications|
 
 ## Limitations
 
@@ -206,6 +208,8 @@ via an issue, if you have another project that might be suitable for inclusion h
 * There was a queue manager limitation which did not permit resource publications to be made about queues whose name
   includes '/'. This restriction was removed in MQ 9.3. Attempting to monitor such a queue on an older queue manager
   results in a warning logged by the mqmetric package.
+* Much more information is in the `mq-metric-samples` repository, where there are several collector programs that use
+  this package
 
 ## History
 
@@ -226,4 +230,4 @@ accept the terms in the DCO.
 
 ## Copyright
 
-© Copyright IBM Corporation 2016, 2023
+© Copyright IBM Corporation 2016, 2025

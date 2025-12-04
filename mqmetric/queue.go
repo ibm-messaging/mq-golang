@@ -81,6 +81,7 @@ func QueueInitAttributes() {
 		traceExit("QueueInitAttributes", 1)
 		return
 	}
+
 	st.Attributes = make(map[string]*StatusAttribute)
 
 	attr := ATTR_Q_NAME
@@ -122,7 +123,7 @@ func QueueInitAttributes() {
 	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response. We
 	// also have an option where we are ignoring most of the queue publications even if we use subscriptions for other
 	// object (qmgr/NHA) resources
-	if !ci.usePublications || ci.useDepthFromStatus {
+	if !ci.usePublications || ci.useDepthFromStatus || ci.useStatistics {
 		attr = ATTR_Q_DEPTH
 		// The description should match the published metric, including case
 		st.Attributes[attr] = newStatusAttribute(attr, "Queue depth", ibmmq.MQIA_CURRENT_Q_DEPTH)

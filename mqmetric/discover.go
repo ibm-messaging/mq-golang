@@ -133,6 +133,11 @@ func GetProcessPublicationCount() int {
 	return ci.publicationCount
 }
 
+func GetProcessStatisticsCount() int {
+	ci := getConnection(GetConnectionKey())
+	return ci.statisticsCount
+}
+
 /*
  * A collector can set the locale (eg "Fr_FR") before doing the discovery
  * process to get access to the MQ-translated strings
@@ -173,6 +178,10 @@ func VerifyConfig() (int32, error) {
 			// and assume monitor collection interval is one minute
 			// Since we don't do pubsub-based collection on z/OS, this qdepth doesn't matter
 			recommendedDepth := (20 + len(qInfoMap)*8) * 6
+			if ci.useStatistics {
+				// We don't do the per-queue subscriptions when working with the STATQ/STATMQI events. So don't need a large depth
+				recommendedDepth = (20) * 6
+			}
 			if maxQDepth < int32(recommendedDepth) && ci.usePublications {
 				err = fmt.Errorf("Warning: Maximum queue depth on %s may be too low. Current value = %d. Suggested depth based on queue count is at least %d", ci.si.replyQBaseName, maxQDepth, recommendedDepth)
 				compCode = ibmmq.MQCC_WARNING
@@ -355,13 +364,20 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 	// If you are using publications for some resource metrics, but have chosen not to collect the topics that might contain queue depth,
 	// then there's still a possibility to find that particular value from QSTATUS responses as an alternative. The SubscriptionSelector has had
 	// two topics, depending on the MQ version, which give the depth.
-	subSel := dc.MonitoredQueues.SubscriptionSelector
-	if subSel != "" && !strings.Contains(subSel, "GENERAL") && !strings.Contains(subSel, "GET") {
-		logDebug("Setting connection to grab qdepth via QSTATUS")
-		ci.useDepthFromStatus = true
-	} else {
-		logDebug("Setting connection to grab qdepth via Publication")
-		ci.useDepthFromStatus = false
+	if err == nil {
+		if !ci.useStatistics {
+			subSel := dc.MonitoredQueues.SubscriptionSelector
+			if subSel != "" && !strings.Contains(subSel, "GENERAL") && !strings.Contains(subSel, "GET") {
+				logDebug("Setting connection to grab qdepth via QSTATUS")
+				ci.useDepthFromStatus = true
+			} else {
+				logDebug("Setting connection to grab qdepth via Publication")
+				ci.useDepthFromStatus = false
+			}
+		} else {
+			logDebug("Setting connection to grab qdepth via QSTATUS")
+			ci.useDepthFromStatus = true
+		}
 	}
 
 	traceExitErr("discoverAndSubscribe", 0, err)
@@ -426,7 +442,7 @@ func discoverClasses(dc DiscoverConfig, metaPrefix string) error {
 					}
 				}
 
-				if includeClass(dc, cl.Name) {
+				if includeClass(ci, dc, cl.Name) {
 					cl.Parent.Classes[classIndex] = cl
 				}
 			}
@@ -756,14 +772,22 @@ func discoverQueues(monitoredQueuePatterns string) error {
 	// A valid pattern list looks like
 	//    !A*, !SYSTEM*, B*, DEV.QUEUE.1
 	// If we know there are no exclusion patterns, then use the
-	// set directly as it is more efficient
-	if usingRegExp {
-		allQueues, err = inquireObjects("*", ibmmq.MQOT_Q)
-		if err == nil {
-			qList = FilterRegExp(monitoredQueuePatterns, allQueues)
-		}
+	// set directly as it is more efficient.
+	//
+	// If we are using the statistics events, then we build the list in a different way,
+	// based on the STATQ attribute of a queue.
+	if ci.useStatistics {
+		qList, err = inquireObjectsWithFilter("*", ibmmq.MQOT_Q, ibmmq.MQIA_STATISTICS_Q)
+		logTrace("discoverQueues: STATQ filter returned qList=%v", qList)
 	} else {
-		qList, err = inquireObjects(monitoredQueuePatterns, ibmmq.MQOT_Q)
+		if usingRegExp {
+			allQueues, err = inquireObjects("*", ibmmq.MQOT_Q)
+			if err == nil {
+				qList = FilterRegExp(monitoredQueuePatterns, allQueues)
+			}
+		} else {
+			qList, err = inquireObjects(monitoredQueuePatterns, ibmmq.MQOT_Q)
+		}
 	}
 
 	ci.localSlashWarning = false
@@ -838,7 +862,7 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 	var returnedAttribute int32
 	var missingPatterns string
 
-	traceEntryF("inquireObjects", "Type: %d Patterns: %s", objectType, objectPatternsList)
+	traceEntryF("inquireObjects", "Type: %d Patterns: %s filter: %d", objectType, objectPatternsList, filterType)
 	ci := getConnection(GetConnectionKey())
 
 	objectList = make([]string, 0)
@@ -863,11 +887,20 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 			return nil, fmt.Errorf("Object pattern '%s' is not valid", pattern)
 		}
 
+		// When using the statistics events, we use a filter to find the qnames: "...WHERE (STATQ NE OFF)"
+		// Unfortunately, the INQUIRE_Q_NAMES command does not take a filter. Instead, we have
+		// to use INQUIRE_Q and then loop through multiple responses.
 		switch objectType {
 		case ibmmq.MQOT_Q:
-			command = ibmmq.MQCMD_INQUIRE_Q_NAMES
-			attribute = ibmmq.MQCA_Q_NAME
-			returnedAttribute = ibmmq.MQCACF_Q_NAMES
+			if filterType == 0 {
+				command = ibmmq.MQCMD_INQUIRE_Q_NAMES
+				attribute = ibmmq.MQCA_Q_NAME
+				returnedAttribute = ibmmq.MQCACF_Q_NAMES
+			} else {
+				command = ibmmq.MQCMD_INQUIRE_Q
+				attribute = ibmmq.MQCA_Q_NAME
+				returnedAttribute = ibmmq.MQCA_Q_NAME
+			}
 		case ibmmq.MQOT_CHANNEL:
 			command = ibmmq.MQCMD_INQUIRE_CHANNEL_NAMES
 			attribute = ibmmq.MQCACH_CHANNEL_NAME
@@ -908,7 +941,7 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 		cfh.ParameterCount++
 		buf = append(buf, pcfparm.Bytes()...)
 
-		if command == ibmmq.MQCMD_INQUIRE_Q_NAMES {
+		if command == ibmmq.MQCMD_INQUIRE_Q_NAMES || command == ibmmq.MQCMD_INQUIRE_Q {
 			pcfparm = new(ibmmq.PCFParameter)
 			pcfparm.Type = ibmmq.MQCFT_INTEGER
 			pcfparm.Parameter = ibmmq.MQIA_Q_TYPE
@@ -928,19 +961,41 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 			}
 		}
 
-		if command == ibmmq.MQCMD_INQUIRE_CHANNEL_NAMES && filterType != 0 {
-			// Need to be prepared to get an error either of "no names" or "command not available"
-			// Add CHLTYPE(AMQP|MQTT)
-			pcfparm = new(ibmmq.PCFParameter)
-			pcfparm.Type = ibmmq.MQCFT_INTEGER
-			pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
-			if filterType == OT_CHANNEL_AMQP {
-				pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+		if filterType != 0 {
+			if command == ibmmq.MQCMD_INQUIRE_CHANNEL_NAMES {
+				// Need to be prepared to get an error either of "no names" or "command not available"
+				// Add CHLTYPE(AMQP|MQTT)
+				pcfparm = new(ibmmq.PCFParameter)
+				pcfparm.Type = ibmmq.MQCFT_INTEGER
+				pcfparm.Parameter = ibmmq.MQIACH_CHANNEL_TYPE
+				if filterType == OT_CHANNEL_AMQP {
+					pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_AMQP)}
+				} else {
+					pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_MQTT)}
+				}
+				cfh.ParameterCount++
+				buf = append(buf, pcfparm.Bytes()...)
 			} else {
-				pcfparm.Int64Value = []int64{int64(ibmmq.MQCHT_MQTT)}
+				// command = MQCMD_INQUIRE_Q
+				if filterType == ibmmq.MQIA_STATISTICS_Q {
+					pcfparm = new(ibmmq.PCFParameter)
+					pcfparm.Type = ibmmq.MQCFT_INTEGER_FILTER
+					pcfparm.Filter.Parameter = filterType
+					pcfparm.Filter.Operator = ibmmq.MQCFOP_NOT_EQUAL
+					pcfparm.Filter.FilterValue = ibmmq.MQMON_OFF
+					cfh.ParameterCount++
+					buf = append(buf, pcfparm.Bytes()...)
+
+					pcfparm = new(ibmmq.PCFParameter)
+					pcfparm.Type = ibmmq.MQCFT_INTEGER_LIST
+					pcfparm.Parameter = ibmmq.MQIACF_Q_ATTRS
+					pcfparm.Int64Value = []int64{int64(ibmmq.MQCA_Q_NAME)}
+
+					cfh.ParameterCount++
+					buf = append(buf, pcfparm.Bytes()...)
+				}
 			}
-			cfh.ParameterCount++
-			buf = append(buf, pcfparm.Bytes()...)
+
 		}
 
 		// Once we know the total number of parameters, put the
@@ -970,11 +1025,21 @@ func inquireObjectsWithFilter(objectPatternsList string, objectType int32, filte
 						ibmmq.MQItoString("CC", int(cfh.CompCode)), cfh.CompCode,
 						ibmmq.MQItoString("RC", int(cfh.Reason)), cfh.Reason)
 				} else {
-					logTrace("Received response of type %d [%s] and length %d", cfh.Type, ibmmq.MQItoString("CFT", int(cfh.Type)), datalen)
+					logTrace("Received response of command %d [%s] type %d [%s] control %d and length %d",
+						cfh.Command, ibmmq.MQItoString("CMD", int(cfh.Command)),
+						cfh.Type, ibmmq.MQItoString("CFT", int(cfh.Type)),
+						cfh.Control, datalen)
 					if ci.si.platform == ibmmq.MQPL_ZOS && cfh.Type != ibmmq.MQCFT_XR_ITEM {
 						continue
 					}
-					xr = false
+
+					if cfh.Command == ibmmq.MQCMD_INQUIRE_Q {
+						if cfh.Control == ibmmq.MQCFC_LAST {
+							xr = false
+						}
+					} else {
+						xr = false
+					}
 					parmAvail := true
 					bytesRead := 0
 					if cfh.ParameterCount == 0 {
@@ -1139,156 +1204,174 @@ func ProcessPublications() error {
 	metrics := GetPublishedMetrics(k)
 	ci.publicationCount = 0
 
-	if !ci.usePublications {
+	if !ci.usePublications && !ci.useStatistics {
 		traceExit("ProcessPublications", 1)
 		return nil
 	}
 
 	// Keep reading all available messages until queue is empty. Don't
 	// do a GET-WAIT; just immediate removals.
-	for err == nil {
-		data, err = getMessage(ci, false)
+	if ci.usePublications {
+		for err == nil {
+			data, err = getMessage(ci, false)
 
-		// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
-		// which will end the loop.
-		if err == nil {
-			ci.publicationCount++
-			elemList, _ := parsePCFResponse(data)
+			// Most common error will be MQRC_NO_MESSAGE_AVAILABLE
+			// which will end the loop.
+			if err == nil {
+				ci.publicationCount++
+				elemList, _ := parsePCFResponse(data)
 
-			// A typical publication contains some fixed
-			// headers (qmgrName, objectName, class, type etc)
-			// followed by a list of index/values.
-			// Start with an empty map for each message
-			values := make(map[int]int64)
+				// A typical publication contains some fixed
+				// headers (qmgrName, objectName, class, type etc)
+				// followed by a list of index/values.
+				// Start with an empty map for each message
+				values := make(map[int]int64)
 
-			objName = ""
+				objName = ""
 
-			for i := 0; i < len(elemList); i++ {
-				switch elemList[i].Parameter {
-				case ibmmq.MQCA_Q_MGR_NAME:
-					_ = strings.TrimSpace(elemList[i].String[0])
-				case ibmmq.MQCA_Q_NAME:
-					objName = strings.TrimSpace(elemList[i].String[0])
-					objType = ibmmq.MQOT_Q
-				case ibmmq.MQCA_TOPIC_NAME:
-					objName = strings.TrimSpace(elemList[i].String[0])
-					objType = ibmmq.MQOT_TOPIC
-				case ibmmq.MQIACF_OBJECT_TYPE:
-					// May need to use this as part of the object key and
-					// labelling But for now we can ignore it.
-					_ = ibmmq.MQItoString("OT", int(elemList[i].Int64Value[0]))
-				case ibmmq.MQCACF_NHA_INSTANCE_NAME:
-					// We have either the instance name or the group name in the response
-					objName = strings.TrimSpace(elemList[i].String[0])
-					objType = OT_NHA
-				case ibmmq.MQCACF_NHA_GROUP_NAME:
-					objName = strings.TrimSpace(elemList[i].String[0])
-					objType = OT_NHA
-				case ibmmq.MQIAMO_MONITOR_CLASS:
-					classidx = int(elemList[i].Int64Value[0])
-				case ibmmq.MQIAMO_MONITOR_TYPE:
-					typeidx = int(elemList[i].Int64Value[0])
-				case ibmmq.MQIAMO64_MONITOR_INTERVAL:
-					_ = elemList[i].Int64Value[0]
-				case ibmmq.MQIAMO_MONITOR_FLAGS:
-					_ = int(elemList[i].Int64Value[0])
-				default:
-					if len(elemList[i].Int64Value) > 0 {
-						value = elemList[i].Int64Value[0]
-						elementidx = int(elemList[i].Parameter)
-						values[elementidx] = value
-					} else {
-						logDebug("Unparsed element: %+v", elemList[i])
+				for i := 0; i < len(elemList); i++ {
+					switch elemList[i].Parameter {
+					case ibmmq.MQCA_Q_MGR_NAME:
+						_ = strings.TrimSpace(elemList[i].String[0])
+					case ibmmq.MQCA_Q_NAME:
+						objName = strings.TrimSpace(elemList[i].String[0])
+						objType = ibmmq.MQOT_Q
+					case ibmmq.MQCA_TOPIC_NAME:
+						objName = strings.TrimSpace(elemList[i].String[0])
+						objType = ibmmq.MQOT_TOPIC
+					case ibmmq.MQIACF_OBJECT_TYPE:
+						// May need to use this as part of the object key and
+						// labelling But for now we can ignore it.
+						_ = ibmmq.MQItoString("OT", int(elemList[i].Int64Value[0]))
+					case ibmmq.MQCACF_NHA_INSTANCE_NAME:
+						// We have either the instance name or the group name in the response
+						objName = strings.TrimSpace(elemList[i].String[0])
+						objType = OT_NHA
+					case ibmmq.MQCACF_NHA_GROUP_NAME:
+						objName = strings.TrimSpace(elemList[i].String[0])
+						objType = OT_NHA
+					case ibmmq.MQIAMO_MONITOR_CLASS:
+						classidx = int(elemList[i].Int64Value[0])
+					case ibmmq.MQIAMO_MONITOR_TYPE:
+						typeidx = int(elemList[i].Int64Value[0])
+					case ibmmq.MQIAMO64_MONITOR_INTERVAL:
+						_ = elemList[i].Int64Value[0]
+					case ibmmq.MQIAMO_MONITOR_FLAGS:
+						_ = int(elemList[i].Int64Value[0])
+					default:
+						if len(elemList[i].Int64Value) > 0 {
+							value = elemList[i].Int64Value[0]
+							elementidx = int(elemList[i].Parameter)
+							values[elementidx] = value
+						} else {
+							logDebug("Unparsed element: %+v", elemList[i])
+						}
 					}
 				}
-			}
 
-			// Now have all the values in this particular message
-			// Have to incorporate them into any that already exist.
-			//
-			// Each element contains a map holding all the objects
-			// touched by these messages. The map is referenced by
-			// object name if it's a queue; for qmgr-level stats, the
-			// map only needs to contain a single entry which I've
-			// chosen to reference by "@self" which can never be a
-			// real queue name.
-			//
-			// We have to know whether to need to add the values
-			// contained from multiple publications that might
-			// have arrived in the scrape interval
-			// for the same resource, or whether we should just
-			// overwrite with the latest. Although there are
-			// several monitor Datatypes, all of them apart from
-			// explicitly labelled "DELTA" are ones we should just
-			// use the latest value.
-			for key, newValue := range values {
+				// Now have all the values in this particular message
+				// Have to incorporate them into any that already exist.
+				//
+				// Each element contains a map holding all the objects
+				// touched by these messages. The map is referenced by
+				// object name if it's a queue; for qmgr-level stats, the
+				// map only needs to contain a single entry which I've
+				// chosen to reference by "@self" which can never be a
+				// real queue name.
+				//
+				// We have to know whether to need to add the values
+				// contained from multiple publications that might
+				// have arrived in the scrape interval
+				// for the same resource, or whether we should just
+				// overwrite with the latest. Although there are
+				// several monitor Datatypes, all of them apart from
+				// explicitly labelled "DELTA" are ones we should just
+				// use the latest value.
+				for key, newValue := range values {
 
-				typesArray := metrics.Classes[classidx].Types
-				if typesIdx, ok1 := typesArray[typeidx]; ok1 {
-					if elem, ok2 := typesIdx.Elements[key]; ok2 {
-						objectName := objName
-						elemKey := ""
-						if objectName == "" {
-							elemKey = QMgrMapKey
-						} else {
-							// If we've unsubscribed and resubscribed to the same queue (unusual
-							// but a dynamic resub nature may permit that) then discard the first metric
-							// from a queue in case it's got a running total instead of the last interval.
-							objectInfoMap := qInfoMap
-							if objType == ibmmq.MQOT_Q {
-								objectInfoMap = qInfoMap
-								elemKey = objectName
-							} else if objType == OT_NHA {
-								// The objectname is EITHER the group name (for RECOVERY metrics)
-								// or the instance name (for REPLICATION metrics)
-								objectInfoMap = nhaInfoMap
-								elemKey = NativeHAKeyPrefix + objName
-							}
-							if qi, ok := objectInfoMap[objName]; ok {
-								if qi.firstCollection {
-									continue
+					typesArray := metrics.Classes[classidx].Types
+					if typesIdx, ok1 := typesArray[typeidx]; ok1 {
+						if elem, ok2 := typesIdx.Elements[key]; ok2 {
+							objectName := objName
+							elemKey := ""
+							if objectName == "" {
+								elemKey = QMgrMapKey
+							} else {
+								// If we've unsubscribed and resubscribed to the same queue (unusual
+								// but a dynamic resub nature may permit that) then discard the first metric
+								// from a queue in case it's got a running total instead of the last interval.
+								objectInfoMap := qInfoMap
+								if objType == ibmmq.MQOT_Q {
+									objectInfoMap = qInfoMap
+									elemKey = objectName
+								} else if objType == OT_NHA {
+									// The objectname is EITHER the group name (for RECOVERY metrics)
+									// or the instance name (for REPLICATION metrics)
+									objectInfoMap = nhaInfoMap
+									elemKey = NativeHAKeyPrefix + objName
 								}
-								if !qi.exists && objType != OT_NHA {
-									//logDebug("Data for untracked object %s being ignored", objName)
-									continue
+								if qi, ok := objectInfoMap[objName]; ok {
+									if qi.firstCollection {
+										continue
+									}
+									if !qi.exists && objType != OT_NHA {
+										//logDebug("Data for untracked object %s being ignored", objName)
+										continue
+									}
+								} else {
+									// There is no discovery/validation of instance names needed for NHA - we
+									// always add it to the map
+									if objType != OT_NHA {
+										//logDebug("Data for unknown object %s being ignored", objName)
+										continue
+									}
+								}
+							}
+
+							if oldValue, ok := elem.Values[elemKey]; ok {
+								if elem.Datatype == ibmmq.MQIAMO_MONITOR_DELTA {
+									//logDebug("Metric with delta flag on  - %s", elem.MetricName)
+									value = oldValue + newValue
+								} else {
+									//logDebug("Metric with delta flag off - %s", elem.MetricName)
+									value = newValue
 								}
 							} else {
-								// There is no discovery/validation of instance names needed for NHA - we
-								// always add it to the map
-								if objType != OT_NHA {
-									//logDebug("Data for unknown object %s being ignored", objName)
-									continue
-								}
-							}
-						}
-
-						if oldValue, ok := elem.Values[elemKey]; ok {
-							if elem.Datatype == ibmmq.MQIAMO_MONITOR_DELTA {
-								//logDebug("Metric with delta flag on  - %s", elem.MetricName)
-								value = oldValue + newValue
-							} else {
-								//logDebug("Metric with delta flag off - %s", elem.MetricName)
 								value = newValue
 							}
-						} else {
-							value = newValue
-						}
 
-						if includeElem(ci, elem, false) {
-							elem.Values[elemKey] = value
+							if includeElem(ci, elem, false) {
+								elem.Values[elemKey] = value
+							}
 						}
 					}
 				}
-			}
-		} else {
-			// err != nil
-			mqreturn := err.(*ibmmq.MQReturn)
+			} else {
+				// err != nil
+				mqreturn := err.(*ibmmq.MQReturn)
 
-			if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
-				traceExitErr("ProcessPublications", 2, mqreturn)
-				return mqreturn
+				if mqreturn.MQCC == ibmmq.MQCC_FAILED && mqreturn.MQRC != ibmmq.MQRC_NO_MSG_AVAILABLE {
+					traceExitErr("ProcessPublications", 2, mqreturn)
+					return mqreturn
+				}
 			}
 		}
+	}
+
+	// Empty the statistics maps so they are not re-reporting previous scrape data. Then read any new messages
+	// that might have been generated
+	if ci.useStatistics {
+
+		stq := GetObjectStatistics(GetConnectionKey(), OT_Q)
+		for k := range stq.Attributes {
+			stq.Attributes[k].Values = make(map[string]*StatusValue)
+		}
+		stqmgr := GetObjectStatistics(GetConnectionKey(), OT_Q_MGR)
+		for k := range stqmgr.Attributes {
+			stqmgr.Attributes[k].Values = make(map[string]*StatusValue)
+		}
+		getStatisticsMessages(ci)
+
 	}
 
 	// Ensure that all known queues are marked as having had at least one collection cycle
@@ -1304,11 +1387,19 @@ func ProcessPublications() error {
 // time. As well as needing additional configuration.
 // So we ignore these for now. Adding them to the subscription
 // list by default would increase the handles in use without benefit.
-func includeClass(dc DiscoverConfig, cl string) bool {
+func includeClass(ci *connectionInfo, dc DiscoverConfig, cl string) bool {
 	rc := true
 	if cl == "STATAPP" {
 		rc = false
 	}
+
+	if ci.useStatistics {
+		if cl == "STATQ" || cl == "STATMQI" {
+			rc = false
+			logDebug("Not subscribing to Class %s resources", cl)
+		}
+	}
+
 	return rc
 }
 

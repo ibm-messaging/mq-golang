@@ -1,6 +1,16 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Dec 14 2025 - v5.7.0
+- ibmmq - Add Integer Filter construction to PCF processor
+- mqmetric - Enable use of STATMQI/STATQ event messages as alternative to many of the published metrics
+- mqmetric - Reenable use of DEFREADA(YES) on reply queues (ibm-messaging/mq-metric-samples#444)
+- mqmetric - During startup, attempt faster clearing of destination associated with durable subscriptions
+  (ibm-messaging/mq-metric-samples#439)
+  - Try to use CLEAR QLOCAL command
+  - Warn about using Persistent messages for metric data
+  - Use SYNCPOINT if there ARE persistent messages found during startup
+
 ## Nov 12 2025 - v5.6.7
 - mqmetric - Improve performance of clearing response queues if messages are (wrongly) persistent
   * Add warning message if persistent messages are found

@@ -35,6 +35,7 @@ type sessionInfo struct {
 
 	replyQBaseName  string
 	replyQ2BaseName string
+	statisticsQName string
 
 	replyQObj       ibmmq.MQObject
 	replyQReadAhead bool
@@ -42,6 +43,10 @@ type sessionInfo struct {
 	statusReplyQObj       ibmmq.MQObject
 	statusReplyQReadAhead bool
 	statusReplyBuf        []byte
+
+	statisticsQObj       ibmmq.MQObject
+	statisticsQReadAhead bool
+	statisticsQBuf       []byte
 
 	platform         int32
 	commandLevel     int32
@@ -60,6 +65,7 @@ type connectionInfo struct {
 	usePublications      bool
 	useStatus            bool
 	useResetQStats       bool
+	useStatistics        bool
 	useDepthFromStatus   bool
 	showInactiveChannels bool
 	showCustomAttribute  bool
@@ -75,6 +81,7 @@ type connectionInfo struct {
 
 	discoveryDone    bool
 	publicationCount int
+	statisticsCount  int
 
 	waitInterval int
 
@@ -86,6 +93,7 @@ type objectStatus struct {
 	init       bool
 	objectSeen map[string]bool
 	s          *StatusSet
+	statistics *StatusSet
 }
 
 // These object types are the same where possible as the MQI MQOT definitions
@@ -134,17 +142,19 @@ const EXPIRY_MULTIPLIER = 10 * 5
 // the objectStatus structure, retrievable by a getXXX() call instead of as public
 // variables. The mq-metric-samples exporters will then need to change to match.
 var (
-	Metrics            AllMetrics
-	QueueManagerStatus StatusSet
-	ChannelStatus      StatusSet
-	ChannelAMQPStatus  StatusSet
-	ChannelMQTTStatus  StatusSet
-	QueueStatus        StatusSet
-	TopicStatus        StatusSet
-	SubStatus          StatusSet
-	UsagePsStatus      StatusSet
-	UsageBpStatus      StatusSet
-	ClusterStatus      StatusSet
+	Metrics                AllMetrics
+	QueueManagerStatus     StatusSet
+	QueueManagerStatistics StatusSet
+	ChannelStatus          StatusSet
+	ChannelAMQPStatus      StatusSet
+	ChannelMQTTStatus      StatusSet
+	QueueStatus            StatusSet
+	QueueStatistics        StatusSet
+	TopicStatus            StatusSet
+	SubStatus              StatusSet
+	UsagePsStatus          StatusSet
+	UsageBpStatus          StatusSet
+	ClusterStatus          StatusSet
 )
 
 func newConnectionInfo(key string) *connectionInfo {
@@ -170,11 +180,14 @@ func newConnectionInfo(key string) *connectionInfo {
 	ci.localSlashWarning = false
 	ci.discoveryDone = false
 	ci.publicationCount = 0
+	ci.statisticsCount = 0
 
 	for i := 1; i <= OT_LAST_USED; i++ {
 		ci.objectStatus[i].init = false
 		ci.objectStatus[i].s = new(StatusSet)
 	}
+	ci.objectStatus[OT_Q].statistics = new(StatusSet)
+	ci.objectStatus[OT_Q_MGR].statistics = new(StatusSet)
 
 	if key == "" {
 		key = DEFAULT_CONNECTION_KEY
@@ -229,6 +242,22 @@ func GetObjectStatus(key string, objectType int) *StatusSet {
 	} else {
 		ci := getConnection(key)
 		return ci.objectStatus[objectType].s
+	}
+}
+
+func GetObjectStatistics(key string, objectType int) *StatusSet {
+	if key == "" || key == DEFAULT_CONNECTION_KEY {
+		switch objectType {
+		case OT_Q_MGR:
+			return &QueueManagerStatistics
+		case OT_Q:
+			return &QueueStatistics
+		default:
+			return nil
+		}
+	} else {
+		ci := getConnection(key)
+		return ci.objectStatus[objectType].statistics
 	}
 }
 

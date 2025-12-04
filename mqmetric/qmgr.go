@@ -79,6 +79,7 @@ func QueueManagerInitAttributes() {
 		traceExit("QueueManagerInitAttributes", 1)
 		return
 	}
+
 	st.Attributes = make(map[string]*StatusAttribute)
 
 	attr := ATTR_QMGR_NAME
