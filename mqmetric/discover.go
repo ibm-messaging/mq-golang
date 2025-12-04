@@ -1558,7 +1558,7 @@ func Normalise(elem *MonElement, key string, value int64) float64 {
 		f = f * 1024 * 1024
 	case ibmmq.MQIAMO_MONITOR_GB:
 		f = f * 1024 * 1024 * 1024
-	case ibmmq.MQIAMO_MONITOR_MICROSEC:
+	case ibmmq.MQIAMO_MONITOR_MICROSEC, 4:
 		f = f / 1000000
 	}
 

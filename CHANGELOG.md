@@ -8,8 +8,6 @@ Newest updates are at the top of this file.
 - mqmetric - During startup, attempt faster clearing of destination associated with durable subscriptions
   (ibm-messaging/mq-metric-samples#439)
   - Try to use CLEAR QLOCAL command
-  - Warn about using Persistent messages for metric data
-  - Use SYNCPOINT if there ARE persistent messages found during startup
 
 ## Nov 12 2025 - v5.6.7
 - mqmetric - Improve performance of clearing response queues if messages are (wrongly) persistent
