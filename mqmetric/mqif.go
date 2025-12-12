@@ -221,6 +221,9 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 				ibmmq.MQIA_MAX_HANDLES,
 				ibmmq.MQIA_PLATFORM}
 			if cc.UseStatistics {
+				// We don't know yet what the platform is.
+				// If it turns out to be z/OS, the MQINQ will fail, but that's OK:
+				// You would have to correct the configuration to not use these events.
 				selectors = append(selectors, ibmmq.MQIA_STATISTICS_MQI)
 			}
 
@@ -267,6 +270,9 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 				}
 			} else {
 				errorString = "Cannot inquire on queue manager object"
+				if cc.UseStatistics {
+					errorString += ". Cannot set the useStatistics option for z/OS queue managers"
+				}
 				mqreturn = err.(*ibmmq.MQReturn)
 			}
 		} else {
