@@ -367,7 +367,7 @@ func discoverAndSubscribe(dc DiscoverConfig, redo bool) error {
 	if err == nil {
 		if !ci.useStatistics {
 			subSel := dc.MonitoredQueues.SubscriptionSelector
-			if subSel != "" && !strings.Contains(subSel, "GENERAL") && !strings.Contains(subSel, "GET") {
+			if !ci.usePublications || (subSel != "" && !strings.Contains(subSel, "GENERAL") && !strings.Contains(subSel, "GET")) {
 				logDebug("Setting connection to grab qdepth via QSTATUS")
 				ci.useDepthFromStatus = true
 			} else {
