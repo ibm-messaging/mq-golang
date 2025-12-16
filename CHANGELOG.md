@@ -2,7 +2,7 @@
 Newest updates are at the top of this file.
 
 ## Dec 14 2025 - v5.7.0
-- ibmmq - Add Integer Filter construction to PCF processor
+- ibmmq - Add ByteString and Integer and String Filter constructions to PCF processor
 - mqmetric - Enable use of STATMQI/STATQ event messages as alternative to many of the published metrics
 - mqmetric - Reenable use of DEFREADA(YES) on reply queues (ibm-messaging/mq-metric-samples#444)
 - mqmetric - During startup, attempt faster clearing of destination associated with durable subscriptions
