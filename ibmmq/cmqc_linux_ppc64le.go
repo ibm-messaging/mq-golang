@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2025
+* Copyright (c) IBM Corporation 1993, 2026
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  10/3/25, 11:37 AM
-*   Build Level:   p944-L251003
+*   Generated on:  1/20/26, 9:18 AM
+*   Build Level:   p945-L260120
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -325,6 +325,10 @@ const (
 	MQCACF_DYNAMIC_Q_NAME          int32  = 3190
 	MQCACF_ENTITY_NAME             int32  = 3068
 	MQCACF_ENV_INFO                int32  = 3089
+	MQCACF_ERROR_LOG_AFTER_ISOTIME int32  = 3233
+	MQCACF_ERROR_LOG_ISOTIME       int32  = 3236
+	MQCACF_ERROR_LOG_NAME          int32  = 3234
+	MQCACF_ERROR_LOG_RECORD        int32  = 3235
 	MQCACF_ESCAPE_TEXT             int32  = 3014
 	MQCACF_EVENT_APPL_IDENTITY     int32  = 3049
 	MQCACF_EVENT_APPL_NAME         int32  = 3050
@@ -359,7 +363,7 @@ const (
 	MQCACF_LAST_PUB_TIME           int32  = 3162
 	MQCACF_LAST_PUT_DATE           int32  = 3128
 	MQCACF_LAST_PUT_TIME           int32  = 3129
-	MQCACF_LAST_USED               int32  = 3232
+	MQCACF_LAST_USED               int32  = 3236
 	MQCACF_LOCAL_Q_NAMES           int32  = 3015
 	MQCACF_LOG_PATH                int32  = 3074
 	MQCACF_LOG_START_DATE          int32  = 3214
@@ -1047,7 +1051,7 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 944
+	MQCMDL_CURRENT_LEVEL           int32  = 945
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
@@ -1105,6 +1109,7 @@ const (
 	MQCMDL_LEVEL_942               int32  = 942
 	MQCMDL_LEVEL_943               int32  = 943
 	MQCMDL_LEVEL_944               int32  = 944
+	MQCMDL_LEVEL_945               int32  = 945
 	MQCMD_ACCOUNTING_MQI           int32  = 167
 	MQCMD_ACCOUNTING_Q             int32  = 168
 	MQCMD_ACTIVITY_MSG             int32  = 69
@@ -1205,6 +1210,7 @@ const (
 	MQCMD_INQUIRE_COMM_INFO        int32  = 191
 	MQCMD_INQUIRE_CONNECTION       int32  = 85
 	MQCMD_INQUIRE_ENTITY_AUTH      int32  = 88
+	MQCMD_INQUIRE_ERROR_LOG        int32  = 221
 	MQCMD_INQUIRE_LISTENER         int32  = 97
 	MQCMD_INQUIRE_LISTENER_STATUS  int32  = 98
 	MQCMD_INQUIRE_LOG              int32  = 120
@@ -1558,6 +1564,7 @@ const (
 	MQEPH_NONE                     int32  = 0
 	MQEPH_STRUC_LENGTH_FIXED       int32  = 68
 	MQEPH_VERSION_1                int32  = 1
+	MQERO_NONE                     int32  = 0
 	MQET_MQSC                      int32  = 1
 	MQEVO_CONSOLE                  int32  = 1
 	MQEVO_CTLMSG                   int32  = 7
@@ -1860,6 +1867,7 @@ const (
 	MQIACF_ENTITY_TYPE             int32  = 1118
 	MQIACF_ERROR_ID                int32  = 1013
 	MQIACF_ERROR_IDENTIFIER        int32  = 1013
+	MQIACF_ERROR_LOG_OPTIONS       int32  = 1479
 	MQIACF_ERROR_OFFSET            int32  = 1018
 	MQIACF_ESCAPE_TYPE             int32  = 1017
 	MQIACF_EVENT_APPL_TYPE         int32  = 1010
@@ -1888,7 +1896,7 @@ const (
 	MQIACF_INVALID_DEST_COUNT      int32  = 1371
 	MQIACF_ITEM_COUNT              int32  = 1378
 	MQIACF_KNOWN_DEST_COUNT        int32  = 1369
-	MQIACF_LAST_USED               int32  = 1478
+	MQIACF_LAST_USED               int32  = 1479
 	MQIACF_LDAP_CONNECTION_STATUS  int32  = 1409
 	MQIACF_LISTENER_ATTRS          int32  = 1222
 	MQIACF_LISTENER_STATUS_ATTRS   int32  = 1223
@@ -2376,6 +2384,7 @@ const (
 	MQIAMO_MONITOR_MB              int32  = 1048576
 	MQIAMO_MONITOR_MICROSEC        int32  = 1000000
 	MQIAMO_MONITOR_PERCENT         int32  = 10000
+	MQIAMO_MONITOR_TIMESTAMP       int32  = 4
 	MQIAMO_MONITOR_TYPE            int32  = 840
 	MQIAMO_MONITOR_UNIT            int32  = 1
 	MQIAMO_MSGS                    int32  = 728
@@ -5087,7 +5096,6 @@ const (
 	MQ_DISTINGUISHED_NAME_LENGTH   int32  = 1024
 	MQ_DNS_GROUP_NAME_LENGTH       int32  = 18
 	MQ_DSG_NAME_LENGTH             int32  = 8
-	MQ_ENCRYPTION_KEY_LENGTH       int32  = 256
 	MQ_ENTITY_NAME_LENGTH          int32  = 1024
 	MQ_ENV_INFO_LENGTH             int32  = 96
 	MQ_EXIT_DATA_LENGTH            int32  = 32

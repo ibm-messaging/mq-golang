@@ -4,7 +4,7 @@ import (
 	"strconv"
 )
 
-// This file was created from the source tree on 2025-10-08 07:55:42
+// This file was created from the source tree on 2026-01-30 06:27:38
 
 // This module converts a PCF integer type (from the MQIA* ranges) into
 // the prefix that can then be used to convert its value into a string
@@ -364,6 +364,7 @@ var pcfAttrMap = map[int32]string{
 	MQIACF_ENCODING:                "MQENC",
 	MQIACF_ENTITY_TYPE:             "MQZAET",
 	MQIACF_ERROR_ID:                "MQRC",
+	MQIACF_ERROR_LOG_OPTIONS:       "MQERO",
 	MQIACF_ERROR_OFFSET:            "",
 	MQIACF_ESCAPE_TYPE:             "MQET",
 	MQIACF_EVENT_APPL_TYPE:         "MQAT",

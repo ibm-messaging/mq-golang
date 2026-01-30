@@ -14,7 +14,7 @@ package ibmmq
 * for each value; those can be found in other header files such as
 * cmqc.h.
 ****************************************************************
-* Copyright (c) IBM Corporation 1993, 2025
+* Copyright (c) IBM Corporation 1993, 2026
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -1485,6 +1485,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_943"
 		case 944:
 			s = "MQCMDL_LEVEL_944"
+		case 945:
+			s = "MQCMDL_LEVEL_945"
 		default:
 			s = ""
 		}
@@ -2001,6 +2003,14 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "ERO":
+		switch v {
+		case 0:
+			s = "MQERO_NONE"
+		default:
+			s = ""
+		}
+
 	case "ET":
 		switch v {
 		case 1:
@@ -2435,6 +2445,8 @@ func MQItoString(class string, value int) string {
 			s = "MQIAMO_MONITOR_DELTA"
 		case 3:
 			s = "MQIAMO_MONITOR_LSN"
+		case 4:
+			s = "MQIAMO_MONITOR_TIMESTAMP"
 		case 100:
 			s = "MQIAMO_MONITOR_HUNDREDTHS"
 		case 1024:
