@@ -275,6 +275,9 @@ func otelDisc(qMgr *mq.MQQueueManager) {
 //
 // Note that we can't (and don't need to) do the same for an MQPUT1 because the
 // information we are trying to discover is only useful on MQGET/CallBack.
+//
+// Also note that this is only relevant for a queue as that's the only object
+// that has the INPUT option.
 func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
 	var propCtl int32
 

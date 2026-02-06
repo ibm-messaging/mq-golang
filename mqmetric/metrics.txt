@@ -92,15 +92,21 @@ Class: NHAREPLICA
     Log write average acknowledgement size
     Backlog average bytes
     Backlog bytes
+    Backlog long-term average bytes
     Catch-up log bytes sent
     Catch-up compressed log bytes sent
     Catch-up log data average compression time
     Catch-up log bytes decompressed
     Catch-up log data average decompression time
+    Catch-up time percentage
     Catch-up uncompressed log bytes sent
     MQ FDC file count
     Log file system - free space
     Log file system - bytes in use
+    Log - write latency
+    Log - slowest write since restart
+    Log - timestamp of slowest write
+    Log - write size
     Average network round trip time
     Queue Manager file system - free space
     Queue Manager file system - bytes in use
@@ -110,6 +116,7 @@ Class: NHAREPLICA
     Synchronous log bytes decompressed
     Synchronous log data average decompression time
     Synchronous uncompressed log bytes sent
+    Throttling time percentage
 
 Class: STATMQI
   Type: CONNDISC
@@ -243,8 +250,8 @@ Class: STATQ
     lock contention
     rolled back MQPUT count
 
-Other metrics and attributes
-----------------------------
+Object status metrics and object attributes
+-------------------------------------------
 
 There are other metrics extracted or calculated by this package, or used as tags. Most of
 these values come from "DISPLAY xxSTATUS" or "DISPLAY xx" commands for the relevant object type and name.
@@ -389,6 +396,9 @@ These are available on all Distributed platforms (not z/OS) by setting the STATQ
 on the queue manager and queues. The STATCHL option is not used as very similar numbers come from
 the existing channel status attributes. See the README for additional information on this approach.
 
+If you enable collection of these metrics, then the queue and queue manager metrics from the 
+resource publications (the STATQ and STATMQI classes) are not reported to avoid overlap.
+
 Class: queue
   average_queue_time_seconds                       destructive_mqget_message                       
   destructive_mqget_message_bytes                  destructive_mqget_non_persistent_message        
@@ -516,4 +526,4 @@ Class: qmgr
   unsubscribe_durable_remove                       unsubscribe_non_durable                         
   unsubscribe_non_durable_keep                     unsubscribe_non_durable_remove                  
 
-This page was automatically generated from the source tree on 2025-12-04 12:20:00
+This page was automatically generated from the source tree on 2026-01-30 06:27:20

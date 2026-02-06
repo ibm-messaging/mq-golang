@@ -254,8 +254,15 @@ func Connx(goQMgrName string, gocno *MQCNO) (MQQueueManager, error) {
 	// Setting this environment variable should make it easier
 	// to get stack traces out of Go programs in the event of
 	// errors. For this particular variable, any value will make it
-	// effective.
-	os.Setenv("MQS_NO_SYNC_SIGNAL_HANDLING", "true")
+	// effective. There's a further override env var here to bypass
+	// the setting and stick to MQ's handlers. It should not be needed, but it
+	// may be useful in some debug scenarios.
+	if os.Getenv("MQIGO_MQ_STANDARD_SIGNAL_HANDLING") == "" {
+		logTrace("Setting MQS_NO_SYNC_SIGNAL_HANDLING")
+		os.Setenv("MQS_NO_SYNC_SIGNAL_HANDLING", "true")
+	} else {
+		logTrace("Not setting MQS_NO_SYNC_SIGNAL_HANDLING")
+	}
 
 	qMgr := MQQueueManager{}
 	qMgr.Name = goQMgrName

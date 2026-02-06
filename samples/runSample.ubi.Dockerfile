@@ -56,7 +56,7 @@ RUN mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg \
 # Location of the downloadable MQ client package \
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-Linux${MQARCH}.tar.gz" \
-    VRMF=9.4.4.0
+    VRMF=9.4.5.0
 
 # Install the MQ client from the Redistributable package. This also contains the
 # header files we need to compile against. Setup the subset of the package

@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Feb 06 2026 - v5.7.1
+- Update for MQ 9.4.5
+
 ## Dec 14 2025 - v5.7.0
 - ibmmq - Add ByteString and Integer and String Filter constructions to PCF processor
 - mqmetric - Enable use of STATMQI/STATQ event messages as alternative to many of the published metrics

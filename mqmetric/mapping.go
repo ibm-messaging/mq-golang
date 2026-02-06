@@ -239,6 +239,9 @@ var mHeur = map[string]string{
 	"synchronous_log_data_average_compression_time":   "synchronous_log_data_average_compression_time_bytes",
 	"synchronous_log_data_average_decompression_time": "synchronous_log_data_average_decompression_time_bytes",
 	"synchronous_uncompressed_log_bytes_sent":         "synchronous_uncompressed_log_sent_bytes",
+	"backlog_long-term_average_bytes":                 "backlog_long_term_average_bytes",
+	"catch-up_time_percentage":                        "catch_up_time_percentage",
+	"throttling_time_percentage":                      "throttling_time_percentage",
 }
 
 // This map contains only the additional elements where the heuristic version might not be suitable or
