@@ -1,6 +1,9 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## XXX XX 2026 - v5.7.2
+- ibmmqotel - Deal with MQSUB(MQSO_MANAGED) when discovering PROPCTL value 
+
 ## Feb 06 2026 - v5.7.1
 - Update for MQ 9.4.5
 
