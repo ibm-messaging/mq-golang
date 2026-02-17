@@ -385,7 +385,7 @@ func (x *MQQueueManager) Open(good *MQOD, goOpenOptions int32) (MQObject, error)
 
 	f := otelFuncs.Open
 	if f != nil {
-		f(&object, good, goOpenOptions)
+		f(&object, good, goOpenOptions, nil)
 	}
 
 	// ObjectName may have changed because it's a model queue
@@ -489,6 +489,11 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 	}
 
 	qObject.qMgr = x // Force the correct hConn for managed objects
+
+	f := otelFuncs.Open
+	if f != nil && (gosd.Options&C.MQSO_MANAGED) != 0 {
+		f(&subObject, nil, 0, qObject)
+	}
 
 	traceExit("Sub")
 	return subObject, nil

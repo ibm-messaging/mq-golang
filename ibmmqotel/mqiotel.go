@@ -25,7 +25,7 @@ MQCBD structure as the Ctx field
 package ibmmqotel
 
 /*
-Copyright (c) IBM Corporation 2024
+Copyright (c) IBM Corporation 2024, 2026
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,8 +57,9 @@ import (
 
 // Stash information about the in-use queue
 type propOptions struct {
-	propCtl int32 // The PROPCTL attribute on the queue, or -1 if unknown
-	gmo     int32 // Currently-active GMO Options value so we can reset
+	propCtl     int32        // The PROPCTL attribute on the queue, or -1 if unknown
+	gmo         int32        // Currently-active GMO Options value so we can reset
+	managedHObj *mq.MQObject // A reference to a managed destination queue created during MQSUB
 }
 
 var (
@@ -172,7 +173,6 @@ func getMsgHandle(hConn *mq.MQQueueManager, hObj *mq.MQObject) *mq.MQMessageHand
 		} else {
 			fmt.Printf(err.Error())
 		}
-
 	}
 
 	o := objectMapHandle[key]
@@ -259,6 +259,12 @@ func otelDisc(qMgr *mq.MQQueueManager) {
 	lockMapOptions()
 	for k, _ := range objectMapOptions {
 		if strings.HasPrefix(k, prefix) {
+			// Delete info about any managed queue created during MQSUB
+			mho := objectMapOptions[k].managedHObj
+			if mho != nil {
+				otelCloseLocked(mho)
+			}
+			logTrace("Deleting key %s", k)
 			delete(objectMapOptions, k)
 		}
 	}
@@ -277,8 +283,9 @@ func otelDisc(qMgr *mq.MQQueueManager) {
 // information we are trying to discover is only useful on MQGET/CallBack.
 //
 // Also note that this is only relevant for a queue as that's the only object
-// that has the INPUT option.
-func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
+// that has the INPUT option. But the queue might be accessed via an MQSUB option, so
+// we also look at that variant.
+func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32, managedHObj *mq.MQObject) {
 	var propCtl int32
 
 	traceEntry("open")
@@ -294,13 +301,14 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
 	// will, in any case, have discarded the entry from this map.
 	// If the user opened the queue with MQOO_INQUIRE, then we can reuse the object handle.
 	// Otherwise we have to do our own open/inq/close.
-	if (od.ObjectType == mq.MQOT_Q) && (openOptions&openGetOptions) != 0 {
+	if (od != nil && od.ObjectType == mq.MQOT_Q && (openOptions&openGetOptions) != 0) || (managedHObj != nil) {
 		hConn := hObj.GetHConn()
 		key := objectKey(hConn, hObj)
 
 		propCtl = 0
 		selectors := []int32{mq.MQIA_PROPERTY_CONTROL}
-		if openOptions&mq.MQOO_INQUIRE != 0 {
+
+		if managedHObj == nil && (openOptions&mq.MQOO_INQUIRE) != 0 {
 			logTrace("open: Reusing existing hObj")
 			values, err := hObj.Inq(selectors)
 			if err == nil {
@@ -310,15 +318,34 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
 				logTrace("open: Inq err %s", err.Error())
 				propCtl = -1
 			}
-		} else {
+		} else if managedHObj != nil {
+			logTrace("open: Looking at managed hObj")
+			values, err := managedHObj.Inq(selectors)
+			if err == nil {
+				logTrace("Inq Responses: %+v", values)
+				propCtl = values[selectors[0]].(int32)
+			} else {
+				logTrace("open: Inq err %s", err.Error())
+				propCtl = -1
+			}
 
+			// And add this to the map so it can be referenced during MQGETs
+			managedKey := objectKey(hConn, managedHObj)
+			// replace any existing value for this object handle
+			options := propOptions{propCtl: propCtl, managedHObj: nil}
+			lockMapOptions()
+			objectMapOptions[managedKey] = &options
+			unlockMapOptions()
+
+		} else {
+			// We have to MQOPEN the queue ourselves to do an MQINQ
 			inqOd := mq.NewMQOD()
 			inqOd.ObjectName = od.ObjectName
 			inqOd.ObjectQMgrName = od.ObjectQMgrName
 			inqOd.ObjectType = mq.MQOT_Q
 			inqOpenOptions := mq.MQOO_INQUIRE
 
-			logTrace("open: pre-Reopen")
+			logTrace("open: pre-reopen")
 			// This gets a little recursive as this Open will end up calling back into this function. But
 			// as it's only doing MQOO_INQUIRE, then we don't nest any further
 			inqHObj, err := hConn.Open(inqOd, inqOpenOptions)
@@ -341,7 +368,7 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
 
 		}
 		// Create an object to hold the discovered value
-		options := propOptions{propCtl: propCtl}
+		options := propOptions{propCtl: propCtl, managedHObj: managedHObj}
 		// replace any existing value for this object handle
 		lockMapOptions()
 		objectMapOptions[key] = &options
@@ -355,13 +382,27 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32) {
 	return
 }
 
+func otelCloseLocked(hObj *mq.MQObject) {
+	// Do the actual deletion of the object from the map, knowing that the lock
+	// has already been taken.
+
+	traceEntry("closeLocked")
+
+	key := objectKey(hObj.GetHConn(), hObj)
+	logTrace("Deleting key %s", key)
+	delete(objectMapOptions, key)
+
+	traceExit("closeLocked")
+	return
+}
+
 // Called during the MQCLOSE
 func otelClose(hObj *mq.MQObject) {
 	traceEntry("close")
 
-	key := objectKey(hObj.GetHConn(), hObj)
 	lockMapOptions()
-	delete(objectMapOptions, key)
+	otelCloseLocked(hObj)
+
 	unlockMapOptions()
 
 	traceExit("close")
@@ -681,6 +722,7 @@ func otelGetTraceAfter(otelOpts mq.OtelOpts, hObj *mq.MQObject, gogmo *mq.MQGMO,
 		haveNewContext := false
 
 		msgContextConfig := oteltrace.SpanContextConfig{}
+		msgContextConfig.Remote = true
 
 		if traceparentVal != "" {
 			// Split the inbound traceparent value into its components to allow
