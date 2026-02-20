@@ -437,7 +437,11 @@ func (object *MQObject) Close(goCloseOptions int32) error {
 
 	f := otelFuncs.Close
 	if f != nil {
+		// Temporarily flip the hObj back to the original value
+		t := object.hObj
+		object.hObj = savedHObj
 		f(object)
+		object.hObj = t
 	}
 	cbRemoveHandle(savedHConn, savedHObj)
 	traceExit("Close")
@@ -491,7 +495,7 @@ func (x *MQQueueManager) Sub(gosd *MQSD, qObject *MQObject) (MQObject, error) {
 	qObject.qMgr = x // Force the correct hConn for managed objects
 
 	f := otelFuncs.Open
-	if f != nil && (gosd.Options&C.MQSO_MANAGED) != 0 {
+	if f != nil && (gosd.Options&MQSO_MANAGED) != 0 {
 		f(&subObject, nil, 0, qObject)
 	}
 

@@ -369,6 +369,7 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32, managedHObj *mq
 		}
 		// Create an object to hold the discovered value
 		options := propOptions{propCtl: propCtl, managedHObj: managedHObj}
+		logTrace("Adding mapOptions. key=%s obj=%v", key, options)
 		// replace any existing value for this object handle
 		lockMapOptions()
 		objectMapOptions[key] = &options
@@ -384,12 +385,20 @@ func otelOpen(hObj *mq.MQObject, od *mq.MQOD, openOptions int32, managedHObj *mq
 
 func otelCloseLocked(hObj *mq.MQObject) {
 	// Do the actual deletion of the object from the map, knowing that the lock
-	// has already been taken.
+	// on the map has already been taken.
 
 	traceEntry("closeLocked")
 
 	key := objectKey(hObj.GetHConn(), hObj)
 	logTrace("Deleting key %s", key)
+	o, ok := objectMapOptions[key]
+	if ok {
+		mho := o.managedHObj
+		if mho != nil {
+			logTrace("Deleting managed hobj: %v", mho)
+			otelCloseLocked(mho)
+		}
+	}
 	delete(objectMapOptions, key)
 
 	traceExit("closeLocked")
