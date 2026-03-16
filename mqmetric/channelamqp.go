@@ -50,10 +50,10 @@ text.
 func ChannelAMQPInitAttributes() {
 
 	traceEntry("ChannelAMQPInitAttributes")
-
+	ot := OT_CHANNEL_AMQP
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL_AMQP]
-	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL_AMQP)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	if os.init {
 		traceExit("ChannelAMQPInitAttributes", 1)
@@ -63,47 +63,31 @@ func ChannelAMQPInitAttributes() {
 
 	// These fields are used to construct the key to the per-channel map values and
 	// as tags to uniquely identify a channel instance
-	attr := ATTR_CHL_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
-	attr = ATTR_CHL_AMQP_CLIENT_ID
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Client ID")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_NAME, "Channel Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_AMQP_CLIENT_ID, "Client ID")
 
 	// Some other fields
-	attr = ATTR_CHL_CONNNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_CONNNAME, "Connection Name")
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_CHL_AMQP_MESSAGES_RECEIVED
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACH_MSGS_RCVD)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_AMQP_MESSAGES_SENT
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages Sent", ibmmq.MQIACH_MSGS_SENT)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-
-	attr = ATTR_CHL_AMQP_CONNECTIONS
-	st.Attributes[attr] = newStatusAttribute(attr, "Connections", ibmmq.MQIACF_CONNECTION_COUNT)
+	newStatusMapEntry(st, ot, ATTR_CHL_AMQP_MESSAGES_RECEIVED, "Messages Received", ibmmq.MQIACH_MSGS_RCVD, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_AMQP_MESSAGES_SENT, "Messages Sent", ibmmq.MQIACH_MSGS_SENT, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_AMQP_CONNECTIONS, "Connections", ibmmq.MQIACF_CONNECTION_COUNT, false)
 
 	// This is decoded by MQCHS_* values
-	attr = ATTR_CHL_STATUS
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
-
-	attr = ATTR_CHL_SINCE_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_CHL_STATUS, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS, false)
+	newStatusMapEntry(st, ot, ATTR_CHL_SINCE_MSG, "Time Since Msg", DUMMY_PCFATTR, false)
 
 	// These are not really monitoring metrics but it may enable calculations to be made such as %used for
 	// the channel instance availability. It's extracted at startup of the program via INQUIRE_CHL and not updated later
 	// until rediscovery is done based on a separate schedule.
-	attr = ATTR_CHL_MAX_INST
-	st.Attributes[attr] = newStatusAttribute(attr, "MaxInst", DUMMY_PCFATTR)
-	attr = ATTR_CHL_MAX_INSTC
-	st.Attributes[attr] = newStatusAttribute(attr, "MaxInstC", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_MAX_INST, "MaxInst", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_MAX_INSTC, "MaxInstC", DUMMY_PCFATTR)
 	// Current Instances is treated a bit oddly. Although reported on each channel status,
 	// it actually refers to the total number of instances of the same name.
-	attr = ATTR_CHL_CUR_INST
-	st.Attributes[attr] = newStatusAttribute(attr, "Current Instances", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_CUR_INST, "Current Instances", DUMMY_PCFATTR)
 
-	attr = ATTR_CHL_START
-	st.Attributes[attr] = newStatusAttribute(attr, "Start Time (epoch ms)", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_CHL_START, "Start Time (epoch ms)", DUMMY_PCFATTR, false)
 
 	os.init = true
 
@@ -357,10 +341,16 @@ func parseAMQPChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	now := time.Now()
 	diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
-	st.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
+	v, ok := st.Attributes[ATTR_CHL_SINCE_MSG]
+	if ok {
+		v.Values[key] = newStatusValueInt64(diff)
+	}
 
 	epoch := statusTimeEpoch(startDate, startTime)
-	st.Attributes[ATTR_CHL_START].Values[key] = newStatusValueInt64(epoch)
+	v, ok = st.Attributes[ATTR_CHL_START]
+	if ok {
+		v.Values[key] = newStatusValueInt64(epoch)
+	}
 
 	// Bump the number of active instances of the channel, treating it a bit like a
 	// regular config attribute.

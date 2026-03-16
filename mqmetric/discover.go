@@ -1440,6 +1440,7 @@ var excludeMetric = map[string]bool{
 	"output_handles": true,
 }
 
+// Note that this function is called for every metric for every object (q, qmgr etc) for every collection loop
 func includeElem(ci *connectionInfo, elem *MonElement, discovering bool) bool {
 	rc := true
 
@@ -1453,7 +1454,18 @@ func includeElem(ci *connectionInfo, elem *MonElement, discovering bool) bool {
 				logDebug("Not including Class %s Type %s Element %s (already available elsewhere)", elem.Parent.Parent.Name, elem.Parent.Name, elem.MetricName)
 			}
 			rc = false
-
+		}
+	} else {
+		ot := OT_Q_MGR
+		switch elem.Parent.Parent.Name {
+		case "STATQ":
+			ot = OT_Q
+		case "NHAREPLICA":
+			ot = OT_NHA
+		}
+		rc = includeMapEntry(ot, elem.MetricName)
+		if discovering && !rc {
+			logDebug("Not including Class %s Type %s Element %s (excluded by filter)", elem.Parent.Parent.Name, elem.Parent.Name, elem.MetricName)
 		}
 	}
 	return rc

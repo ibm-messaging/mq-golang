@@ -46,9 +46,10 @@ for now.
 */
 func ClusterInitAttributes() {
 	traceEntry("ClusInitAttributes")
+	ot := OT_CLUSTER
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CLUSTER]
-	st := GetObjectStatus(GetConnectionKey(), OT_CLUSTER)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	if os.init {
 		traceExit("ClusterInitAttributes", 1)
@@ -56,14 +57,11 @@ func ClusterInitAttributes() {
 	}
 	st.Attributes = make(map[string]*StatusAttribute)
 
-	attr := ATTR_CLUSTER_NAME //MQCA_CLUSTER_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Cluster Name")
-	attr = ATTR_CLUSTER_STATUS
-	st.Attributes[attr] = newStatusAttribute(attr, "Cluster Status", ibmmq.MQIACH_CHANNEL_STATUS)
-	attr = ATTR_CLUSTER_SUSPEND
-	st.Attributes[attr] = newStatusAttribute(attr, "Cluster Suspend", ibmmq.MQIACF_SUSPEND)
-	attr = ATTR_CLUSTER_QMTYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Manager Type", ibmmq.MQIACF_Q_MGR_TYPE)
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CLUSTER_NAME, "Cluster Name")
+	newStatusMapEntry(st, ot, ATTR_CLUSTER_STATUS, "Cluster Status", ibmmq.MQIACH_CHANNEL_STATUS, false)
+	newStatusMapEntry(st, ot, ATTR_CLUSTER_SUSPEND, "Cluster Suspend", ibmmq.MQIACF_SUSPEND, false)
+	newStatusMapEntryRequired(st, ot, ATTR_CLUSTER_QMTYPE, "Queue Manager Type", ibmmq.MQIACF_Q_MGR_TYPE)
+
 	os.init = true
 	traceExit("ClusterInitAttributes", 0)
 }

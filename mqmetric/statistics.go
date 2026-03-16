@@ -260,17 +260,17 @@ func initStatisticsAttrs(ci *connectionInfo) {
 	st.Attributes = make(map[string]*StatusAttribute)
 
 	for k, v := range qStatisticsAttrsMap {
+		ot := OT_Q
 		for i := 0; i < len(v); i++ {
 			switch k {
 			case mq.MQIAMO_Q_MIN_DEPTH, mq.MQIAMO_Q_MAX_DEPTH, mq.MQIAMO64_AVG_Q_TIME:
-				st.Attributes[v[i]] = newStatusAttribute(v[i], v[i], DUMMY_PCFATTR)
-				st.Attributes[v[i]].Delta = false
+				newStatusMapEntry(st, ot, v[i], v[i], DUMMY_PCFATTR, false)
 			default:
 				if !strings.HasSuffix(v[i], "_count") {
 					v[i] += "_count"
 				}
-				st.Attributes[v[i]] = newStatusAttribute(v[i], v[i], DUMMY_PCFATTR)
-				st.Attributes[v[i]].Delta = true
+				newStatusMapEntry(st, ot, v[i], v[i], DUMMY_PCFATTR, true)
+
 			}
 		}
 	}
@@ -282,6 +282,7 @@ func initStatisticsAttrs(ci *connectionInfo) {
 	st.Attributes = make(map[string]*StatusAttribute)
 
 	for k, v := range qmgrStatisticsAttrsMap {
+		ot := OT_Q_MGR
 		for i := 0; i < len(v); i++ {
 			switch k {
 			case mq.MQIAMO_CONNS_MAX,
@@ -289,15 +290,14 @@ func initStatisticsAttrs(ci *connectionInfo) {
 				mq.MQIAMO_SUB_NDUR_HIGHWATER,
 				mq.MQIAMO_SUB_DUR_LOWWATER,
 				mq.MQIAMO_SUB_NDUR_LOWWATER:
-				st.Attributes[v[i]] = newStatusAttribute(v[i], v[i], DUMMY_PCFATTR)
-				st.Attributes[v[i]].Delta = false
+				newStatusMapEntry(st, ot, v[i], v[i], DUMMY_PCFATTR, false)
 
 			default:
 				if !strings.HasSuffix(v[i], "_count") {
 					v[i] += "_count"
 				}
-				st.Attributes[v[i]] = newStatusAttribute(v[i], v[i], DUMMY_PCFATTR)
-				st.Attributes[v[i]].Delta = true
+				newStatusMapEntry(st, ot, v[i], v[i], DUMMY_PCFATTR, true)
+
 			}
 		}
 	}
@@ -481,12 +481,15 @@ func parseStatisticsMsg(buf []byte, datalen int) {
 								val = sum(vals.Int64Value)
 							}
 
-							curVal, attrFound := stq.Attributes[attr].Values[qName]
-							if attrFound && stq.Attributes[attr].Delta {
-								val += curVal.ValueInt64
+							stqAttr, ok := stq.Attributes[attr]
+							if ok {
+								curVal, attrFound := stqAttr.Values[qName]
+								if attrFound && stqAttr.Delta {
+									val += curVal.ValueInt64
+								}
+								stqAttr.Values[qName] = newStatusValueInt64(val)
+								// logDebug("Attrs: %+v", stq.Attributes[attr].Values)
 							}
-							stq.Attributes[attr].Values[qName] = newStatusValueInt64(val)
-							// logDebug("Attrs: %+v", stq.Attributes[attr].Values)
 						}
 					}
 				}
@@ -529,11 +532,14 @@ func parseStatisticsMsg(buf []byte, datalen int) {
 						} else {
 							val = sum(vals.Int64Value)
 						}
-						curVal, attrFound := stqmgr.Attributes[attr].Values[qmName]
-						if attrFound && stqmgr.Attributes[attr].Delta {
-							val += curVal.ValueInt64
+						stqmgrAttr, ok := stqmgr.Attributes[attr]
+						if ok {
+							curVal, attrFound := stqmgrAttr.Values[qmName]
+							if attrFound && stqmgrAttr.Delta {
+								val += curVal.ValueInt64
+							}
+							stqmgrAttr.Values[qmName] = newStatusValueInt64(val)
 						}
-						stqmgr.Attributes[attr].Values[qmName] = newStatusValueInt64(val)
 					}
 				}
 			}

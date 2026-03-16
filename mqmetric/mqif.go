@@ -67,6 +67,7 @@ type ConnectionConfig struct {
 	Channel  string
 
 	DurableSubPrefix string
+	MetricFilter     [OT_LAST_USED + 1]MetricFilter
 }
 
 // Which objects are available for subscription. How
@@ -143,6 +144,7 @@ func initConnectionKey(key string, qMgrName string, replyQ string, replyQ2 strin
 	ci.hideMQTTClientId = cc.HideMQTTClientId
 
 	ci.durableSubPrefix = cc.DurableSubPrefix
+	ci.metricFilter = cc.MetricFilter
 
 	// Explicitly force client mode if requested. Otherwise use the "default"
 	// Client mode can be come from a simple boolean, or from having

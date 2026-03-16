@@ -21,6 +21,7 @@ package mqmetric
 
 import (
 	// "fmt"
+
 	"strings"
 	"time"
 
@@ -61,6 +62,101 @@ type StatusValue struct {
 	IsInt64     bool
 	ValueInt64  int64
 	ValueString string
+}
+
+func mapContains(m map[string]struct{}, k string) bool {
+	_, found := m[k]
+	return found
+}
+
+// The include/exclude is a map of maps: initial selection based on the
+// object type. And then a set of keys naming the actual metrics to be included
+// or excluded for that object type. For example, the YAML file gets parsed from here:
+//
+//		filters:
+//		 metricInclude:
+//	    topics:
+//	      - publisher_count
+//		 metricExclude:
+//		   queues:
+//		     - mqput_bytes
+//		   qmgr:
+//		     - mq_fdc_file_count
+//		     - log_disk_written_log_sequence_number
+//		   channels:
+//		     - nettime_short
+func includeMapEntry(ot int, n string) bool {
+	rc := true
+
+	/* If an exclusion list is given, then that has priority. If the maps
+	are both empty for a given object type, then the metric should be reported (rc=true)
+	*/
+	ci := getConnection(GetConnectionKey())
+	exclFilter := ci.metricFilter[ot].Exclude
+	inclFilter := ci.metricFilter[ot].Include
+
+	if len(exclFilter) == 0 && mapContains(inclFilter, n) {
+		rc = true
+	} else if len(exclFilter) != 0 && mapContains(exclFilter, n) {
+		rc = false
+	} else if len(inclFilter) != 0 && !mapContains(inclFilter, n) {
+		rc = false
+	} else {
+		rc = true
+	}
+
+	//logDebug("includeMapEntry: rc:%v ot:%d metric:%s", rc, ot, n)
+	return rc
+}
+
+// Create the map entry in a common routine. This will allow a common place to filter metrics we are
+// going to report. Metrics that must ALWAYS be handled (eg channel type) can still be created
+// directly using the newStatusAttribute or newPseudoStatusAttribute functions
+// We will always pass in the delta value; other customisation flags (eg "squash") have to be set by the
+// caller after checking that the returned value is non-nil
+func newStatusMapEntry(m *StatusSet, ot int, n string, d string, p int32, delta bool) *StatusAttribute {
+
+	if !includeMapEntry(ot, n) {
+		return nil
+	}
+	s := newStatusAttribute(n, d, p)
+	if s != nil {
+		s.Delta = delta
+		m.Attributes[n] = s
+	}
+	return s
+}
+
+// Calls to this function will not get a metric name filter. They must always be created because they
+// are assumed to exist. Perhaps to create tags or map keys
+func newStatusMapEntryRequired(m *StatusSet, _ int, n string, d string, p int32) *StatusAttribute {
+	s := newStatusAttribute(n, d, p)
+	if s != nil {
+		s.Delta = false
+		m.Attributes[n] = s
+	}
+	return s
+}
+
+func newPseudoStatusMapEntry(m *StatusSet, ot int, n string, d string) *StatusAttribute {
+	if !includeMapEntry(ot, n) {
+		return nil
+	}
+	s := newStatusAttribute(n, d, DUMMY_PCFATTR)
+	if s != nil {
+		s.Pseudo = true
+		m.Attributes[n] = s
+	}
+	return s
+}
+
+func newPseudoStatusMapEntryRequired(m *StatusSet, _ int, n string, d string) *StatusAttribute {
+	s := newStatusAttribute(n, d, DUMMY_PCFATTR)
+	if s != nil {
+		s.Pseudo = true
+		m.Attributes[n] = s
+	}
+	return s
 }
 
 // Initialise with default values.

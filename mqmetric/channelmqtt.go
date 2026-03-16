@@ -54,10 +54,10 @@ text.
 func ChannelMQTTInitAttributes() {
 
 	traceEntry("ChannelMQTTInitAttributes")
-
+	ot := OT_CHANNEL_MQTT
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL_MQTT]
-	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL_MQTT)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	if os.init {
 		traceExit("ChannelMQTTInitAttributes", 1)
@@ -67,47 +67,31 @@ func ChannelMQTTInitAttributes() {
 
 	// These fields are used to construct the key to the per-channel map values and
 	// as tags to uniquely identify a channel instance
-	attr := ATTR_CHL_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
-	attr = ATTR_CHL_MQTT_CLIENT_ID
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Client ID")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_NAME, "Channel Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_MQTT_CLIENT_ID, "Client ID")
 
 	// Some other fields
-	attr = ATTR_CHL_CONNNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_CONNNAME, "Connection Name")
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_CHL_MQTT_MESSAGES_RECEIVED
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACH_MSGS_RCVD)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_MQTT_MESSAGES_SENT
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages Sent", ibmmq.MQIACH_MSGS_SENT)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
+	newStatusMapEntry(st, ot, ATTR_CHL_MQTT_MESSAGES_RECEIVED, "Messages Received", ibmmq.MQIACH_MSGS_RCVD, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_MQTT_MESSAGES_SENT, "Messages Sent", ibmmq.MQIACH_MSGS_SENT, true)
 
-	attr = ATTR_CHL_MQTT_INDOUBT_INPUT
-	st.Attributes[attr] = newStatusAttribute(attr, "Indoubt Input", ibmmq.MQIACH_IN_DOUBT_IN)
-	attr = ATTR_CHL_MQTT_INDOUBT_OUTPUT
-	st.Attributes[attr] = newStatusAttribute(attr, "Indoubt Output", ibmmq.MQIACH_IN_DOUBT_OUT)
-	attr = ATTR_CHL_MQTT_PENDING_OUT
-	st.Attributes[attr] = newStatusAttribute(attr, "Pending outbound", ibmmq.MQIACH_PENDING_OUT)
+	newStatusMapEntry(st, ot, ATTR_CHL_MQTT_INDOUBT_INPUT, "Indoubt Input", ibmmq.MQIACH_IN_DOUBT_IN, false)
+	newStatusMapEntry(st, ot, ATTR_CHL_MQTT_INDOUBT_OUTPUT, "Indoubt Output", ibmmq.MQIACH_IN_DOUBT_OUT, false)
+	newStatusMapEntry(st, ot, ATTR_CHL_MQTT_PENDING_OUT, "Pending outbound", ibmmq.MQIACH_PENDING_OUT, false)
 
-	attr = ATTR_CHL_MQTT_PROTOCOL
-	st.Attributes[attr] = newStatusAttribute(attr, "Protocol", ibmmq.MQIACH_PROTOCOL)
+	newStatusMapEntry(st, ot, ATTR_CHL_MQTT_PROTOCOL, "Protocol", ibmmq.MQIACH_PROTOCOL, false)
 
 	// This is decoded by MQCHS_* values
-	attr = ATTR_CHL_STATUS
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
+	newStatusMapEntry(st, ot, ATTR_CHL_STATUS, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS, false)
 
-	attr = ATTR_CHL_SINCE_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_CHL_SINCE_MSG, "Time Since Msg", DUMMY_PCFATTR, false)
 
 	// Current Instances is treated a bit oddly. Although reported on each channel status,
 	// it actually refers to the total number of instances of the same name.
-	attr = ATTR_CHL_CUR_INST
-	st.Attributes[attr] = newStatusAttribute(attr, "Current Instances", DUMMY_PCFATTR)
-
-	attr = ATTR_CHL_START
-	st.Attributes[attr] = newStatusAttribute(attr, "Start Time (epoch ms)", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_CHL_CUR_INST, "Current Instances", DUMMY_PCFATTR, false)
+	newStatusMapEntry(st, ot, ATTR_CHL_START, "Start Time (epoch ms)", DUMMY_PCFATTR, false)
 
 	os.init = true
 
@@ -190,7 +174,10 @@ func CollectMQTTChannelStatus(patterns string) error {
 		chlName := st.Attributes[ATTR_CHL_NAME].Values[key].ValueString
 		if s, ok := mqttInfoMap[chlName]; ok {
 			curInst := s.AttrCurInst
-			st.Attributes[ATTR_CHL_CUR_INST].Values[key] = newStatusValueInt64(curInst)
+			v, ok := st.Attributes[ATTR_CHL_CUR_INST]
+			if ok {
+				v.Values[key] = newStatusValueInt64(curInst)
+			}
 		}
 	}
 
@@ -356,12 +343,18 @@ func parseMQTTChlData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		}
 	}
 
-	now := time.Now()
-	diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
-	st.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
+	v, ok := st.Attributes[ATTR_CHL_SINCE_MSG]
+	if ok {
+		now := time.Now()
+		diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
+		v.Values[key] = newStatusValueInt64(diff)
+	}
 
-	epoch := statusTimeEpoch(startDate, startTime)
-	st.Attributes[ATTR_CHL_START].Values[key] = newStatusValueInt64(epoch)
+	v, ok = st.Attributes[ATTR_CHL_START]
+	if ok {
+		epoch := statusTimeEpoch(startDate, startTime)
+		v.Values[key] = newStatusValueInt64(epoch)
+	}
 
 	// Bump the number of active instances of the channel, treating it a bit like a
 	// regular config attribute.

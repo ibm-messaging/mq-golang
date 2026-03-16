@@ -51,9 +51,10 @@ for now.
 */
 func SubInitAttributes() {
 	traceEntry("SubInitAttributes")
+	ot := OT_SUB
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_SUB]
-	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	if os.init {
 		traceExit("SubInitAttributes", 1)
@@ -61,23 +62,16 @@ func SubInitAttributes() {
 	}
 	st.Attributes = make(map[string]*StatusAttribute)
 
-	attr := ATTR_SUB_ID
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Id")
-	attr = ATTR_SUB_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Subscription Name")
-	attr = ATTR_SUB_TOPIC_STRING
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_SUB_ID, "Subscription Id")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_SUB_NAME, "Subscription Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_SUB_TOPIC_STRING, "Topic String")
 
-	attr = ATTR_SUB_TYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Subscription Type", ibmmq.MQIACF_SUB_TYPE)
+	newStatusMapEntry(st, ot, ATTR_SUB_TYPE, "Subscription Type", ibmmq.MQIACF_SUB_TYPE, false)
 
-	attr = ATTR_SUB_SINCE_PUB_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Message Received", DUMMY_PCFATTR)
+	newPseudoStatusMapEntry(st, ot, ATTR_SUB_SINCE_PUB_MSG, "Time Since Message Received")
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_SUB_MESSAGES
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages Received", ibmmq.MQIACF_MESSAGE_COUNT)
-	st.Attributes[attr].Delta = true
+	newStatusMapEntry(st, ot, ATTR_SUB_MESSAGES, "Messages Received", ibmmq.MQIACF_MESSAGE_COUNT, true)
 
 	os.init = true
 	traceExit("SubInitAttributes", 0)
@@ -238,7 +232,10 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 
 	if lastTime != "" {
 		now := time.Now()
-		st.Attributes[ATTR_SUB_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
+		v, ok := st.Attributes[ATTR_SUB_SINCE_PUB_MSG]
+		if ok {
+			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
+		}
 	}
 	st.Attributes[ATTR_SUB_TOPIC_STRING].Values[key] = newStatusValueString(topicString)
 	st.Attributes[ATTR_SUB_NAME].Values[key] = newStatusValueString(subName)

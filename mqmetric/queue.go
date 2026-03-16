@@ -73,9 +73,10 @@ text.
 */
 func QueueInitAttributes() {
 	traceEntry("QueueInitAttributes")
+	ot := OT_Q
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_Q]
-	st := GetObjectStatus(GetConnectionKey(), OT_Q)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	if os.init {
 		traceExit("QueueInitAttributes", 1)
@@ -84,58 +85,46 @@ func QueueInitAttributes() {
 
 	st.Attributes = make(map[string]*StatusAttribute)
 
-	attr := ATTR_Q_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Queue Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_Q_NAME, "Queue Name")
 
-	attr = ATTR_Q_SINCE_PUT
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Put", DUMMY_PCFATTR)
-	attr = ATTR_Q_SINCE_GET
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Get", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_Q_SINCE_PUT, "Time Since Put", DUMMY_PCFATTR, false)
+	newStatusMapEntry(st, ot, ATTR_Q_SINCE_GET, "Time Since Get", DUMMY_PCFATTR, false)
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_Q_MSGAGE
-	st.Attributes[attr] = newStatusAttribute(attr, "Oldest Message", ibmmq.MQIACF_OLDEST_MSG_AGE)
+	newStatusMapEntry(st, ot, ATTR_Q_MSGAGE, "Oldest Message", ibmmq.MQIACF_OLDEST_MSG_AGE, false)
 
 	// Don't want to add these if only the UsePublication option is active, as the descriptions
 	// of the metrics can conflict in Prometheus. These are the same attributes from the
 	// excludeMetric map in discover.go
 	if ci.useStatus {
-		attr = ATTR_Q_IPPROCS
-		st.Attributes[attr] = newStatusAttribute(attr, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT)
-		attr = ATTR_Q_OPPROCS
-		st.Attributes[attr] = newStatusAttribute(attr, "Output Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT)
+		newStatusMapEntry(st, ot, ATTR_Q_IPPROCS, "Input Handles", ibmmq.MQIA_OPEN_INPUT_COUNT, false)
+		newStatusMapEntry(st, ot, ATTR_Q_OPPROCS, "Output Handles", ibmmq.MQIA_OPEN_OUTPUT_COUNT, false)
 	}
-	attr = ATTR_Q_UNCOM
+
 	if ci.si.platform == ibmmq.MQPL_ZOS {
-		st.Attributes[attr] = newStatusAttribute(attr, "Uncommitted Messages (Yes/No)", ibmmq.MQIACF_UNCOMMITTED_MSGS)
+		newStatusMapEntry(st, ot, ATTR_Q_UNCOM, "Uncommitted Messages (Yes/No)", ibmmq.MQIACF_UNCOMMITTED_MSGS, false)
 	} else {
-		st.Attributes[attr] = newStatusAttribute(attr, "Uncommitted Messages (Count)", ibmmq.MQIACF_UNCOMMITTED_MSGS)
+		newStatusMapEntry(st, ot, ATTR_Q_UNCOM, "Uncommitted Messages (Count)", ibmmq.MQIACF_UNCOMMITTED_MSGS, false)
 	}
 
 	// QFile sizes - current, and the "current maximum" which may not be
 	// the same as the qdefinition but is the one in effect for now until
 	// the qfile empties
-	attr = ATTR_Q_CURFSIZE
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue File Current Size", ibmmq.MQIACF_CUR_Q_FILE_SIZE)
-	attr = ATTR_Q_CURMAXFSIZE
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue File Maximum Size", ibmmq.MQIACF_CUR_MAX_FILE_SIZE)
+	newStatusMapEntry(st, ot, ATTR_Q_CURFSIZE, "Queue File Current Size", ibmmq.MQIACF_CUR_Q_FILE_SIZE, false)
+	newStatusMapEntry(st, ot, ATTR_Q_CURMAXFSIZE, "Queue File Maximum Size", ibmmq.MQIACF_CUR_MAX_FILE_SIZE, false)
 
 	// Usually we get the QDepth from published resources, But on z/OS we can get it from the QSTATUS response. We
 	// also have an option where we are ignoring most of the queue publications even if we use subscriptions for other
 	// object (qmgr/NHA) resources
 	if !ci.usePublications || ci.useDepthFromStatus || ci.useStatistics {
-		attr = ATTR_Q_DEPTH
 		// The description should match the published metric, including case
-		st.Attributes[attr] = newStatusAttribute(attr, "Queue depth", ibmmq.MQIA_CURRENT_Q_DEPTH)
+		newStatusMapEntry(st, ot, ATTR_Q_DEPTH, "Queue depth", ibmmq.MQIA_CURRENT_Q_DEPTH, false)
 	}
 
 	if ci.si.platform == ibmmq.MQPL_ZOS && ci.useResetQStats {
-		attr = ATTR_Q_INTERVAL_PUT
-		st.Attributes[attr] = newStatusAttribute(attr, "Put/Put1 Count", ibmmq.MQIA_MSG_ENQ_COUNT)
-		attr = ATTR_Q_INTERVAL_GET
-		st.Attributes[attr] = newStatusAttribute(attr, "Get Count", ibmmq.MQIA_MSG_DEQ_COUNT)
-		attr = ATTR_Q_INTERVAL_HI_DEPTH
-		st.Attributes[attr] = newStatusAttribute(attr, "Highest Depth", ibmmq.MQIA_HIGH_Q_DEPTH)
+		newStatusMapEntry(st, ot, ATTR_Q_INTERVAL_PUT, "Put/Put1 Count", ibmmq.MQIA_MSG_ENQ_COUNT, false)
+		newStatusMapEntry(st, ot, ATTR_Q_INTERVAL_GET, "Get Count", ibmmq.MQIA_MSG_DEQ_COUNT, false)
+		newStatusMapEntry(st, ot, ATTR_Q_INTERVAL_HI_DEPTH, "Highest Depth", ibmmq.MQIA_HIGH_Q_DEPTH, false)
 	}
 
 	// This is not really a monitoring metric but it enables calculations to be made such as %full for
@@ -144,17 +133,18 @@ func QueueInitAttributes() {
 	// It's not easy to generate the % value in this program as the CurDepth will
 	// usually - but not always - come from the published resource stats. So we don't have direct access to it.
 	// Recording the MaxDepth allows Prometheus etc to do the calculation regardless of how the CurDepth was obtained.
-	attr = ATTR_Q_MAX_DEPTH
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Max Depth", DUMMY_PCFATTR)
-	attr = ATTR_Q_USAGE
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Usage", DUMMY_PCFATTR)
 
-	attr = ATTR_Q_QTIME_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR)
-	st.Attributes[attr].index = 0
-	attr = ATTR_Q_QTIME_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "Queue Time Long", ibmmq.MQIACF_Q_TIME_INDICATOR)
-	st.Attributes[attr].index = 1
+	newStatusMapEntryRequired(st, ot, ATTR_Q_MAX_DEPTH, "Queue Max Depth", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_Q_USAGE, "Queue Usage", DUMMY_PCFATTR)
+
+	s := newStatusMapEntry(st, ot, ATTR_Q_QTIME_SHORT, "Queue Time Short", ibmmq.MQIACF_Q_TIME_INDICATOR, false)
+	if s != nil {
+		s.index = 0
+	}
+	s = newStatusMapEntry(st, ot, ATTR_Q_QTIME_LONG, "Queue Time Long", ibmmq.MQIACF_Q_TIME_INDICATOR, false)
+	if s != nil {
+		s.index = 1
+	}
 
 	os.init = true
 
@@ -461,10 +451,16 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	now := time.Now()
 	if lastPutTime != "" {
-		st.Attributes[ATTR_Q_SINCE_PUT].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
+		v, ok := st.Attributes[ATTR_Q_SINCE_PUT]
+		if ok {
+			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
+		}
 	}
 	if lastGetTime != "" {
-		st.Attributes[ATTR_Q_SINCE_GET].Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
+		v, ok := st.Attributes[ATTR_Q_SINCE_GET]
+		if ok {
+			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
+		}
 	}
 	if s, ok := qInfoMap[key]; ok {
 		maxDepth := s.AttrMaxDepth

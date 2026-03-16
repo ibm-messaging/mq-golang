@@ -52,11 +52,14 @@ const (
 func UsageInitAttributes() {
 	traceEntry("usageInitAttributes")
 
+	otbp := OT_BP
+	otps := OT_PS
+
 	ci := getConnection(GetConnectionKey())
-	osbp := &ci.objectStatus[OT_BP]
-	osps := &ci.objectStatus[OT_PS]
-	stbp := GetObjectStatus(GetConnectionKey(), OT_BP)
-	stps := GetObjectStatus(GetConnectionKey(), OT_PS)
+	osbp := &ci.objectStatus[otbp]
+	osps := &ci.objectStatus[otps]
+	stbp := GetObjectStatus(GetConnectionKey(), otbp)
+	stps := GetObjectStatus(GetConnectionKey(), otps)
 	if osbp.init && osps.init {
 		traceExit("usageInitAttributes", 1)
 		return
@@ -64,37 +67,24 @@ func UsageInitAttributes() {
 	stbp.Attributes = make(map[string]*StatusAttribute)
 	stps.Attributes = make(map[string]*StatusAttribute)
 
-	attr := ATTR_BP_ID
-	stbp.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool ID")
-	attr = ATTR_BP_LOCATION
-	stbp.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool Location")
-	attr = ATTR_BP_CLASS
-	stbp.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool Class")
+	// The Bufferpool-related fields that are of interest
+	newPseudoStatusMapEntryRequired(stbp, otbp, ATTR_BP_ID, "Buffer Pool ID")
+	newPseudoStatusMapEntryRequired(stbp, otbp, ATTR_BP_LOCATION, "Buffer Pool Location")
+	newPseudoStatusMapEntryRequired(stbp, otbp, ATTR_BP_CLASS, "Buffer Pool Class")
 
-	// These are the integer status fields that are of interest
-	attr = ATTR_BP_FREE
-	stbp.Attributes[attr] = newStatusAttribute(attr, "Free buffers", ibmmq.MQIACF_USAGE_FREE_BUFF)
-	attr = ATTR_BP_FREE_PERCENT
-	stbp.Attributes[attr] = newStatusAttribute(attr, "Free buffers percent", ibmmq.MQIACF_USAGE_FREE_BUFF_PERC)
-	attr = ATTR_BP_TOTAL
-	stbp.Attributes[attr] = newStatusAttribute(attr, "Total buffers", ibmmq.MQIACF_USAGE_TOTAL_BUFFERS)
+	newStatusMapEntry(stbp, otbp, ATTR_BP_FREE, "Free buffers", ibmmq.MQIACF_USAGE_FREE_BUFF, false)
+	newStatusMapEntry(stbp, otbp, ATTR_BP_FREE_PERCENT, "Free buffers percent", ibmmq.MQIACF_USAGE_FREE_BUFF_PERC, false)
+	newStatusMapEntry(stbp, otbp, ATTR_BP_TOTAL, "Total buffers", ibmmq.MQIACF_USAGE_TOTAL_BUFFERS, false)
 
-	attr = ATTR_PS_ID
-	stps.Attributes[attr] = newPseudoStatusAttribute(attr, "Pageset ID")
-	attr = ATTR_PS_BPID
-	stps.Attributes[attr] = newPseudoStatusAttribute(attr, "Buffer Pool ID")
-	attr = ATTR_PS_TOTAL
-	stps.Attributes[attr] = newStatusAttribute(attr, "Total pages", ibmmq.MQIACF_USAGE_TOTAL_PAGES)
-	attr = ATTR_PS_UNUSED
-	stps.Attributes[attr] = newStatusAttribute(attr, "Unused pages", ibmmq.MQIACF_USAGE_UNUSED_PAGES)
-	attr = ATTR_PS_NP_PAGES
-	stps.Attributes[attr] = newStatusAttribute(attr, "Non-persistent pages", ibmmq.MQIACF_USAGE_NONPERSIST_PAGES)
-	attr = ATTR_PS_P_PAGES
-	stps.Attributes[attr] = newStatusAttribute(attr, "Persistent pages", ibmmq.MQIACF_USAGE_PERSIST_PAGES)
-	attr = ATTR_PS_STATUS
-	stps.Attributes[attr] = newStatusAttribute(attr, "Status", ibmmq.MQIACF_PAGESET_STATUS)
-	attr = ATTR_PS_EXPAND_COUNT
-	stps.Attributes[attr] = newStatusAttribute(attr, "Expansion Count", ibmmq.MQIACF_USAGE_EXPAND_COUNT)
+	// And the Pageset-related metrics
+	newPseudoStatusMapEntryRequired(stps, otps, ATTR_PS_ID, "Pageset ID")
+	newPseudoStatusMapEntryRequired(stps, otps, ATTR_PS_BPID, "Buffer Pool ID")
+	newStatusMapEntry(stps, otps, ATTR_PS_TOTAL, "Total pages", ibmmq.MQIACF_USAGE_TOTAL_PAGES, false)
+	newStatusMapEntry(stps, otps, ATTR_PS_UNUSED, "Unused pages", ibmmq.MQIACF_USAGE_UNUSED_PAGES, false)
+	newStatusMapEntry(stps, otps, ATTR_PS_NP_PAGES, "Non-persistent pages", ibmmq.MQIACF_USAGE_NONPERSIST_PAGES, false)
+	newStatusMapEntry(stps, otps, ATTR_PS_P_PAGES, "Persistent pages", ibmmq.MQIACF_USAGE_PERSIST_PAGES, false)
+	newStatusMapEntry(stps, otps, ATTR_PS_STATUS, "Status", ibmmq.MQIACF_PAGESET_STATUS, false)
+	newStatusMapEntry(stps, otps, ATTR_PS_EXPAND_COUNT, "Expansion Count", ibmmq.MQIACF_USAGE_EXPAND_COUNT, false)
 
 	osbp.init = true
 	osps.init = true
@@ -245,9 +235,18 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 		// Create a unique key for this instance
 		key = bpId
 
-		stbp.Attributes[ATTR_BP_ID].Values[key] = newStatusValueString(bpId)
-		stbp.Attributes[ATTR_BP_LOCATION].Values[key] = newStatusValueString(bpLocation)
-		stbp.Attributes[ATTR_BP_CLASS].Values[key] = newStatusValueString(bpClass)
+		v, ok := stbp.Attributes[ATTR_BP_ID]
+		if ok {
+			v.Values[key] = newStatusValueString(bpId)
+		}
+		v, ok = stbp.Attributes[ATTR_BP_LOCATION]
+		if ok {
+			v.Values[key] = newStatusValueString(bpLocation)
+		}
+		v, ok = stbp.Attributes[ATTR_BP_CLASS]
+		if ok {
+			v.Values[key] = newStatusValueString(bpClass)
+		}
 
 		parmAvail = true
 		// And then re-parse the message so we can store the metrics now knowing the map key
@@ -266,8 +265,14 @@ func parseUsageData(cfh *ibmmq.MQCFH, buf []byte) string {
 		// Create a unique key for this instance
 		key = psId
 
-		stps.Attributes[ATTR_PS_ID].Values[key] = newStatusValueString(psId)
-		stps.Attributes[ATTR_PS_BPID].Values[key] = newStatusValueString(bpId)
+		v, ok := stps.Attributes[ATTR_PS_ID]
+		if ok {
+			v.Values[key] = newStatusValueString(psId)
+		}
+		v, ok = stps.Attributes[ATTR_PS_BPID]
+		if ok {
+			v.Values[key] = newStatusValueString(bpId)
+		}
 
 		parmAvail = true
 		// And then re-parse the message so we can store the metrics now knowing the map key

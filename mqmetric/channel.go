@@ -93,9 +93,11 @@ func ChannelInitAttributes() {
 
 	traceEntry("ChannelInitAttributes")
 
+	ot := OT_CHANNEL
+
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_CHANNEL]
-	st := GetObjectStatus(GetConnectionKey(), OT_CHANNEL)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	zos := false
 	if ci.si.platform == ibmmq.MQPL_ZOS {
@@ -110,55 +112,33 @@ func ChannelInitAttributes() {
 
 	// These fields are used to construct the key to the per-channel map values and
 	// as tags to uniquely identify a channel instance
-	attr := ATTR_CHL_NAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Channel Name")
-	attr = ATTR_CHL_RQMNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Remote Queue Manager Name")
-	attr = ATTR_CHL_JOBNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "MCA Job Name")
-	attr = ATTR_CHL_CONNNAME
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Connection Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_NAME, "Channel Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_RQMNAME, "Remote Queue Manager Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_JOBNAME, "MCA Job Name")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_CONNNAME, "Connection Name")
 
-	attr = ATTR_CHL_START
-	st.Attributes[attr] = newStatusAttribute(attr, "Start Time (epoch ms)", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_CHL_START, "Start Time (epoch ms)", DUMMY_PCFATTR, false)
 
-	// These are the integer status fields that are of interest
-	attr = ATTR_CHL_MESSAGES
-	st.Attributes[attr] = newStatusAttribute(attr, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BYTES_SENT
-	st.Attributes[attr] = newStatusAttribute(attr, "Bytes sent", ibmmq.MQIACH_BYTES_SENT)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BYTES_RCVD
-	st.Attributes[attr] = newStatusAttribute(attr, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BUFFERS_SENT
-	st.Attributes[attr] = newStatusAttribute(attr, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BUFFERS_RCVD
-	st.Attributes[attr] = newStatusAttribute(attr, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_CHL_BATCHES
-	st.Attributes[attr] = newStatusAttribute(attr, "Completed Batches", ibmmq.MQIACH_BATCHES)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
+	// These are the integer status fields that are of interest. Many of these are reported by MQ as cumulative
+	// values, so we have to set the Delta flag to convert
+	newStatusMapEntry(st, ot, ATTR_CHL_MESSAGES, "Messages (API Calls for SVRCONN)", ibmmq.MQIACH_MSGS, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_BYTES_SENT, "Bytes sent", ibmmq.MQIACH_BYTES_SENT, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_BYTES_RCVD, "Bytes rcvd", ibmmq.MQIACH_BYTES_RCVD, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_BUFFERS_SENT, "Buffers sent", ibmmq.MQIACH_BUFFERS_SENT, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_BUFFERS_RCVD, "Buffers rcvd", ibmmq.MQIACH_BUFFERS_RCVD, true)
+	newStatusMapEntry(st, ot, ATTR_CHL_BATCHES, "Completed Batches", ibmmq.MQIACH_BATCHES, true)
 
 	// This is decoded by MQCHS_* values
-	attr = ATTR_CHL_STATUS
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
-	// The next value can be decoded from the MQCHSSTATE_* values
-	attr = ATTR_CHL_SUBSTATE
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Substate", ibmmq.MQIACH_CHANNEL_SUBSTATE)
-	attr = ATTR_CHL_TYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Type", ibmmq.MQIACH_CHANNEL_TYPE)
-	attr = ATTR_CHL_INSTANCE_TYPE
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Instance Type", ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE)
-
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_STATUS, "Channel Status", ibmmq.MQIACH_CHANNEL_STATUS)
 	// This is the same attribute as earlier, except that we indicate the values are to be modified in
 	// a special way.
-	attr = ATTR_CHL_STATUS_SQUASH
-	st.Attributes[attr] = newStatusAttribute(attr, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
-	st.Attributes[attr].squash = true
-	os.init = true
+	s := newStatusMapEntryRequired(st, ot, ATTR_CHL_STATUS_SQUASH, "Channel Status - Simplified", ibmmq.MQIACH_CHANNEL_STATUS)
+	s.squash = true
+
+	// The next value can be decoded from the MQCHSSTATE_* values
+	newStatusMapEntry(st, ot, ATTR_CHL_SUBSTATE, "Channel Substate", ibmmq.MQIACH_CHANNEL_SUBSTATE, false)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_TYPE, "Channel Type", ibmmq.MQIACH_CHANNEL_TYPE)
+	newStatusMapEntry(st, ot, ATTR_CHL_INSTANCE_TYPE, "Channel Instance Type", ibmmq.MQIACH_CHANNEL_INSTANCE_TYPE, false)
 
 	// Some of the short/long status values are the opposite way round on the different platforms!
 	// Really a bug in the PCF code (internal reference 304982), but it's not likely to be fixed because of compatibility.
@@ -166,48 +146,49 @@ func ChannelInitAttributes() {
 	// attributes are reversed:
 	//   COMPRESSION_RATE, COMPRESSION_TIME, EXIT_TIME: Not reported here anyway
 	//   NETWORK_TIME, XMITQ_TIME, BATCH_SIZE: Reported here
-	attr = ATTR_CHL_NETTIME_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	st.Attributes[attr].index = idxDefault(zos, 0)
-	attr = ATTR_CHL_NETTIME_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR)
-	st.Attributes[attr].index = idxDefault(zos, 1)
+	s = newStatusMapEntry(st, ot, ATTR_CHL_NETTIME_SHORT, "Network Time Short", ibmmq.MQIACH_NETWORK_TIME_INDICATOR, false)
+	if s != nil {
+		s.index = idxDefault(zos, 0)
+	}
+	s = newStatusMapEntry(st, ot, ATTR_CHL_NETTIME_LONG, "Network Time Long", ibmmq.MQIACH_NETWORK_TIME_INDICATOR, false)
+	if s != nil {
+		s.index = idxDefault(zos, 1)
+	}
+	s = newStatusMapEntry(st, ot, ATTR_CHL_BATCHSZ_SHORT, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR, false)
+	if s != nil {
+		s.index = idxDefault(zos, 0)
+	}
+	s = newStatusMapEntry(st, ot, ATTR_CHL_BATCHSZ_LONG, "Batch Size Average Long", ibmmq.MQIACH_BATCH_SIZE_INDICATOR, false)
+	if s != nil {
+		s.index = idxDefault(zos, 1)
+	}
+	s = newStatusMapEntry(st, ot, ATTR_CHL_XQTIME_SHORT, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR, false)
+	if s != nil {
+		s.index = idxDefault(zos, 0)
+	}
+	s = newStatusMapEntry(st, ot, ATTR_CHL_XQTIME_LONG, "XmitQ Time Average Long", ibmmq.MQIACH_XMITQ_TIME_INDICATOR, false)
+	if s != nil {
+		s.index = idxDefault(zos, 1)
+	}
 
-	attr = ATTR_CHL_BATCHSZ_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Short", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	st.Attributes[attr].index = idxDefault(zos, 0)
-	attr = ATTR_CHL_BATCHSZ_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "Batch Size Average Long", ibmmq.MQIACH_BATCH_SIZE_INDICATOR)
-	st.Attributes[attr].index = idxDefault(zos, 1)
-
-	attr = ATTR_CHL_XQTIME_SHORT
-	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Short", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	st.Attributes[attr].index = idxDefault(zos, 0)
-	attr = ATTR_CHL_XQTIME_LONG
-	st.Attributes[attr] = newStatusAttribute(attr, "XmitQ Time Average Long", ibmmq.MQIACH_XMITQ_TIME_INDICATOR)
-	st.Attributes[attr].index = idxDefault(zos, 1)
-
-	attr = ATTR_CHL_SINCE_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_CHL_SINCE_MSG, "Time Since Msg", DUMMY_PCFATTR, false)
 
 	// These are not really monitoring metrics but it may enable calculations to be made such as %used for
 	// the channel instance availability. It's extracted at startup of the program via INQUIRE_CHL and not updated later
 	// until rediscovery is done based on a separate schedule.
-	attr = ATTR_CHL_MAX_INST
-	st.Attributes[attr] = newStatusAttribute(attr, "MaxInst", DUMMY_PCFATTR)
-	attr = ATTR_CHL_MAX_INSTC
-	st.Attributes[attr] = newStatusAttribute(attr, "MaxInstC", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_MAX_INST, "MaxInst", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_MAX_INSTC, "MaxInstC", DUMMY_PCFATTR)
 	// Current Instances is treated a bit oddly. Although reported on each channel status,
 	// it actually refers to the total number of instances of the same name.
-	attr = ATTR_CHL_CUR_INST
-	st.Attributes[attr] = newStatusAttribute(attr, "Current Instances", DUMMY_PCFATTR)
+	newStatusMapEntryRequired(st, ot, ATTR_CHL_CUR_INST, "Current Instances", DUMMY_PCFATTR)
 
 	// The protocol (TLS12, TLS13) etc is encoded as an integer already
-	attr = ATTR_CHL_SECPROT
-	st.Attributes[attr] = newStatusAttribute(attr, "Negotiated TLS Protocol", ibmmq.MQIACH_SECURITY_PROTOCOL)
+	newStatusMapEntry(st, ot, ATTR_CHL_SECPROT, "Negotiated TLS Protocol", ibmmq.MQIACH_SECURITY_PROTOCOL, false)
+
 	// The actual negotiated cipher is a string to be added as a tag
-	attr = ATTR_CHL_SSLCIPH
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Negotiated TLS Cipher")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_CHL_SSLCIPH, "Negotiated TLS Cipher")
+
+	os.init = true
 
 	traceExit("ChannelInitAttributes", 0)
 }
@@ -528,7 +509,10 @@ func parseChlStatusData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string
 	now := time.Now()
 	if lastMsgTime != "" {
 		diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
-		st.Attributes[ATTR_CHL_SINCE_MSG].Values[key] = newStatusValueInt64(diff)
+		v, ok := st.Attributes[ATTR_CHL_SINCE_MSG]
+		if ok {
+			v.Values[key] = newStatusValueInt64(diff)
+		}
 	}
 
 	if cipherSpec == "" {
@@ -537,7 +521,10 @@ func parseChlStatusData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string
 	st.Attributes[ATTR_CHL_SSLCIPH].Values[key] = newStatusValueString(cipherSpec)
 
 	epoch := statusTimeEpoch(startDate, startTime)
-	st.Attributes[ATTR_CHL_START].Values[key] = newStatusValueInt64(epoch)
+	v, ok := st.Attributes[ATTR_CHL_START]
+	if ok {
+		v.Values[key] = newStatusValueInt64(epoch)
+	}
 
 	// Bump the number of active instances of the channel, treating it a bit like a
 	// regular config attribute.

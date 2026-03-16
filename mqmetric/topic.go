@@ -53,9 +53,10 @@ for now.
 func TopicInitAttributes() {
 	traceEntry("TopicInitAttributes")
 
+	ot := OT_TOPIC
 	ci := getConnection(GetConnectionKey())
-	os := &ci.objectStatus[OT_TOPIC]
-	st := GetObjectStatus(GetConnectionKey(), OT_TOPIC)
+	os := &ci.objectStatus[ot]
+	st := GetObjectStatus(GetConnectionKey(), ot)
 
 	if os.init {
 		traceExit("TopicInitAttributes", 1)
@@ -65,28 +66,18 @@ func TopicInitAttributes() {
 
 	// These fields are used to construct the key to the per-topic map values and
 	// as tags to uniquely identify a topic instance
-	attr := ATTR_TOPIC_STRING
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic String")
-	attr = ATTR_TOPIC_STATUS_TYPE
-	st.Attributes[attr] = newPseudoStatusAttribute(attr, "Topic Status Type")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_TOPIC_STRING, "Topic String")
+	newPseudoStatusMapEntryRequired(st, ot, ATTR_TOPIC_STATUS_TYPE, "Topic Status Type")
 
 	// These are the integer status fields that are of interest
-	attr = ATTR_TOPIC_PUB_MESSAGES
-	st.Attributes[attr] = newStatusAttribute(attr, "Published Messages", ibmmq.MQIACF_PUBLISH_COUNT)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
-	attr = ATTR_TOPIC_SUB_MESSAGES
-	st.Attributes[attr] = newStatusAttribute(attr, "Received Messages", ibmmq.MQIACF_MESSAGE_COUNT)
-	st.Attributes[attr].Delta = true // We have to manage the differences as MQ reports cumulative values
+	newStatusMapEntry(st, ot, ATTR_TOPIC_PUB_MESSAGES, "Published Messages", ibmmq.MQIACF_PUBLISH_COUNT, true)
+	newStatusMapEntry(st, ot, ATTR_TOPIC_SUB_MESSAGES, "Received Messages", ibmmq.MQIACF_MESSAGE_COUNT, true)
 
-	attr = ATTR_TOPIC_PUBLISHER_COUNT
-	st.Attributes[attr] = newStatusAttribute(attr, "Number of publishers", ibmmq.MQIA_PUB_COUNT)
-	attr = ATTR_TOPIC_SUBSCRIBER_COUNT
-	st.Attributes[attr] = newStatusAttribute(attr, "Number of subscribers", ibmmq.MQIA_SUB_COUNT)
+	newStatusMapEntry(st, ot, ATTR_TOPIC_PUBLISHER_COUNT, "Number of publishers", ibmmq.MQIA_PUB_COUNT, false)
+	newStatusMapEntry(st, ot, ATTR_TOPIC_SUBSCRIBER_COUNT, "Number of subscribers", ibmmq.MQIA_SUB_COUNT, false)
 
-	attr = ATTR_TOPIC_SINCE_PUB_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", DUMMY_PCFATTR)
-	attr = ATTR_TOPIC_SINCE_SUB_MSG
-	st.Attributes[attr] = newStatusAttribute(attr, "Time Since Msg", DUMMY_PCFATTR)
+	newStatusMapEntry(st, ot, ATTR_TOPIC_SINCE_PUB_MSG, "Time Since Msg", DUMMY_PCFATTR, false)
+	newStatusMapEntry(st, ot, ATTR_TOPIC_SINCE_SUB_MSG, "Time Since Msg", DUMMY_PCFATTR, false)
 
 	os.init = true
 	traceExit("TopicInitAttributes", 0)
@@ -263,9 +254,10 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	instanceTypeString := "pub"
-	if instanceType == ibmmq.MQIACF_TOPIC_SUB {
+	switch instanceType {
+	case ibmmq.MQIACF_TOPIC_SUB:
 		instanceTypeString = "sub"
-	} else if instanceType == ibmmq.MQIACF_TOPIC_STATUS {
+	case ibmmq.MQIACF_TOPIC_STATUS:
 		instanceTypeString = "status"
 	}
 
@@ -307,9 +299,15 @@ func parseTopicData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 		diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
 		switch instanceType {
 		case ibmmq.MQIACF_TOPIC_SUB:
-			st.Attributes[ATTR_TOPIC_SINCE_SUB_MSG].Values[key] = newStatusValueInt64(diff)
+			v, ok := st.Attributes[ATTR_TOPIC_SINCE_SUB_MSG]
+			if ok {
+				v.Values[key] = newStatusValueInt64(diff)
+			}
 		case ibmmq.MQIACF_TOPIC_PUB:
-			st.Attributes[ATTR_TOPIC_SINCE_PUB_MSG].Values[key] = newStatusValueInt64(diff)
+			v, ok := st.Attributes[ATTR_TOPIC_SINCE_PUB_MSG]
+			if ok {
+				v.Values[key] = newStatusValueInt64(diff)
+			}
 		}
 	}
 

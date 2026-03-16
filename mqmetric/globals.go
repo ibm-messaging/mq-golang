@@ -28,6 +28,11 @@ import (
 	"github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
 
+type MetricFilter struct {
+	Include map[string]struct{}
+	Exclude map[string]struct{}
+}
+
 type sessionInfo struct {
 	qMgr       ibmmq.MQQueueManager
 	cmdQObj    ibmmq.MQObject
@@ -87,6 +92,8 @@ type connectionInfo struct {
 
 	objectStatus     [OT_LAST_USED + 1]objectStatus
 	publishedMetrics AllMetrics
+
+	metricFilter [OT_LAST_USED + 1]MetricFilter
 }
 
 type objectStatus struct {
