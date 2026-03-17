@@ -33,6 +33,8 @@ var (
 	timeTravelWarningIssued  = false
 	persistenceWarningIssued = false
 	clearQBuf                = make([]byte, 32768)
+	emptyStruc               struct{}
+	reportedFilter           [OT_LAST_USED + 1]map[string]interface{}
 )
 
 /*
@@ -64,6 +66,12 @@ type StatusValue struct {
 	ValueString string
 }
 
+func init() {
+	for i := 0; i <= OT_LAST_USED; i++ {
+		reportedFilter[i] = make(map[string]interface{})
+	}
+}
+
 func mapContains(m map[string]struct{}, k string) bool {
 	_, found := m[k]
 	return found
@@ -74,13 +82,13 @@ func mapContains(m map[string]struct{}, k string) bool {
 // or excluded for that object type. For example, the YAML file gets parsed from here:
 //
 //		filters:
-//		 metricInclude:
-//	    topics:
-//	      - publisher_count
-//		 metricExclude:
-//		   queues:
+//		  metricInclude:
+//	        topics:
+//	        - publisher_count
+//		  metricExclude:
+//		    queues:
 //		     - mqput_bytes
-//		   qmgr:
+//		    qmgr:
 //		     - mq_fdc_file_count
 //		     - log_disk_written_log_sequence_number
 //		   channels:
@@ -105,7 +113,14 @@ func includeMapEntry(ot int, n string) bool {
 		rc = true
 	}
 
-	//logDebug("includeMapEntry: rc:%v ot:%d metric:%s", rc, ot, n)
+	// Keep track of which metrics we've made a decision about, so we can report it during debug
+	/*
+		_, ok := reportedFilter[ot][n]
+		if !ok {
+			logDebug("includeMapEntry: rc:%v ot:%d metric:%s", rc, ot, n)
+			reportedFilter[ot][n] = emptyStruc
+		}
+	*/
 	return rc
 }
 

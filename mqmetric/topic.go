@@ -163,7 +163,7 @@ func CollectTopicStatus(patterns string) error {
 // Collect the responses and build up the statistics
 func collectTopicStatus(pattern string, instanceType int32) error {
 	var err error
-	traceEntryF("collectTopicStatus", "Pattern: %s", pattern)
+	traceEntryF("collectTopicStatus", "InstanceType: %d Pattern: %s", instanceType, pattern)
 
 	ci := getConnection(GetConnectionKey())
 	os := &ci.objectStatus[OT_TOPIC]
