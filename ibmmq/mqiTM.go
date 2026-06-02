@@ -60,7 +60,7 @@ import (
  *     MQCONN(tmc.QMgrName)
  *     ...
  * Trigger monitors and triggers apps may "cooperate" to agree on starting methods and any other
- * special parameters that may be passed, but the mechanism here follows the standard mechanism
+ * special parameters that may be passed, but the mechanism here follows the standard pattern
  */
 
 // This is the format as read from the queue
@@ -77,7 +77,7 @@ type MQTM struct {
 
 // TMC has the same fields as the TM, but ints become 4-char strings
 // And V2 of the structure also adds the qmgrName.
-type MQTMC struct {
+type MQTMC2 struct {
 	Version     string
 	QName       string
 	ProcessName string
@@ -138,11 +138,11 @@ func NewMQTM(buf []byte) (*MQTM, error) {
 	return tm, nil
 }
 
-// Either create a completely new MQTMC (give "" as the input string), or extract the fields
+// Either create a completely new MQTMC2 (give "" as the input string), or extract the fields
 // from the string given to the triggered app on the command line. All the elements
-// have a fixed length in the flattened string; they have spaces trimmed for the TMC structure.
-func NewMQTMC(s string) (*MQTMC, error) {
-	tmc := new(MQTMC)
+// have a fixed length in the flattened string; they have spaces trimmed for the Go TMC2 structure.
+func NewMQTMC2(s string) (*MQTMC2, error) {
+	tmc := new(MQTMC2)
 	if s == "" {
 		tmc.Version = fmt.Sprintf("%4d", 2) // MQTMC_CURRENT_VERSION is a string, not int
 		// All other public strings default to empty
@@ -187,9 +187,9 @@ func NewMQTMC(s string) (*MQTMC, error) {
 	return tmc, nil
 }
 
-// Convert an MQTM (read by a trigger monitor) to the char-based version that can be passed to an app on the command line.
-// The elements are right-padded with spaces to get fixed lengths.
-func (tm *MQTM) ToTMC(qMgrName string) string {
+// Convert an MQTM (read by a trigger monitor) to the char-based version that can be passed to an app on the command line
+// as a string. The elements are right-padded with spaces to get fixed lengths.
+func (tm *MQTM) ToTMC2(qMgrName string) string {
 	s := "TMC "                // StrucId
 	s += fmt.Sprintf("%4d", 2) // MQTMC_CURRENT_VERSION is a string
 	s += fmt.Sprintf("%-*s", MQ_Q_NAME_LENGTH, tm.QName)
@@ -202,6 +202,6 @@ func (tm *MQTM) ToTMC(qMgrName string) string {
 
 	s += fmt.Sprintf("%-*s", MQ_Q_MGR_NAME_LENGTH, qMgrName)
 
-	// fmt.Printf("Created TMC of length %d: \"%s\"\n", len(s), s)
+	// fmt.Printf("Created TMC2 of length %d: \"%s\"\n", len(s), s)
 	return s
 }
