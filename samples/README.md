@@ -35,6 +35,9 @@ Allow use of a userid/password for authentication. There are no default values f
 * amqsdlh.go : Putting a message to a DLQ with a dead-letter header
 * amqspcf.go : Demonstrate use of the PCF functions to create a command and parse a response
 * amqsjwt.go : Demonstrate retrieving a JWT token from a server and using that to connect
+* amqstrg.go : A simple trigger monitor that launches triggered programs. Works with ...
+* amqsech.go : A triggered program that prints the body of messages. Needs appropriate config
+  on the application queue, initq, and a process definition
 
 Some trivial scripts run the sample programs in matching pairs:
 * putget.sh  : Run amqsput and then use the generated MsgId to get the same message with amqsget

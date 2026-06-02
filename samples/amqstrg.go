@@ -1,10 +1,10 @@
 /*
  * This is an example of a Go program that can run as a simple trigger monitor. While
- * the product-supplied amqltm00 or the amqstrg sample will work for most cases, there may
+ * the product-supplied runmqtrm or the amqstrg sample will work for most cases, there may
  * be environments where the "system()" equivalent is insufficient. This sample can
  * be modified to meet any extra requirements if you prefer working in Go.
  *
- * Other things that you might want to think about, and which amqltm00 does:
+ * Other things that you might want to think about, and which runmqtrm does:
  * - move malformed trigger messages to a DLQ
  * - better error reporting/debug output
  * - any escape-characters or special formatting needed for parameters eg anything including quote chars

@@ -9,10 +9,10 @@
  * loop and wait a little while, to minimise the number of trigger messages
  * created and processed.
  *
- * Sample MQRC to configure triggering:
+ * Sample MQSC to configure triggering:
  *   DEF QL(DEV.ECHO) INITQ(DEV.INITQ) PROCESS(DEV.PROC) trigger trigtype(first) trigdata('sometriggerdata') replace
  *   DEF QL(DEV.INITQ) replace
- *   DEF PROCESS(DEV.PROC) applicid('$curdir/amqsech') userdata('someuserdata') envrdata('someenvdata') replace
+ *   DEF PROCESS(DEV.PROC) applicid('<path>/amqsech') userdata('someuserdata') envrdata('someenvdata') replace
  *
  * Then run "amqstrg DEV.INITQ QM1" and put messages to the DEV.ECHO queue
  * This program should be triggered and print the message contents.
