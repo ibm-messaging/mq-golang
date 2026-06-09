@@ -37,7 +37,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	mq "github.com/ibm-messaging/mq-golang/v5/ibmmq"
 )
@@ -92,7 +91,6 @@ func mainWithRc() int {
 
 	msgAvail := true
 	for msgAvail == true && err == nil {
-		var datalen int
 
 		// The GET requires control structures, the Message Descriptor (MQMD)
 		// and Get Options (MQGMO). Create those with default values.
@@ -100,63 +98,51 @@ func mainWithRc() int {
 		getmqmd.Version = 2
 		gmo := mq.NewMQGMO()
 
-		// The default options are OK, but it's always
-		// a good idea to be explicit about transactional boundaries as
-		// not all platforms behave the same way. Might use syncpoint if we move a
-		// malformed trigger message to a DLQ
 		gmo.Options = mq.MQGMO_NO_SYNCPOINT
 
-		// Set options to wait for a maximum of 3 seconds for any new message to arrive
+		// Set options to wait for new messages to arrive
 		gmo.Options |= mq.MQGMO_WAIT
 
-		// A real monitor should set this to "unlimited"
-		gmo.WaitInterval = 10 * 1000 // The WaitInterval is in milliseconds
+		// A monitor should set this to "unlimited" so it runs forever (or until there's an error)
+		gmo.WaitInterval = mq.MQWI_UNLIMITED
 
-		// Create a buffer for the Trigger data.
+		// Create a buffer for the Trigger data. Must be at least MQTM_CURRENT_LENGTH.
 		buffer := make([]byte, 0, 1024)
 
 		// Now we can try to get the message. This operation returns
 		// a buffer that can be used directly.
-		buffer, datalen, err = qObject.GetSlice(getmqmd, gmo, buffer)
+		buffer, _, err = qObject.GetSlice(getmqmd, gmo, buffer)
 
 		if err != nil {
+			// With an unlimited wait, we won't expect to see MQRC_NO_MSG_AVAILABLE
 			msgAvail = false
-			// fmt.Println(err)
-			mqret := err.(*mq.MQReturn)
-			if mqret.MQRC == mq.MQRC_NO_MSG_AVAILABLE {
-				// If there's no message available, then I won't treat that as a real error as
-				// it's an expected situation
-				err = nil
-			} else if mqret.MQRC == mq.MQRC_TRUNCATED_MSG_ACCEPTED {
-				fmt.Printf("Got message of length %d: \n", datalen)
-				fmt.Printf("Bufflen(Slice)        %d: \n", len(buffer))
-				fmt.Println(strings.TrimSpace(string(buffer)))
-				msgAvail = true
-				err = nil
-			}
+			fmt.Println(err)
 		} else if getmqmd.Format == mq.MQFMT_TRIGGER {
 			// We've got a message, that should be an MQTM structure.
 
-			// fmt.Printf("LTM Got message of length %d & format %s\n", datalen, getmqmd.Format)
-			{
-				tm, err := mq.NewMQTM(buffer)
-				if err == nil {
-					app := tm.ApplId
-					tmc := tm.ToTMC2(qMgrName)
+			// fmt.Printf("TRG Got message of length %d & format %s\n", datalen, getmqmd.Format)
 
-					cmd := exec.Command(app, tmc)
-					cmd.Stdout = os.Stdout
-					cmd.Stderr = os.Stderr
-					err := cmd.Run()
-					if err != nil {
-						fmt.Printf("Error executing %s: %v\n", app, err)
-					}
-				} else {
-					fmt.Printf("Error creating TM: %v\n", err)
+			tm, err := mq.NewMQTM(buffer)
+			if err == nil {
+				app := tm.ApplId
+				tmc := tm.ToTMC2(qMgrName)
+
+				// Current versions of Go will not look in the current directory, regardless of PATH,
+				// for application names that do not have any directory qualification. Use "./" in the ApplicId
+				// or a full path to make sure the program can be found.
+				cmd := exec.Command(app, tmc)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				err := cmd.Run() // This waits for the started program to finish
+				if err != nil {
+					fmt.Printf("Error executing %s: %v\n", app, err)
 				}
+			} else {
+				fmt.Printf("Error creating TM: %v\n", err)
 			}
+
 		} else {
-			fmt.Printf("Unexpected message format: %s", getmqmd.Format)
+			fmt.Printf("Unexpected message format: %s\n", getmqmd.Format)
 		}
 	}
 
