@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2023
+  Copyright (c) IBM Corporation 2016,2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -25,6 +25,19 @@ package ibmmq
 #include <string.h>
 #include <cmqc.h>
 #include <cmqxc.h>
+
+void setQuantumSafeOptions(MQCD *mqcd, MQLONG algorithm, MQLONG required) {
+#if defined(MQCD_VERSION_13) && MQC_CURRENT_VERSION >= MQCD_VERSION_13
+  if (mqcd->Version < MQCD_VERSION_13) {
+	  mqcd->Version = MQCD_VERSION_13;
+  }
+  mqcd->QuantumSafeAlgorithm = algorithm;
+  mqcd->QuantumSafeRequired = required;
+#else
+  // We fail silently here, but perhaps ought to give an error in some way as you've tried to use
+  // a parameter that is not permitted at the version of MQ that you are building against
+#endif
+}
 
 */
 import "C"
@@ -58,6 +71,8 @@ type MQCD struct {
 	CertificateLabel     string
 	HdrCompList          [2]int32
 	MsgCompList          [16]int32
+	QuantumSafeAlgorithm int32
+	QuantumSafeRequired  int32
 }
 
 /*
@@ -94,6 +109,13 @@ func NewMQCD() *MQCD {
 	for i := 1; i < 16; i++ {
 		cd.MsgCompList[i] = int32(C.MQCOMPRESS_NOT_AVAILABLE)
 	}
+
+	/* The QuantumSafe fields were added in MQ 10. We can't
+	guarantee that we are compiling against that version of C header files, but
+	we can set the default values to the value in the Go definitions directly.
+	*/
+	cd.QuantumSafeAlgorithm = MQQS_UNPROTECTED
+	cd.QuantumSafeRequired = MQQSR_OPTIONAL
 
 	return cd
 }
@@ -209,6 +231,11 @@ func copyCDtoC(mqcd *C.MQCD, gocd *MQCD) {
 	setMQIString((*C.char)(&mqcd.CertificateLabel[0]), gocd.CertificateLabel, C.MQ_CERT_LABEL_LENGTH)
 
 	// mqcd.SPLProtection was introduced with version 12 of structure (V9.1.3) but not relevant for clients
+
+	// The QuantumSafe options came with version 13 (V10.0)
+	if gocd.QuantumSafeAlgorithm > 0 || gocd.QuantumSafeRequired > 0 {
+		C.setQuantumSafeOptions(mqcd, C.MQLONG(gocd.QuantumSafeAlgorithm), C.MQLONG(gocd.QuantumSafeRequired))
+	}
 
 	return
 }
