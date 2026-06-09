@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016
+  Copyright (c) IBM Corporation 2016, 2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ NewMQOD fills in default values for the MQOD structure
 func NewMQOD() *MQOD {
 
 	od := new(MQOD)
-	od.Version = 1
+	od.Version = C.MQOD_VERSION_1
 	od.ObjectType = C.MQOT_Q
 	od.ObjectName = ""
 	od.ObjectQMgrName = ""

@@ -22,7 +22,7 @@ directories.
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016, 2024
+  Copyright (c) IBM Corporation 2016, 2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -175,8 +175,15 @@ func (hObj *MQObject) GetHConn() *MQQueueManager {
 }
 
 var endian binary.ByteOrder // Used by structure formatters such as MQCFH
+
+// Some padding blocks that are sometimes needed to make strings the correct length
 const space4 = "    "
 const space8 = "        "
+const space32 = space8 + space8 + space8 + space8
+const space64 = space32 + space32
+const space128 = space64 + space64
+const space256 = space128 + space128
+
 const (
 	mqDateTimeFormat = "20060102150405.00 MST" // Used as the way to parse a string into a time.Time type with magic values
 	mqDateFormat     = "20060102"

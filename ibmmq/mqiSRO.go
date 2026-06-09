@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018, 2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ func NewMQSRO() *MQSRO {
 
 func copySROtoC(mqsro *C.MQSRO, gosro *MQSRO) {
 	setMQIString((*C.char)(&mqsro.StrucId[0]), "SRO ", 4)
-	mqsro.Version = 1
+	mqsro.Version = C.MQLONG(C.MQSRO_VERSION_1)
 	mqsro.Options = C.MQLONG(gosro.Options) | C.MQSRO_FAIL_IF_QUIESCING
 	mqsro.NumPubs = C.MQLONG(gosro.NumPubs)
 }

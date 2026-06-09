@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018, 2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ func NewMQPD() *MQPD {
 func copyIMPOtoC(mqimpo *C.MQIMPO, goimpo *MQIMPO) {
 	const vsbufsize = 10240
 	setMQIString((*C.char)(&mqimpo.StrucId[0]), "IMPO", 4)
-	mqimpo.Version = 1
+	mqimpo.Version = C.MQLONG(C.MQIMPO_VERSION_1)
 	mqimpo.Options = C.MQLONG(goimpo.Options)
 	mqimpo.RequestedEncoding = C.MQLONG(C.MQENC_NATIVE)
 	mqimpo.RequestedCCSID = C.MQLONG(C.MQCCSI_APPL)
@@ -106,19 +106,19 @@ func copyIMPOtoC(mqimpo *C.MQIMPO, goimpo *MQIMPO) {
 
 func copyDMPOtoC(mqdmpo *C.MQDMPO, godmpo *MQDMPO) {
 	setMQIString((*C.char)(&mqdmpo.StrucId[0]), "DMPO", 4)
-	mqdmpo.Version = 1
+	mqdmpo.Version = C.MQLONG(C.MQDMPO_VERSION_1)
 	mqdmpo.Options = C.MQLONG(godmpo.Options)
 }
 func copySMPOtoC(mqsmpo *C.MQSMPO, gosmpo *MQSMPO) {
 	setMQIString((*C.char)(&mqsmpo.StrucId[0]), "SMPO", 4)
-	mqsmpo.Version = 1
+	mqsmpo.Version = C.MQLONG(C.MQSMPO_VERSION_1)
 	mqsmpo.Options = C.MQLONG(gosmpo.Options)
 	mqsmpo.ValueEncoding = C.MQLONG(C.MQENC_NATIVE)
 	mqsmpo.ValueCCSID = C.MQLONG(C.MQCCSI_APPL)
 }
 func copyPDtoC(mqpd *C.MQPD, gopd *MQPD) {
 	setMQIString((*C.char)(&mqpd.StrucId[0]), "PD  ", 4)
-	mqpd.Version = 1
+	mqpd.Version = C.MQLONG(MQPD_VERSION_1)
 	mqpd.Options = C.MQLONG(gopd.Options)
 	mqpd.Support = C.MQLONG(gopd.Support)
 	mqpd.Context = C.MQLONG(gopd.Context)

@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2018
+  Copyright (c) IBM Corporation 2018, 2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ func NewMQBO() *MQBO {
 
 func copyBOtoC(mqbo *C.MQBO, gobo *MQBO) {
 	setMQIString((*C.char)(&mqbo.StrucId[0]), "BO  ", 4)
-	mqbo.Version = 1
+	mqbo.Version = C.MQLONG(C.MQBO_VERSION_1)
 	mqbo.Options = C.MQLONG(gobo.Options)
 }
 

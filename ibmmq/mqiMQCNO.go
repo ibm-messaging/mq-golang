@@ -1,7 +1,7 @@
 package ibmmq
 
 /*
-  Copyright (c) IBM Corporation 2016,2023
+  Copyright (c) IBM Corporation 2016,2026
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -170,7 +170,9 @@ void freeCspToken(MQCSP *mqcsp) {
 
 size_t getMaxCDLength() {
   size_t l;
-#if defined(MQCD_VERSION_12)
+#if defined(MQCD_VERSION_13)
+  l = MQCD_LENGTH_13;
+#elif defined(MQCD_VERSION_12)
   l = MQCD_LENGTH_12;
 #else
   l = MQCD_LENGTH_11; // The minimum supported here

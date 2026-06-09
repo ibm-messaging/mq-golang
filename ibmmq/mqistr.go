@@ -1487,6 +1487,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_944"
 		case 945:
 			s = "MQCMDL_LEVEL_945"
+		case 1000:
+			s = "MQCMDL_LEVEL_1000"
 		default:
 			s = ""
 		}
@@ -3241,6 +3243,8 @@ func MQItoString(class string, value int) string {
 			s = "MQNHASTATUS_DISCONNECTED"
 		case 7:
 			s = "MQNHASTATUS_PARTITIONED"
+		case 8:
+			s = "MQNHASTATUS_SYNC_FAILED"
 		default:
 			s = ""
 		}
@@ -3989,12 +3993,36 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "QSR":
+		switch v {
+		case 0:
+			s = "MQQSR_OPTIONAL"
+		case 1:
+			s = "MQQSR_REQUIRED"
+		default:
+			s = ""
+		}
+
 	case "QSUM":
 		switch v {
 		case 0:
 			s = "MQQSUM_NO"
 		case 1:
 			s = "MQQSUM_YES"
+		default:
+			s = ""
+		}
+
+	case "QS":
+		switch v {
+		case -1:
+			s = "MQQS_UNKNOWN"
+		case 0:
+			s = "MQQS_UNPROTECTED"
+		case 1:
+			s = "MQQS_HYBMLKEM"
+		case 2:
+			s = "MQQS_MLKEM"
 		default:
 			s = ""
 		}
