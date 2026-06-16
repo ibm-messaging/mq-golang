@@ -1,8 +1,11 @@
 # Changelog
 Newest updates are at the top of this file.
 
-## XXX XX 2026 - v5.7.2
-- ibmmqotel - Deal with MQSUB(MQSO_MANAGED) when discovering PROPCTL value 
+## Jun 16 2026 - v5.7.2
+- Update for MQ 10
+- mqmetric - Individual metrics can be included/excluded from reporting
+- ibmmqotel - Deal with MQSUB(MQSO_MANAGED) when discovering PROPCTL value
+- ibmmq - Add MQTM/MQTMC structures for trigger monitors and triggered apps
 
 ## Feb 06 2026 - v5.7.1
 - Update for MQ 9.4.5
