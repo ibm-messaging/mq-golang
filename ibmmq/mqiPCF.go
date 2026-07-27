@@ -425,8 +425,14 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 	case C.MQCFT_INTEGER_LIST:
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &count)
+		// Bound the loop by the data actually present. A malformed count would
+		// otherwise iterate billions of times and grow the slice without limit;
+		// binary.Read fails once the buffer is exhausted, so stop rather than
+		// trusting count.
 		for i := 0; i < int(count); i++ {
-			binary.Read(p, endian, &i32)
+			if err := binary.Read(p, endian, &i32); err != nil {
+				break
+			}
 			pcfParm.Int64Value = append(pcfParm.Int64Value, int64(i32))
 		}
 
@@ -439,33 +445,51 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 	case C.MQCFT_INTEGER64_LIST:
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &count)
+		// Same count guard as MQCFT_INTEGER_LIST: stop when the buffer runs out
+		// instead of trusting a possibly-malformed count.
 		for i := 0; i < int(count); i++ {
-			binary.Read(p, endian, &i64)
+			if err := binary.Read(p, endian, &i64); err != nil {
+				break
+			}
 			pcfParm.Int64Value = append(pcfParm.Int64Value, i64)
 		}
 
 	case C.MQCFT_STRING:
-		offset := int32(C.MQCFST_STRUC_LENGTH_FIXED)
+		offset := int(C.MQCFST_STRUC_LENGTH_FIXED)
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &pcfParm.CodedCharSetId)
 		binary.Read(p, endian, &pcfParm.stringLength)
-		s := string(buf[offset : pcfParm.stringLength+offset])
-		s = trimToNull(s)
-		pcfParm.String = append(pcfParm.String, s)
-		p.Next(int(pcfParm.strucLength - offset))
+		if raw, ok := pcfSlice(buf, offset, pcfParm.stringLength); ok {
+			s := trimToNull(string(raw))
+			pcfParm.String = append(pcfParm.String, s)
+		}
+		pcfSkip(p, int(pcfParm.strucLength)-offset)
 
 	case C.MQCFT_STRING_LIST:
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &pcfParm.CodedCharSetId)
 		binary.Read(p, endian, &count)
 		binary.Read(p, endian, &pcfParm.stringLength)
-		for i := 0; i < int(count); i++ {
-			offset := C.MQCFSL_STRUC_LENGTH_FIXED + i*int(pcfParm.stringLength)
-			s := string(buf[offset : int(pcfParm.stringLength)+offset])
-			s = trimToNull(s)
-			pcfParm.String = append(pcfParm.String, s)
+		// Guard count as well as each element's length: a huge count would
+		// otherwise loop for a long time or overflow the offset arithmetic.
+		// stringLength must be strictly positive - a zero length never advances
+		// the offset, so a huge count would still spin appending empty strings.
+		if count > 0 && pcfParm.stringLength > 0 {
+			offset := int(C.MQCFSL_STRUC_LENGTH_FIXED)
+			for i := 0; i < int(count); i++ {
+				off64 := int64(offset) + int64(i)*int64(pcfParm.stringLength)
+				if off64 < 0 || off64 > int64(len(buf)) {
+					break
+				}
+				raw, ok := pcfSlice(buf, int(off64), pcfParm.stringLength)
+				if !ok {
+					break
+				}
+				s := trimToNull(string(raw))
+				pcfParm.String = append(pcfParm.String, s)
+			}
 		}
-		p.Next(int(pcfParm.strucLength - C.MQCFSL_STRUC_LENGTH_FIXED))
+		pcfSkip(p, int(pcfParm.strucLength)-int(C.MQCFSL_STRUC_LENGTH_FIXED))
 
 	case C.MQCFT_GROUP:
 		// This reads the entire group, including the group elements.
@@ -474,9 +498,20 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		binary.Read(p, endian, &pcfParm.ParameterCount)
 		offset := 16 // Include the Type/StrucLength words in the already-read count
 		bytesRead := 0
+		// Reject absurd/negative ParameterCount so we do not allocate huge slices
+		// or loop forever on malformed input.
+		if pcfParm.ParameterCount < 0 || int(pcfParm.ParameterCount) > fullLen {
+			return pcfParm, offset
+		}
 		pcfParm.GroupList = make([]*PCFParameter, pcfParm.ParameterCount)
 		for i := 0; i < int(pcfParm.ParameterCount); i++ {
+			if offset >= fullLen {
+				break
+			}
 			pcfParm.GroupList[i], bytesRead = ReadPCFParameter(buf[offset:])
+			if bytesRead <= 0 {
+				break
+			}
 			offset += bytesRead
 		}
 		return pcfParm, offset
@@ -484,12 +519,14 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 	case C.MQCFT_BYTE_STRING:
 		// The byte string is converted to a hex string as that's how
 		// we expect to use it in reporting
-		offset := int32(C.MQCFBS_STRUC_LENGTH_FIXED)
+		offset := int(C.MQCFBS_STRUC_LENGTH_FIXED)
 		binary.Read(p, endian, &pcfParm.Parameter)
 		binary.Read(p, endian, &pcfParm.stringLength)
-		s := hex.EncodeToString(buf[offset : pcfParm.stringLength+offset])
-		pcfParm.String = append(pcfParm.String, s)
-		p.Next(int(pcfParm.strucLength - offset))
+		if raw, ok := pcfSlice(buf, offset, pcfParm.stringLength); ok {
+			s := hex.EncodeToString(raw)
+			pcfParm.String = append(pcfParm.String, s)
+		}
+		pcfSkip(p, int(pcfParm.strucLength)-offset)
 
 	case C.MQCFT_INTEGER_FILTER:
 		binary.Read(p, endian, &pcfParm.Filter.Parameter)
@@ -498,25 +535,28 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		pcfParm.Filter.FilterValue = int64(i32)
 
 	case C.MQCFT_STRING_FILTER:
-		offset := int32(C.MQCFSF_STRUC_LENGTH_FIXED)
+		offset := int(C.MQCFSF_STRUC_LENGTH_FIXED)
 
 		binary.Read(p, endian, &pcfParm.Filter.Parameter)
 		binary.Read(p, endian, &pcfParm.Filter.Operator)
 		binary.Read(p, endian, &pcfParm.CodedCharSetId)
 		binary.Read(p, endian, &pcfParm.stringLength)
-		s := string(buf[offset : pcfParm.stringLength+offset])
-		s = trimToNull(s)
-		pcfParm.Filter.FilterValue = s
-		p.Next(int(pcfParm.strucLength - offset))
+		if raw, ok := pcfSlice(buf, offset, pcfParm.stringLength); ok {
+			s := trimToNull(string(raw))
+			pcfParm.Filter.FilterValue = s
+		}
+		pcfSkip(p, int(pcfParm.strucLength)-offset)
 
 	case C.MQCFT_BYTE_STRING_FILTER:
-		offset := int32(C.MQCFBF_STRUC_LENGTH_FIXED)
+		offset := int(C.MQCFBF_STRUC_LENGTH_FIXED)
 		binary.Read(p, endian, &pcfParm.Filter.Parameter)
 		binary.Read(p, endian, &pcfParm.Filter.Operator)
 		binary.Read(p, endian, &pcfParm.stringLength)
-		s := hex.EncodeToString(buf[offset : pcfParm.stringLength+offset])
-		pcfParm.Filter.FilterValue = s
-		p.Next(int(pcfParm.strucLength - offset))
+		if raw, ok := pcfSlice(buf, offset, pcfParm.stringLength); ok {
+			s := hex.EncodeToString(raw)
+			pcfParm.Filter.FilterValue = s
+		}
+		pcfSkip(p, int(pcfParm.strucLength)-offset)
 
 	default:
 		// This should not happen, but if it does then dump various pieces of
@@ -531,11 +571,38 @@ func ReadPCFParameter(buf []byte) (*PCFParameter, int) {
 		// After dumping the stack, we will try to carry on regardless.
 		// Skip the remains of this structure, assuming it really is
 		// PCF and we just don't know how to process the element type
-		p.Next(int(pcfParm.strucLength - 8))
+		pcfSkip(p, int(pcfParm.strucLength)-8)
 	}
 
 	bytesRead := fullLen - p.Len()
 	return pcfParm, bytesRead
+}
+
+// pcfSlice returns buf[offset:offset+length] when the range lies entirely
+// inside buf. length comes from the wire as int32 and must be non-negative.
+// Returns ok=false for negative length, overflow, or a range past the buffer
+// end — callers must not panic on malformed PCF.
+func pcfSlice(buf []byte, offset int, length int32) ([]byte, bool) {
+	if length < 0 || offset < 0 {
+		return nil, false
+	}
+	end := int64(offset) + int64(length)
+	if end < int64(offset) || end > int64(len(buf)) {
+		return nil, false
+	}
+	return buf[offset:int(end)], true
+}
+
+// pcfSkip advances p by n bytes, clamping to the remaining buffer and
+// ignoring negative skips (malformed StrucLength).
+func pcfSkip(p *bytes.Buffer, n int) {
+	if n <= 0 {
+		return
+	}
+	if n > p.Len() {
+		n = p.Len()
+	}
+	p.Next(n)
 }
 
 func roundTo4(u int32) int32 {

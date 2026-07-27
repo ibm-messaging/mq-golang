@@ -1,6 +1,10 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Unreleased
+- ibmmq - Harden ReadPCFParameter against malformed length fields (oversized/negative)
+  so parsing untrusted PCF does not panic (DoS of monitoring processes)
+
 ## Jun 16 2026 - v5.7.2
 - Update for MQ 10
 - mqmetric - Individual metrics can be included/excluded from reporting
