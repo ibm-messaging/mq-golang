@@ -138,6 +138,12 @@ const DUMMY_STRING = "-" // To provide a non-empty value for certain fields
 const DEFAULT_CONNECTION_KEY = "@defaultConnection"
 const DUMMY_PCFATTR = -1 // For metrics that don't have an explicit PCF attribute
 
+// This is set for "since" timevalues that are unknown, just as when the lastGetTime on a queue is not set.
+// We use a very large number (MaxInt64). 0 isn't right, because that shows the object really has just been used. And
+// we can't use a negative number as prometheus - at least - turns that to 0. I considered using the MQ "maxint" of 999999999
+// but decided to go even bigger.
+const SINCE_UNKNOWN int64 = 1<<63 - 1
+
 // Command messages are put with an expiry so they don't hang around too long. And any remaining
 // responses are also set to expire because of an MQRO setting. We use the WaitInterval as the basis.
 // First multiply by 10 (to get from seconds to the tenths used in MQMD.Expiry), then give more time

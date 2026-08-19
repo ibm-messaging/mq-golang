@@ -450,16 +450,25 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	}
 
 	now := time.Now()
-	if lastPutTime != "" {
-		v, ok := st.Attributes[ATTR_Q_SINCE_PUT]
-		if ok {
+
+	v, ok := st.Attributes[ATTR_Q_SINCE_PUT]
+	if ok {
+		if lastPutTime != "" {
 			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
+		} else {
+			logDebug("Setting SINCE_PUT to unknown for %s", key)
+
+			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
 		}
 	}
-	if lastGetTime != "" {
-		v, ok := st.Attributes[ATTR_Q_SINCE_GET]
-		if ok {
+
+	v, ok = st.Attributes[ATTR_Q_SINCE_GET]
+	if ok {
+		if lastGetTime != "" {
 			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
+		} else {
+			logDebug("Setting SINCE_GET to unknown for %s", key)
+			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
 		}
 	}
 	if s, ok := qInfoMap[key]; ok {

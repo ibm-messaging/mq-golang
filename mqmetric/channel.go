@@ -507,11 +507,13 @@ func parseChlStatusData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string
 	}
 
 	now := time.Now()
-	if lastMsgTime != "" {
-		diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
-		v, ok := st.Attributes[ATTR_CHL_SINCE_MSG]
-		if ok {
+	v, ok := st.Attributes[ATTR_CHL_SINCE_MSG]
+	if ok {
+		if lastMsgTime != "" {
+			diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
 			v.Values[key] = newStatusValueInt64(diff)
+		} else {
+			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
 		}
 	}
 
@@ -521,7 +523,7 @@ func parseChlStatusData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string
 	st.Attributes[ATTR_CHL_SSLCIPH].Values[key] = newStatusValueString(cipherSpec)
 
 	epoch := statusTimeEpoch(startDate, startTime)
-	v, ok := st.Attributes[ATTR_CHL_START]
+	v, ok = st.Attributes[ATTR_CHL_START]
 	if ok {
 		v.Values[key] = newStatusValueInt64(epoch)
 	}
