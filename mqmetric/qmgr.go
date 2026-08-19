@@ -603,7 +603,6 @@ func GetQueueManagerAttribute(key string, attribute int32) string {
 	switch attribute {
 	case ibmmq.MQCACF_HOST_NAME:
 		v = qMgrInfo.HostName
-		v = strings.ReplaceAll(v, "-", ".")
 	default:
 		v = DUMMY_STRING
 	}
