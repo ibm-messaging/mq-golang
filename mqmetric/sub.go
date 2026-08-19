@@ -166,6 +166,8 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	traceEntry("parseSubData")
 
 	st := GetObjectStatus(GetConnectionKey(), OT_SUB)
+	ci := getConnection(GetConnectionKey())
+
 	subName := ""
 	subId := ""
 	key := ""
@@ -235,8 +237,8 @@ func parseSubData(cfh *ibmmq.MQCFH, buf []byte) string {
 	if ok {
 		if lastTime != "" {
 			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastDate, lastTime))
-		} else {
-			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
+		} else if ci.showUnknownSince {
+			v.Values[key] = newStatusValueInt64(UNKNOWN_SINCE)
 		}
 	}
 	st.Attributes[ATTR_SUB_TOPIC_STRING].Values[key] = newStatusValueString(topicString)

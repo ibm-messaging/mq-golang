@@ -74,6 +74,7 @@ type connectionInfo struct {
 	useDepthFromStatus   bool
 	showInactiveChannels bool
 	showCustomAttribute  bool
+	showUnknownSince     bool
 	hideSvrConnJobname   bool
 	hideAMQPClientId     bool
 	hideMQTTClientId     bool
@@ -142,7 +143,7 @@ const DUMMY_PCFATTR = -1 // For metrics that don't have an explicit PCF attribut
 // We use a very large number (MaxInt64). 0 isn't right, because that shows the object really has just been used. And
 // we can't use a negative number as prometheus - at least - turns that to 0. I considered using the MQ "maxint" of 999999999
 // but decided to go even bigger.
-const SINCE_UNKNOWN int64 = 1<<63 - 1
+const UNKNOWN_SINCE int64 = 1<<63 - 1
 
 // Command messages are put with an expiry so they don't hang around too long. And any remaining
 // responses are also set to expire because of an MQRO setting. We use the WaitInterval as the basis.
@@ -184,6 +185,7 @@ func newConnectionInfo(key string) *connectionInfo {
 	ci.useResetQStats = false
 	ci.showInactiveChannels = false
 	ci.showCustomAttribute = false
+	ci.showUnknownSince = false
 
 	ci.hideSvrConnJobname = false
 	ci.hideAMQPClientId = false

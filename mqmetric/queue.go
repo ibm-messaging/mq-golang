@@ -385,6 +385,7 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 
 	traceEntry("parseQData")
 
+	ci := getConnection(GetConnectionKey())
 	st := GetObjectStatus(GetConnectionKey(), OT_Q)
 
 	qName := ""
@@ -455,10 +456,8 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	if ok {
 		if lastPutTime != "" {
 			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastPutDate, lastPutTime))
-		} else {
-			logDebug("Setting SINCE_PUT to unknown for %s", key)
-
-			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
+		} else if ci.showUnknownSince {
+			v.Values[key] = newStatusValueInt64(UNKNOWN_SINCE)
 		}
 	}
 
@@ -466,9 +465,9 @@ func parseQData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string {
 	if ok {
 		if lastGetTime != "" {
 			v.Values[key] = newStatusValueInt64(statusTimeDiff(now, lastGetDate, lastGetTime))
-		} else {
+		} else if ci.showUnknownSince {
 			logDebug("Setting SINCE_GET to unknown for %s", key)
-			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
+			v.Values[key] = newStatusValueInt64(UNKNOWN_SINCE)
 		}
 	}
 	if s, ok := qInfoMap[key]; ok {

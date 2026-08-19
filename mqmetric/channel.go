@@ -512,8 +512,8 @@ func parseChlStatusData(instanceType int32, cfh *ibmmq.MQCFH, buf []byte) string
 		if lastMsgTime != "" {
 			diff := statusTimeDiff(now, lastMsgDate, lastMsgTime)
 			v.Values[key] = newStatusValueInt64(diff)
-		} else {
-			v.Values[key] = newStatusValueInt64(SINCE_UNKNOWN)
+		} else if ci.showUnknownSince {
+			v.Values[key] = newStatusValueInt64(UNKNOWN_SINCE)
 		}
 	}
 
