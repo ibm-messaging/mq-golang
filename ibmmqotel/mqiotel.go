@@ -511,13 +511,9 @@ func otelPutTraceBefore(otelOpts mq.OtelOpts, x *mq.MQQueueManager, md *mq.MQMD,
 			traceId := span.SpanContext().TraceID().String()
 			spanId := span.SpanContext().SpanID().String()
 			traceFlags := span.SpanContext().TraceFlags()
-			traceFlagsString := "01"
-			if traceFlags != 1 {
-				traceFlagsString = "00"
-			}
 
 			// This is the W3C-defined format for the trace property
-			value := fmt.Sprintf("%s-%s-%s-%s", "00", traceId, spanId, traceFlagsString)
+			value := fmt.Sprintf("%s-%s-%s-%02x", "00", traceId, spanId, int(traceFlags))
 			logTrace("Setting %s to %s\n", traceparent, value)
 
 			err := mh.SetMP(smpo, traceparent, pd, value)
@@ -750,12 +746,12 @@ func otelGetTraceAfter(otelOpts mq.OtelOpts, hObj *mq.MQObject, gogmo *mq.MQGMO,
 					msgContextConfig.SpanID = spanID
 				}
 
-				// Final element can only be 00 or 01 (for now)
-				if elem[3] == "00" {
-					msgContextConfig.TraceFlags = oteltrace.TraceFlags(0)
+				if tf, err := strconv.ParseUint(elem[3], 16, 8); err == nil {
+					msgContextConfig.TraceFlags = oteltrace.TraceFlags(tf)
 				} else {
-					msgContextConfig.TraceFlags = oteltrace.FlagsSampled
+					msgContextConfig.TraceFlags = oteltrace.TraceFlags(0)
 				}
+
 				haveNewContext = true
 			}
 		}

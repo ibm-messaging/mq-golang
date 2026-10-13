@@ -1348,6 +1348,7 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 	if mqName.VSLength > 0 {
 		mqName.VSPtr = (C.MQPTR)(C.CString(name))
 		mqName.VSBufSize = mqName.VSLength
+		defer C.free(unsafe.Pointer(mqName.VSPtr))
 	}
 
 	propertyType = -1
@@ -1436,10 +1437,6 @@ func (handle *MQMessageHandle) SetMP(gosmpo *MQSMPO, name string, gopd *MQPD, va
 		propertyPtr,
 		&mqcc,
 		&mqrc)
-
-	if len(name) > 0 {
-		C.free(unsafe.Pointer(mqName.VSPtr))
-	}
 
 	if propertyType == C.MQTYPE_STRING || propertyType == C.MQTYPE_BYTE_STRING {
 		C.free(unsafe.Pointer(propertyPtr))

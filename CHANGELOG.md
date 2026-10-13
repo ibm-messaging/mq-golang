@@ -1,8 +1,19 @@
 # Changelog
 Newest updates are at the top of this file.
 
+## Oct 13 2026 - 5.7.3
+- Update for MQ 10.0.1
+- mqmetric - Make dummy "since" values for QSTATUS and CHSTATUS when the real value is blank. When a queue has not been
+  used since a qmgr restart, or has MONQ(OFF), the `since_last_put/get` values now show as a very large number. It's
+  reported as `MaxInt64`. (ibm-messaging/mq-metric-samples#505)
+  - This is optional, default is to leave blank to avoid changing dashboards
+  - Set `showUnknownSince=true` in the filter configuration block to enable
+- mqmetric - Remove unnecessary reformatting of hostname (#228)
+- mqmetric - Add QMID to qmgr attributes (ibm-messaging/mq-metric-samples#517)
+- ibmmqotel - Deal with traceFlags that might have the new RANDOM_TRACE_ID bit set
+
 ## Jun 16 2026 - v5.7.2
-- Update for MQ 10
+- Update for MQ 10.0.0
 - mqmetric - Individual metrics can be included/excluded from reporting
 - ibmmqotel - Deal with MQSUB(MQSO_MANAGED) when discovering PROPCTL value
 - ibmmq - Add MQTM/MQTMC structures for trigger monitors and triggered apps

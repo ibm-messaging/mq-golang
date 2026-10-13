@@ -30,8 +30,8 @@ package ibmmq
 ****************************************************************
 *
 *   <BEGIN_BUILDINFO>
-*   Generated on:  5/22/26, 1:19 PM
-*   Build Level:   p1000-L260522
+*   Generated on:  9/22/26, 2:55 PM
+*   Build Level:   p1001-L260922
 *   Build Type:    Production
 *   <END_BUILDINFO>
  */
@@ -85,6 +85,8 @@ const (
 	MQAIT_IDPW_LDAP                int32  = 4
 	MQAIT_IDPW_OS                  int32  = 3
 	MQAIT_OCSP                     int32  = 2
+	MQAM_JAAS                      int32  = 0
+	MQAM_QMGR                      int32  = 1
 	MQAPPL_IMMOVABLE               int32  = 0
 	MQAPPL_MOVABLE                 int32  = 1
 	MQAS_ACTIVE                    int32  = 6
@@ -1055,9 +1057,10 @@ const (
 	MQCMDI_SEC_SIGNOFF_ERROR       int32  = 17
 	MQCMDI_SEC_TIMER_ZERO          int32  = 14
 	MQCMDI_SEC_UPPERCASE           int32  = 21
-	MQCMDL_CURRENT_LEVEL           int32  = 1000
+	MQCMDL_CURRENT_LEVEL           int32  = 1001
 	MQCMDL_LEVEL_1                 int32  = 100
 	MQCMDL_LEVEL_1000              int32  = 1000
+	MQCMDL_LEVEL_1001              int32  = 1001
 	MQCMDL_LEVEL_101               int32  = 101
 	MQCMDL_LEVEL_110               int32  = 110
 	MQCMDL_LEVEL_114               int32  = 114
@@ -2194,6 +2197,7 @@ const (
 	MQIACH_ALLOC_RETRY             int32  = 1570
 	MQIACH_ALLOC_SLOW_TIMER        int32  = 1572
 	MQIACH_AMQP_KEEP_ALIVE         int32  = 1644
+	MQIACH_AUTHMODE                int32  = 1649
 	MQIACH_AUTH_INFO_TYPES         int32  = 1622
 	MQIACH_AVAILABLE_CIPHERSPECS   int32  = 1636
 	MQIACH_BACKLOG                 int32  = 1602
@@ -2255,7 +2259,7 @@ const (
 	MQIACH_KEEP_ALIVE_INTERVAL     int32  = 1566
 	MQIACH_LAST_SEQUENCE_NUMBER    int32  = 1529
 	MQIACH_LAST_SEQ_NUMBER         int32  = 1529
-	MQIACH_LAST_USED               int32  = 1648
+	MQIACH_LAST_USED               int32  = 1649
 	MQIACH_LISTENER_CONTROL        int32  = 1601
 	MQIACH_LISTENER_STATUS         int32  = 1599
 	MQIACH_LONG_RETRIES_LEFT       int32  = 1540
@@ -3229,6 +3233,8 @@ const (
 	MQPROTO_HTTP                   int32  = 2
 	MQPROTO_MQTTV3                 int32  = 1
 	MQPROTO_MQTTV311               int32  = 4
+	MQPROTO_MQTTV5                 int32  = 5
+	MQPROTO_MQTTV5_MASK            int32  = 8
 	MQPRT_ASYNC_RESPONSE           int32  = 2
 	MQPRT_RESPONSE_AS_PARENT       int32  = 0
 	MQPRT_SYNC_RESPONSE            int32  = 1

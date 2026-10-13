@@ -215,6 +215,20 @@ func collectQueueManagerAttrsZOS() error {
 			qMgrInfo.Custom = v[ibmmq.MQCA_CUSTOM].(string)
 		}
 	}
+
+	// Queried separately from the selectors above so that an older command level or platform
+	// rejecting this one selector cannot also fail the qmgr name/description/custom inquiry.
+	qmidSelectors := []int32{ibmmq.MQCA_Q_MGR_IDENTIFIER}
+	qmidVals, qmidErr := ci.si.qMgrObject.Inq(qmidSelectors)
+	if qmidErr == nil {
+		if qmid, ok := qmidVals[ibmmq.MQCA_Q_MGR_IDENTIFIER].(string); ok {
+			qMgrInfo.QMgrIdentifier = qmid
+		}
+	} else {
+		// log the error but ignore it
+		logWarn("Cannot find MQCA_Q_MGR_IDENTIFIER: %v", qmidErr)
+	}
+
 	traceExitErr("collectQueueManagerAttrsZOS", 0, err)
 
 	return err
@@ -242,6 +256,19 @@ func collectQueueManagerAttrsDist() error {
 		qMgrInfo.Description = desc
 		qMgrInfo.QMgrName = key
 		qMgrInfo.Custom = custom
+	}
+
+	// Queried separately from the selectors above so that an older command level or platform
+	// rejecting this one selector cannot also fail the qmgr name/description/custom inquiry.
+	qmidSelectors := []int32{ibmmq.MQCA_Q_MGR_IDENTIFIER}
+	qmidVals, qmidErr := ci.si.qMgrObject.Inq(qmidSelectors)
+	if qmidErr == nil {
+		if qmid, ok := qmidVals[ibmmq.MQCA_Q_MGR_IDENTIFIER].(string); ok {
+			qMgrInfo.QMgrIdentifier = qmid
+		}
+	} else {
+		// log the error but ignore it
+		logWarn("Cannot find MQCA_Q_MGR_IDENTIFIER: %v", qmidErr)
 	}
 
 	traceExitErr("collectQueueManagerAttrsDist", 0, err)
@@ -603,6 +630,8 @@ func GetQueueManagerAttribute(key string, attribute int32) string {
 	switch attribute {
 	case ibmmq.MQCACF_HOST_NAME:
 		v = qMgrInfo.HostName
+	case ibmmq.MQCA_Q_MGR_IDENTIFIER:
+		v = qMgrInfo.QMgrIdentifier
 	default:
 		v = DUMMY_STRING
 	}

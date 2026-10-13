@@ -263,6 +263,16 @@ func MQItoString(class string, value int) string {
 			s = ""
 		}
 
+	case "AM":
+		switch v {
+		case 0:
+			s = "MQAM_JAAS"
+		case 1:
+			s = "MQAM_QMGR"
+		default:
+			s = ""
+		}
+
 	case "APPL":
 		switch v {
 		case 0:
@@ -1489,6 +1499,8 @@ func MQItoString(class string, value int) string {
 			s = "MQCMDL_LEVEL_945"
 		case 1000:
 			s = "MQCMDL_LEVEL_1000"
+		case 1001:
+			s = "MQCMDL_LEVEL_1001"
 		default:
 			s = ""
 		}
@@ -3649,6 +3661,10 @@ func MQItoString(class string, value int) string {
 			s = "MQPROTO_AMQP"
 		case 4:
 			s = "MQPROTO_MQTTV311"
+		case 5:
+			s = "MQPROTO_MQTTV5"
+		case 8:
+			s = "MQPROTO_MQTTV5_MASK"
 		default:
 			s = ""
 		}
